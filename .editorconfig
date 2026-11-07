@@ -1,6 +1,6 @@
 # Code style: Google C# Style Guide — https://google.github.io/styleguide/csharpguide.html
-# Analyzer severities (SonarAnalyzer.CSharp, StyleCop.Analyzers) are added by the
-# bootstrap-solution change; every disabled rule carries a one-line reason.
+# Analyzer severities (SonarAnalyzer.CSharp, StyleCop.Analyzers, .NET analyzers) are at the end
+# of this file (design D9 of bootstrap-solution); every disabled rule carries a one-line reason.
 
 root = true
 
@@ -115,3 +115,41 @@ dotnet_naming_style.pascal.capitalization = pascal_case
 dotnet_naming_rule.pascal_members.symbols = pascal_members
 dotnet_naming_rule.pascal_members.style = pascal
 dotnet_naming_rule.pascal_members.severity = warning
+
+# ---- Analyzer severities (design D9) ----
+
+# Enforce formatting and naming in every build, not only in the IDE.
+dotnet_diagnostic.IDE0055.severity = warning
+dotnet_diagnostic.IDE1006.severity = warning
+
+# Public XML docs are checked by SA1600 with the scope in stylecop.json; CS1591 would duplicate it.
+dotnet_diagnostic.CS1591.severity = none
+
+# StyleCop rules that contradict the Google C# Style Guide.
+# SA1101: the guide does not prefix members with `this.`.
+dotnet_diagnostic.SA1101.severity = none
+# SA1309: the guide names non-public fields `_camelCase`.
+dotnet_diagnostic.SA1309.severity = none
+# SA1306: the guide names non-public fields `_camelCase`.
+dotnet_diagnostic.SA1306.severity = none
+# SA1303: in the guide `const` does not change naming, so private constants are `_camelCase`.
+dotnet_diagnostic.SA1303.severity = none
+# SA1500: the guide puts opening braces on the same line.
+dotnet_diagnostic.SA1500.severity = none
+# SA1201: the guide's member order (nested types, fields, constructors, methods) differs.
+dotnet_diagnostic.SA1201.severity = none
+# SA1116, SA1117: the guide aligns wrapped arguments with the first argument, several per line.
+dotnet_diagnostic.SA1116.severity = none
+dotnet_diagnostic.SA1117.severity = none
+# SA1502: the guide allows concise empty blocks.
+dotnet_diagnostic.SA1502.severity = none
+
+# StyleCop rules disabled as noise the guide does not cover.
+# SA1633: no file headers; the licence is stated once in LICENSE.
+dotnet_diagnostic.SA1633.severity = none
+# SA1413: trailing commas in multi-line initializers are optional.
+dotnet_diagnostic.SA1413.severity = none
+
+[tests/**.cs]
+# SA1600: xUnit needs public test classes and methods; their names describe the behavior.
+dotnet_diagnostic.SA1600.severity = none

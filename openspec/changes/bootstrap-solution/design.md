@@ -50,6 +50,7 @@ The engine returns results and produces no side effects. Win32 adapters execute 
 - Atomic write: write to `settings.json.tmp`, then `File.Replace`.
 - Unknown fields ignored; missing fields take defaults; parse failure → defaults + rename to `settings.json.bak`.
 - Schema version field `version: 1` for future migrations.
+- Fields in this change: `Version` and `AutoCorrectionEnabled` (on). `AutoCorrectionEnabled` is the first user setting, so reload and flush can be tested now; `add-auto-correction` gives it behavior.
 
 ### D5. Single instance
 Named mutex `Local\Rekey-<user SID>`. `Local\` scopes it to the session, so other sessions run their own instance. A second process exits immediately.
@@ -62,6 +63,7 @@ Named mutex `Local\Rekey-<user SID>`. `Local\` scopes it to the session, so othe
 
 ### D8. Build and CI
 - `Directory.Build.props`: `Nullable=enable`, `TreatWarningsAsErrors=true`, `AnalysisLevel=latest-recommended`, `LangVersion=latest`, `EnforceCodeStyleInBuild=true`, `GenerateDocumentationFile=true` (needed by documentation rules; only public members require XML docs, see D9).
+- Tests: xUnit v3 on Microsoft.Testing.Platform (`xunit.v3.mtp-v2`); `global.json` selects that runner for `dotnet test`.
 
 ### D9. Static analysis (SonarLint / Checkstyle equivalents)
 Analyzers run inside every build and IDE session, so the same rules apply locally, in CI and for every AI agent:
@@ -72,10 +74,13 @@ Analyzers run inside every build and IDE session, so the same rules apply locall
 - Severities live in the root `.editorconfig` (`dotnet_diagnostic.<ID>.severity`); `stylecop.json` holds StyleCop settings only. Rules we disable are listed in `.editorconfig` with a one-line reason each.
 - Code style is the Google C# Style Guide (https://google.github.io/styleguide/csharpguide.html). Its formatting and naming rules are already in the root `.editorconfig`; StyleCop is configured to agree with it:
   - `stylecop.json`: `indentation.indentationSize = 2`, `usingDirectivesPlacement = outsideNamespace`, `systemUsingDirectivesFirst = true`.
-  - Disabled because they contradict the guide: SA1101 (`this.` prefix — guide does not qualify), SA1309 and SA1306 (guide uses `_camelCase` for non-public fields), SA1303 (guide: `const` does not change naming, so private constants are `_camelCase`), SA1500 (guide puts opening braces on the same line), SA1201 (guide's member order — nested types; static/const/readonly fields; fields and properties; constructors; methods — differs from StyleCop's element order).
+  - Disabled because they contradict the guide: SA1101 (`this.` prefix — guide does not qualify), SA1309 and SA1306 (guide uses `_camelCase` for non-public fields), SA1303 (guide: `const` does not change naming, so private constants are `_camelCase`), SA1500 (guide puts opening braces on the same line), SA1201 (guide's member order — nested types; static/const/readonly fields; fields and properties; constructors; methods — differs from StyleCop's element order), SA1116 and SA1117 (guide wraps arguments by aligning continuation lines with the first argument, several per line), SA1502 (guide allows concise empty blocks).
   - Disabled as noise not covered by the guide: SA1633 (file headers), SA1413 (trailing commas).
   - Kept and matching the guide: SA1202 (public before private within a group), SA1503 (braces even when optional), SA1027 (spaces, no tabs), SA1208 (System usings first), SA1210 (alphabetical usings).
   - Documentation: XML docs required on public types and members only (`stylecop.json`: `documentInternalElements = false`, `documentPrivateElements = false`, `documentPrivateFields = false`), worded per `docs/conventions/xml-docs.md` (the `csharp-docs` conventions); SA1623 and SA1642 stay on because they enforce that wording. Other comments follow the project commenting rule (only for non-obvious logic), which overrides the guide's "comment almost every method".
+  - CS1591 is off: SA1600 with the `stylecop.json` scope is the one public-docs check. IDE0055 (formatting) and IDE1006 (naming) run at warning, because the build enforces code-style rules only at warning or error.
+  - Under `tests/`, SA1600 is off: xUnit needs public test classes and methods, and their names describe the behavior.
+  - Formatter limit: Roslyn writes empty blocks as `{ }` and has no option for `{}`; otherwise `dotnet format` leaves the guide's sample unchanged.
 - Guide rules no analyzer checks are enforced elsewhere: the 100-character column limit by `.githooks/pre-commit`; member grouping order, 4-space continuation indent, `var` judgement, LINQ/extension-method guidance by code review against the guide.
 - Suppressions in code use `[SuppressMessage(..., Justification = "...")]`; `#pragma warning disable` without a justification comment is not accepted.
 - Optional per developer: SonarQube for IDE (former SonarLint) extension in VS / VS Code / Rider uses the same rules; not required, since the analyzers already run in build.
