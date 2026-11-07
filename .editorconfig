@@ -56,8 +56,9 @@ dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = false
 csharp_style_namespace_declarations = block_scoped:warning
 
-# Modifier order as listed in the guide.
-csharp_preferred_modifier_order = public,protected,internal,private,new,abstract,virtual,override,sealed,static,readonly,extern,unsafe,volatile,async:warning
+# Modifier order as listed in the guide; `private` moves before `protected` because the guide
+# predates `private protected`, which SA1207 and S3442 require in that order.
+csharp_preferred_modifier_order = public,private,protected,internal,new,abstract,virtual,override,sealed,static,readonly,extern,unsafe,volatile,async:warning
 
 # var: when the type is apparent; not for built-in types.
 csharp_style_var_when_type_is_apparent = true:suggestion

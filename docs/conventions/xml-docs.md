@@ -12,7 +12,7 @@ Source: the `csharp-docs` skill from github/awesome-copilot, adapted to this pro
 
 - `<summary>`: one sentence starting with a present-tense, third-person verb ("Returns…", "Switches…").
 - Constructors: "Initializes a new instance of the `<Class>` class." (or struct) (SA1642).
-- Properties: "Gets…" for read-only, "Gets or sets…" for read-write (SA1623); Boolean: "Gets [or sets] a value that indicates whether…". Use `<value>` for a noun-phrase description; state a default in its own sentence: "The default is `<see langword="false" />`."
+- Properties: "Gets…" for read-only, "Gets or sets…" for read-write (SA1623); Boolean: "Gets [or sets] a value indicating whether…" (the exact phrase SA1623 checks; an `init` accessor takes "Gets…"). Use `<value>` for a noun-phrase description; state a default in its own sentence: "The default is `<see langword="false" />`."
 - `<param>` and `<returns>`: noun phrase, starting with an article, without the data type.
   - Boolean: "`<see langword="true" />` to …; otherwise, `<see langword="false" />`." (for `<returns>`: "… if …; otherwise, …").
   - Non-flag enum: "One of the enumeration values that specifies…". Flag enum: "A bitwise combination of the enumeration values that specifies…".

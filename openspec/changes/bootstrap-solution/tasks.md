@@ -10,8 +10,8 @@
 
 ## 2. Engine seam (data shape first)
 
-- [ ] 2.1 Define `InputEvent`, `Context`, `EngineAction` (incl. `RecordIncident`) and `Incident` records and an `Engine.Handle` that returns no actions; write a test that a key event yields an empty action list and verify it passes
-- [ ] 2.2 Define the immutable `Settings` record with defaults (version 1, `AutoCorrectionEnabled` on) and verify a test that default settings round-trip through JSON unchanged
+- [x] 2.1 Define `InputEvent`, `Context`, `EngineAction` (incl. `RecordIncident`) and `Incident` records and an `Engine.Handle` that returns no actions; write a test that a key event yields an empty action list and verify it passes
+- [x] 2.2 Define the immutable `Settings` record with defaults (version 1, `AutoCorrectionEnabled` on) and verify a test that default settings round-trip through JSON unchanged
 
 ## 3. Settings storage
 
