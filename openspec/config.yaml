@@ -1,0 +1,45 @@
+schema: spec-driven
+
+context: |
+  Language: English. All OpenSpec artifacts (proposal, design, specs, tasks) are written in English.
+
+  Product: Rekey for Windows — a background tray app that fixes a word typed in the wrong
+  keyboard layout ("ghbdtn" -> "привет") and switches the layout. Windows analog of the macOS
+  app Rekey 1.0.0-beta.16. Observed behavior of the original is in the owner's local notes
+  .private/reverse-engineering/rekey-macos.md (git-ignored); artifacts describe that behavior
+  in our own words, without the original's quotes, identifiers or decompiled details.
+  The original's code, dictionaries, UI texts and server addresses are NOT copied.
+  Use the domain terms from GLOSSARY.md exactly (Layout, Word, Rendering, Correction, Layout Switch,
+  Protected Word, Excluded App, ...). Architecture decisions live in docs/adr/.
+
+  Stack: C# / .NET 10 LTS, WPF (MVVM, CommunityToolkit.Mvvm), Win32 via CsWin32 (P/Invoke),
+  UI Automation for in-place replacement, H.NotifyIcon.Wpf for the tray, Velopack for updates,
+  xUnit for tests. WPF does not support NativeAOT: publish self-contained single-file + ReadyToRun.
+
+  Solution layout: Rekey.Core (pure logic, no Win32, fully unit-testable),
+  Rekey.Win32 (keyboard hook, layouts, input injection, UIA), Rekey.App (WPF, tray, windows).
+
+  MVP languages: English, Russian, Ukrainian (dictionaries and UI). Dictionary format is extensible.
+
+  Principles:
+  - Typed text never leaves the machine; telemetry is opt-in and carries counters only.
+  - The WH_KEYBOARD_LL callback does minimal work (target < 1 ms) and hands events to a worker thread.
+  - Requirements distinguish behavior observed in the original from our own design decisions
+    (thresholds, timings).
+
+rules:
+  specs:
+    - Every requirement has at least one Scenario in WHEN/THEN form.
+    - Numeric thresholds and timings not observed in the original are marked as design decisions.
+  design:
+    - State which Win32/UIA APIs are used and on which thread they are called.
+  tasks:
+    - Tasks are at most 2 hours; every task with logic has a test.
+    - Code follows the ub-mode skill - First Make it Work, Then Make it Right, Follow Practice.
+    - TDD order - failing test first, then the smallest change, then refactor.
+    - Data-shape tasks (models, formats) come before logic tasks.
+
+operations:
+  apply:
+    guidance:
+      - Load the ub-mode skill before implementing and follow it for every code change.

@@ -1,0 +1,117 @@
+# Code style: Google C# Style Guide — https://google.github.io/styleguide/csharpguide.html
+# Analyzer severities (SonarAnalyzer.CSharp, StyleCop.Analyzers) are added by the
+# bootstrap-solution change; every disabled rule carries a one-line reason.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[{*.sh,.githooks/*}]
+end_of_line = lf
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{cs,csx}]
+# Whitespace: 2-space indent, no tabs, column limit 100.
+indent_size = 2
+tab_width = 2
+max_line_length = 100
+
+# Braces: no line break before opening brace, none between } and else; braces always.
+csharp_new_line_before_open_brace = none
+csharp_new_line_before_else = false
+csharp_new_line_before_catch = false
+csharp_new_line_before_finally = false
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_prefer_braces = true:warning
+
+# Spacing: space after if/for/while and commas; none inside parentheses; none after cast.
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_after_comma = true
+csharp_space_between_parentheses = false
+csharp_space_after_cast = false
+csharp_space_around_binary_operators = before_and_after
+
+# One statement per line.
+csharp_preserve_single_line_statements = false
+csharp_preserve_single_line_blocks = true
+
+# Indentation inside blocks and namespaces (guide samples indent namespace contents).
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+
+# Organization: usings at the top, outside namespaces, System first then alphabetical.
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_style_namespace_declarations = block_scoped:warning
+
+# Modifier order as listed in the guide.
+csharp_preferred_modifier_order = public,protected,internal,private,new,abstract,virtual,override,sealed,static,readonly,extern,unsafe,volatile,async:warning
+
+# var: when the type is apparent; not for built-in types.
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# Expression bodies: read-only single-line properties; single-statement methods only.
+csharp_style_expression_bodied_properties = when_on_single_line:suggestion
+csharp_style_expression_bodied_accessors = when_on_single_line:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+
+# Delegates: SomeDelegate?.Invoke().
+csharp_style_conditional_delegate_call = true:suggestion
+
+# Field initializers encouraged; const where possible.
+dotnet_style_readonly_field = true:warning
+
+# No `this.` qualification (the guide does not use it).
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+
+# ---- Naming (guide: modifiers such as const/static/readonly do not change the convention) ----
+
+# Non-public fields and properties: _camelCase.
+dotnet_naming_symbols.non_public_members.applicable_kinds = field, property
+dotnet_naming_symbols.non_public_members.applicable_accessibilities = private, protected, internal, protected_internal, private_protected
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_rule.non_public_members_underscore.symbols = non_public_members
+dotnet_naming_rule.non_public_members_underscore.style = underscore_camel
+dotnet_naming_rule.non_public_members_underscore.severity = warning
+
+# Interfaces: IPascalCase.
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_style.i_pascal.capitalization = pascal_case
+dotnet_naming_style.i_pascal.required_prefix = I
+dotnet_naming_rule.interfaces_i_pascal.symbols = interfaces
+dotnet_naming_rule.interfaces_i_pascal.style = i_pascal
+dotnet_naming_rule.interfaces_i_pascal.severity = warning
+
+# Locals and parameters: camelCase.
+dotnet_naming_symbols.locals_and_parameters.applicable_kinds = local, parameter, local_function
+dotnet_naming_style.camel.capitalization = camel_case
+dotnet_naming_rule.locals_camel.symbols = locals_and_parameters
+dotnet_naming_rule.locals_camel.style = camel
+dotnet_naming_rule.locals_camel.severity = warning
+
+# Types, methods, enums, namespaces, public fields and properties, events: PascalCase.
+dotnet_naming_symbols.pascal_members.applicable_kinds = namespace, class, struct, enum, delegate, method, property, field, event, type_parameter
+dotnet_naming_symbols.pascal_members.applicable_accessibilities = *
+dotnet_naming_style.pascal.capitalization = pascal_case
+dotnet_naming_rule.pascal_members.symbols = pascal_members
+dotnet_naming_rule.pascal_members.style = pascal
+dotnet_naming_rule.pascal_members.severity = warning

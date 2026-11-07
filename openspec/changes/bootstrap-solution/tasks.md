@@ -1,0 +1,38 @@
+# Tasks
+
+## 1. Repository and solution skeleton
+
+- [ ] 1.1 Extend `.gitignore` with the VisualStudio template (keep the existing secrets section) and add `global.json` pinning .NET 10 SDK; verify `dotnet --version` in the repo matches the pinned SDK
+- [ ] 1.2 Create `Rekey.slnx` with `src/Rekey.Core` (`net10.0`), `src/Rekey.Win32` (`net10.0-windows`), `src/Rekey.App` (WPF, `net10.0-windows`), `tests/Rekey.Core.Tests`, `tests/Rekey.Win32.Tests` (xUnit); verify `dotnet build` succeeds
+- [ ] 1.3 Add `Directory.Build.props` (nullable, warnings as errors, latest-recommended analyzers) and `Directory.Packages.props` (central package versions); verify `dotnet build` still succeeds with zero warnings
+- [ ] 1.4 Add SonarAnalyzer.CSharp, StyleCop.Analyzers and code-style enforcement to `Directory.Build.props`, severities and the Google-style exclusions from design D9 in the existing `.editorconfig`, settings in `stylecop.json`; verify `dotnet build` passes with zero warnings, that `dotnet format --verify-no-changes` passes on the Google-style sample from the guide, that deliberate violations (Allman brace, field without `_`, unused private field, public method without XML docs) fail the build, and that an undocumented private method does not
+- [ ] 1.5 Add a project-reference guard test in `Rekey.Core.Tests` asserting `Rekey.Core` references no `Microsoft.Windows.*`/`System.Windows.*` assemblies; verify the test passes
+
+## 2. Engine seam (data shape first)
+
+- [ ] 2.1 Define `InputEvent`, `Context`, `EngineAction` (incl. `RecordIncident`) and `Incident` records and an `Engine.Handle` that returns no actions; write a test that a key event yields an empty action list and verify it passes
+- [ ] 2.2 Define the immutable `Settings` record with defaults (version 1) and verify a test that default settings round-trip through JSON unchanged
+
+## 3. Settings storage
+
+- [ ] 3.1 Write failing tests for `SettingsStore`: missing file → defaults + file created; changed value survives reload; verify they fail for the expected reason
+- [ ] 3.2 Implement load/save with source-generated `System.Text.Json` and atomic `File.Replace`; verify tests from 3.1 pass
+- [ ] 3.3 Write a failing test for corrupt JSON → defaults + `settings.json.bak` kept; implement; verify it passes
+- [ ] 3.4 Write a test that unknown fields are ignored and missing fields get defaults; verify it passes
+
+## 4. Windows host
+
+- [ ] 4.1 Add CsWin32 with `NativeMethods.txt` to `Rekey.Win32`; verify generated code compiles
+- [ ] 4.2 Implement the single-instance guard (`Local\Rekey-<SID>` mutex); verify with a `Rekey.Win32.Tests` test that a second acquire in the same session fails
+- [ ] 4.3 Create the WPF host: `OnExplicitShutdown`, no main window, H.NotifyIcon tray icon with a Quit item; verify manually that the icon appears, no taskbar button exists, and Quit exits with code 0
+- [ ] 4.4 Wire the single-instance guard into start-up; verify manually that a second launch exits within 2 s and only one tray icon remains
+- [ ] 4.5 Handle `SessionEnding` and `Exit`: flush settings, dispose adapters; verify manually that a changed setting is on disk after sign-out
+
+## 5. CI and docs
+
+- [ ] 5.1 Add `.github/workflows/ci.yml` (windows-latest: restore, build Release, test); verify the workflow passes on a push to a branch
+- [ ] 5.2 Write `README.md`: what Rekey is, prerequisites (.NET 10 SDK), build/test/run commands, project layout, licence (GPL-3.0-or-later code, CC BY-SA 4.0 language data); verify the documented commands run as written
+
+## Workflow follow-up
+
+- Archive the change after review so `openspec/specs/app-lifecycle/spec.md` is created.

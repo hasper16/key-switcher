@@ -1,0 +1,27 @@
+# Secrets — never commit (also enforced by .githooks/pre-commit)
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+secrets.json
+appsettings.*.local.json
+
+# Build output (bootstrap-solution extends this with the VisualStudio template)
+bin/
+obj/
+artifacts/
+Releases/
+*.user
+.vs/
+
+# Local agent state
+.claude/settings.local.json
+.claude/handoff-nudge-state.json
+.claude/handoffs/
+
+# Owner-only material: reverse-engineering notes on the original app (never published)
+.private/

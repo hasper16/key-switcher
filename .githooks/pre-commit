@@ -1,0 +1,46 @@
+#!/bin/sh
+# Pre-commit: block secrets, then check formatting and Core tests.
+# Enable once per clone:  git config core.hooksPath .githooks
+
+fail() { echo "pre-commit: $1" >&2; exit 1; }
+
+# 1. Secret files by name (staged additions/modifications only).
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+blocked=$(printf '%s\n' "$staged" | grep -Ei '(^|/)\.env($|\.)|\.(pfx|p12|pem|key|snk|keystore|jks)$|(^|/)secrets?\.json$|(^|/)appsettings\.[^/]*local[^/]*\.json$|(^|/)id_(rsa|ed25519|ecdsa)$' | grep -Ev '(^|/)\.env\.example$')
+[ -n "$blocked" ] && fail "secret file(s) staged:
+$blocked
+Keep them local or in CI secrets; add them to .gitignore."
+
+# 2. Secret-looking content in added lines.
+added=$(git diff --cached -U0 --diff-filter=ACMR -- . ':(exclude).githooks/*' | grep -E '^\+[^+]')
+hits=$(printf '%s\n' "$added" | grep -Ein \
+  -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' \
+  -e 'AKIA[0-9A-Z]{16}' \
+  -e 'gh[pousr]_[A-Za-z0-9]{36,}' \
+  -e 'github_pat_[A-Za-z0-9_]{40,}' \
+  -e 'xox[baprs]-[A-Za-z0-9-]{10,}' \
+  -e 'sk-[A-Za-z0-9_-]{20,}' \
+  -e '(api[_-]?key|secret|password|passwd|token)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"'[:space:]]{12,}')
+[ -n "$hits" ] && fail "possible secret in staged changes:
+$hits
+Move it to user secrets / CI secrets. If it is a false positive, ask the user to commit it."
+
+# 3. Google C# style column limit: 100 characters (no analyzer enforces it).
+long=$(git diff --cached --name-only --diff-filter=ACMR -- '*.cs' | while IFS= read -r f; do
+  git show ":$f" | tr -d '\r' | awk -v f="$f" 'length($0) > 100 { print f ":" NR ": " length($0) " chars" }'
+done)
+[ -n "$long" ] && fail "lines over 100 characters (Google C# style):
+$long"
+
+# 4. Formatting and Core tests, once a solution exists.
+sln=$(ls *.slnx *.sln 2>/dev/null | head -n 1)
+if [ -n "$sln" ] && command -v dotnet >/dev/null 2>&1; then
+  dotnet format "$sln" --verify-no-changes --no-restore >/dev/null 2>&1 \
+    || fail "formatting differs. Run: dotnet format $sln"
+  if [ -d tests/Rekey.Core.Tests ]; then
+    dotnet test tests/Rekey.Core.Tests --nologo -v q >/dev/null 2>&1 \
+      || fail "Rekey.Core tests fail. Run: dotnet test tests/Rekey.Core.Tests"
+  fi
+fi
+
+exit 0
