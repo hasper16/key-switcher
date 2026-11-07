@@ -15,10 +15,10 @@
 
 ## 3. Settings storage
 
-- [ ] 3.1 Write failing tests for `SettingsStore`: missing file → defaults + file created; changed value survives reload; verify they fail for the expected reason
-- [ ] 3.2 Implement load/save with source-generated `System.Text.Json` and atomic `File.Replace`; verify tests from 3.1 pass
-- [ ] 3.3 Write a failing test for corrupt JSON → defaults + `settings.json.bak` kept; implement; verify it passes
-- [ ] 3.4 Write a test that unknown fields are ignored and missing fields get defaults; verify it passes
+- [x] 3.1 Write failing tests for `SettingsStore`: missing file → defaults + file created; changed value survives reload; verify they fail for the expected reason
+- [x] 3.2 Implement load/save with source-generated `System.Text.Json` and atomic `File.Replace`; verify tests from 3.1 pass
+- [x] 3.3 Write a failing test for corrupt JSON → defaults + `settings.json.bak` kept; implement; verify it passes
+- [x] 3.4 Write a test that unknown fields are ignored and missing fields get defaults; verify it passes
 
 ## 4. Windows host
 
