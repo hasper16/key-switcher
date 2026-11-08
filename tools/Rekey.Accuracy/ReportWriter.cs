@@ -12,7 +12,7 @@ namespace Rekey.Accuracy {
     /// </remarks>
     /// <param name="output">The writer to write to.</param>
     public static void Write(AccuracyReport report, TextWriter output) {
-      output.WriteLine($"## {report.Sensitivity}");
+      output.WriteLine($"### {report.Sensitivity}");
       output.WriteLine();
       output.WriteLine(
           $"False corrections: {report.FalseCorrections} of {report.Negatives} correctly typed "
