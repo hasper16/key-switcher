@@ -1,0 +1,48 @@
+name: Snyk
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    name: Snyk (dependencies)
+    # The Snyk installer does not support Windows runners.
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+    steps:
+      # Fork pull requests get no SNYK_TOKEN. Fail rather than skip: a skipped required job counts
+      # as passed, which would let unscanned dependency changes merge.
+      - name: Require the Snyk token
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::error::Not scanned: no SNYK_TOKEN (fork pull request?). Push the branch here to scan it."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # Snyk reads the restored package graph (obj/project.assets.json).
+      - name: Restore
+        run: dotnet restore -p:EnableWindowsTargeting=true
+
+      - uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+
+      - name: Test dependencies
+        run: snyk test --all-projects --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
