@@ -31,7 +31,7 @@
 ## 5. CI and docs
 
 - [ ] 5.1 Add `.github/workflows/ci.yml` (windows-latest: restore, build Release, test; job id `build`); verify the workflow passes on a push to a branch, then add `build` as a required status check to the existing `main` branch protection (`gh api -X PUT repos/hasper16/key-switcher/branches/main/protection` with the current settings plus `required_status_checks: {strict: true, contexts: ["build"]}`) and verify a PR shows it as required
-- [ ] 5.2 Write `README.md`: what Rekey is, prerequisites (.NET 10 SDK), build/test/run commands, project layout, licence (GPL-3.0-or-later code, CC BY-SA 4.0 language data); verify the documented commands run as written
+- [x] 5.2 Write `README.md`: what Rekey is, prerequisites (.NET 10 SDK), build/test/run commands, project layout, licence (GPL-3.0-or-later code, CC BY-SA 4.0 language data); verify the documented commands run as written
 
 ## Workflow follow-up
 
