@@ -12,13 +12,14 @@ Loop, for each change in roadmap order:
 2. **Wait** for the implementer's report. The app wakes the orchestrator when the session ends a turn; do not poll.
 3. **Check readiness** of the PR the implementer reports (all must hold):
    - every required check passes: `gh pr checks <N> --required`;
-   - every review thread is resolved and no review requests changes:
+   - every review thread is resolved, and no reviewer's latest review is `CHANGES_REQUESTED` (check each reviewer, not only the PR-wide `reviewDecision`):
      ```bash
-     gh api graphql -F n=<N> -f query='query($n:Int!){repository(owner:"hasper16",name:"key-switcher"){pullRequest(number:$n){mergeable reviewDecision reviewThreads(first:100){nodes{isResolved path comments(first:1){nodes{author{login} body}}}}}}}'
+     gh api graphql --paginate -F n=<N> -f query='query($n:Int!,$endCursor:String){repository(owner:"hasper16",name:"key-switcher"){pullRequest(number:$n){mergeable headRefOid latestReviews(first:100){totalCount nodes{author{login} state}} reviewThreads(first:100,after:$endCursor){totalCount pageInfo{hasNextPage endCursor} nodes{isResolved path comments(first:1){nodes{author{login} body}}}}}}}'
      ```
+     `--paginate` follows `reviewThreads` pages; if `latestReviews.totalCount` exceeds 100, page it the same way before deciding.
    - the PR is mergeable (no conflicts, branch up to date with `main`).
    Anything open goes back to **the same implementer** via `SendMessage`, listing the unresolved threads or failing checks. Never fix it yourself and never hand it to another session.
-4. **Manual-check gate**: if the PR adds or changes `docs/manual-tests/<change>.md` with unchecked items, stop and ask the user (in Russian) to run that checklist. Merge only after the user confirms; then tell the implementer to tick the verified tasks, wait for the new commit and re-run step 3.
+4. **Manual-check gate**: if the PR adds or changes `docs/manual-tests/<change>.md` with unchecked items, stop and ask the user (in Russian) to run that checklist. Merge only after the user confirms; then tell the implementer to tick the verified tasks, wait for the new commit and re-run step 3. A confirmation covers one head commit: record its SHA (`headRefOid`). If later commits change anything outside `docs/` and `openspec/` (`git diff --name-only <confirmed-sha>..<head>`), the checked scenarios may behave differently, so ask the user to re-run the affected items before merging.
 5. **Merge**: `gh pr merge <N> --merge`. Never `--admin`, never bypass protection.
 6. **Archive**: tell the same implementer to run `/opsx:archive <change>` on branch `chore/archive-<change>`, open a PR, and report. Run steps 2–5 for that PR.
 7. **Next**: only after the archive PR is merged, start the next change. The implementer session is left idle (the user archives sessions).
