@@ -8,8 +8,8 @@
 
 ## 2. Active Languages
 
-- [ ] 2.1 Write failing tests for `LanguageSet.Activate`: only languages with an installed layout are active; language-id fallback maps an unlisted variant; unsupported layout maps to none; implement; verify tests pass
-- [ ] 2.2 Write a failing test that one corrupt profile among three yields two active languages and one Incident record; implement the tolerant loading; verify it passes
+- [x] 2.1 Write failing tests for `LanguageSet.Activate`: only languages with an installed layout are active; language-id fallback maps an unlisted variant; unsupported layout maps to none; implement; verify tests pass
+- [x] 2.2 Write a failing test that one corrupt profile among three yields two active languages and one Incident record; implement the tolerant loading; verify it passes
 
 ## 3. Profile generator
 

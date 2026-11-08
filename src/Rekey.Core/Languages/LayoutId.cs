@@ -7,6 +7,11 @@ namespace Rekey.Core.Languages {
   /// <param name="Value">The KLID as a number.</param>
   public readonly record struct LayoutId(uint Value) {
     /// <summary>
+    /// Gets the language id of the Layout: the low word of its KLID.
+    /// </summary>
+    public ushort LanguageId => (ushort)(Value & 0xFFFF);
+
+    /// <summary>
     /// Converts the 8-digit hexadecimal text of a KLID to a Layout id.
     /// </summary>
     /// <param name="text">The KLID text, such as <c>00000419</c>.</param>
