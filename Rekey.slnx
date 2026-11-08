@@ -10,6 +10,7 @@
     <Project Path="tests/Rekey.Win32.Tests/Rekey.Win32.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/Rekey.KeyMapCapture/Rekey.KeyMapCapture.csproj" />
     <Project Path="tools/Rekey.ProfileBuilder/Rekey.ProfileBuilder.csproj" />
   </Folder>
 </Solution>

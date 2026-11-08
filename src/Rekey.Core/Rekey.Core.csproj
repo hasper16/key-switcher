@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Rekey.Core.Tests" />
+    <InternalsVisibleTo Include="Rekey.KeyMapCapture" />
     <InternalsVisibleTo Include="Rekey.ProfileBuilder" />
     <InternalsVisibleTo Include="Rekey.ProfileBuilder.Tests" />
   </ItemGroup>

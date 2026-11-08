@@ -1,0 +1,381 @@
+{
+  "layoutId": "00020422",
+  "keys": [
+    {
+      "scanCode": 2,
+      "normal": "1",
+      "shifted": "!",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 3,
+      "normal": "2",
+      "shifted": "\"",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 4,
+      "normal": "3",
+      "shifted": "№",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 5,
+      "normal": "4",
+      "shifted": ";",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 6,
+      "normal": "5",
+      "shifted": "%",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 7,
+      "normal": "6",
+      "shifted": ":",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 8,
+      "normal": "7",
+      "shifted": "?",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 9,
+      "normal": "8",
+      "shifted": "*",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 10,
+      "normal": "9",
+      "shifted": "(",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 11,
+      "normal": "0",
+      "shifted": ")",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 12,
+      "normal": "-",
+      "shifted": "_",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 13,
+      "normal": "=",
+      "shifted": "+",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 16,
+      "normal": "й",
+      "shifted": "Й",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 17,
+      "normal": "ц",
+      "shifted": "Ц",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 18,
+      "normal": "у",
+      "shifted": "У",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 19,
+      "normal": "к",
+      "shifted": "К",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 20,
+      "normal": "е",
+      "shifted": "Е",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 21,
+      "normal": "н",
+      "shifted": "Н",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 22,
+      "normal": "г",
+      "shifted": "Г",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 23,
+      "normal": "ш",
+      "shifted": "Ш",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 24,
+      "normal": "щ",
+      "shifted": "Щ",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 25,
+      "normal": "з",
+      "shifted": "З",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 26,
+      "normal": "х",
+      "shifted": "Х",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 27,
+      "normal": "ї",
+      "shifted": "Ї",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 30,
+      "normal": "ф",
+      "shifted": "Ф",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 31,
+      "normal": "і",
+      "shifted": "І",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 32,
+      "normal": "в",
+      "shifted": "В",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 33,
+      "normal": "а",
+      "shifted": "А",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 34,
+      "normal": "п",
+      "shifted": "П",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 35,
+      "normal": "р",
+      "shifted": "Р",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 36,
+      "normal": "о",
+      "shifted": "О",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 37,
+      "normal": "л",
+      "shifted": "Л",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 38,
+      "normal": "д",
+      "shifted": "Д",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 39,
+      "normal": "ж",
+      "shifted": "Ж",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 40,
+      "normal": "є",
+      "shifted": "Є",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 41,
+      "normal": "'",
+      "shifted": "₴",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 43,
+      "normal": "\\",
+      "shifted": "/",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 44,
+      "normal": "я",
+      "shifted": "Я",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 45,
+      "normal": "ч",
+      "shifted": "Ч",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 46,
+      "normal": "с",
+      "shifted": "С",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 47,
+      "normal": "м",
+      "shifted": "М",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 48,
+      "normal": "и",
+      "shifted": "И",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 49,
+      "normal": "т",
+      "shifted": "Т",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 50,
+      "normal": "ь",
+      "shifted": "Ь",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 51,
+      "normal": "б",
+      "shifted": "Б",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 52,
+      "normal": "ю",
+      "shifted": "Ю",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 53,
+      "normal": ".",
+      "shifted": ",",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    }
+  ]
+}

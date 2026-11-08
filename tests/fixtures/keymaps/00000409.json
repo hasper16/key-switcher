@@ -1,0 +1,381 @@
+{
+  "layoutId": "00000409",
+  "keys": [
+    {
+      "scanCode": 2,
+      "normal": "1",
+      "shifted": "!",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 3,
+      "normal": "2",
+      "shifted": "@",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 4,
+      "normal": "3",
+      "shifted": "#",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 5,
+      "normal": "4",
+      "shifted": "$",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 6,
+      "normal": "5",
+      "shifted": "%",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 7,
+      "normal": "6",
+      "shifted": "^",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 8,
+      "normal": "7",
+      "shifted": "&",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 9,
+      "normal": "8",
+      "shifted": "*",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 10,
+      "normal": "9",
+      "shifted": "(",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 11,
+      "normal": "0",
+      "shifted": ")",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 12,
+      "normal": "-",
+      "shifted": "_",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 13,
+      "normal": "=",
+      "shifted": "+",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 16,
+      "normal": "q",
+      "shifted": "Q",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 17,
+      "normal": "w",
+      "shifted": "W",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 18,
+      "normal": "e",
+      "shifted": "E",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 19,
+      "normal": "r",
+      "shifted": "R",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 20,
+      "normal": "t",
+      "shifted": "T",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 21,
+      "normal": "y",
+      "shifted": "Y",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 22,
+      "normal": "u",
+      "shifted": "U",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 23,
+      "normal": "i",
+      "shifted": "I",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 24,
+      "normal": "o",
+      "shifted": "O",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 25,
+      "normal": "p",
+      "shifted": "P",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 26,
+      "normal": "[",
+      "shifted": "{",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 27,
+      "normal": "]",
+      "shifted": "}",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 30,
+      "normal": "a",
+      "shifted": "A",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 31,
+      "normal": "s",
+      "shifted": "S",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 32,
+      "normal": "d",
+      "shifted": "D",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 33,
+      "normal": "f",
+      "shifted": "F",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 34,
+      "normal": "g",
+      "shifted": "G",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 35,
+      "normal": "h",
+      "shifted": "H",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 36,
+      "normal": "j",
+      "shifted": "J",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 37,
+      "normal": "k",
+      "shifted": "K",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 38,
+      "normal": "l",
+      "shifted": "L",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 39,
+      "normal": ";",
+      "shifted": ":",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 40,
+      "normal": "'",
+      "shifted": "\"",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 41,
+      "normal": "`",
+      "shifted": "~",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 43,
+      "normal": "\\",
+      "shifted": "|",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 44,
+      "normal": "z",
+      "shifted": "Z",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 45,
+      "normal": "x",
+      "shifted": "X",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 46,
+      "normal": "c",
+      "shifted": "C",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 47,
+      "normal": "v",
+      "shifted": "V",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 48,
+      "normal": "b",
+      "shifted": "B",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 49,
+      "normal": "n",
+      "shifted": "N",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 50,
+      "normal": "m",
+      "shifted": "M",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 51,
+      "normal": ",",
+      "shifted": "<",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 52,
+      "normal": ".",
+      "shifted": ">",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    },
+    {
+      "scanCode": 53,
+      "normal": "/",
+      "shifted": "?",
+      "capsLock": false,
+      "deadNormal": false,
+      "deadShifted": false
+    }
+  ]
+}

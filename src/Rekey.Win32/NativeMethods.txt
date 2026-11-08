@@ -1,2 +1,8 @@
 CreateMutex
 WIN32_ERROR
+GetKeyboardLayoutList
+LoadKeyboardLayout
+MapVirtualKeyEx
+ToUnicodeEx
+UnloadKeyboardLayout
+VIRTUAL_KEY

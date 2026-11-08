@@ -2,9 +2,9 @@
 
 ## 1. Keystrokes and rendering (data shape first)
 
-- [ ] 1.1 Define `Keystroke`, `KeyMap`, `LayoutId` records; verify a JSON round-trip test of a KeyMap fixture passes
-- [ ] 1.2 Capture KeyMap fixtures for English (US), Russian, Ukrainian, Ukrainian (Enhanced) on a Windows machine (small console using `ToUnicodeEx`), commit under `tests/fixtures/keymaps/`; verify each fixture has all 47 printable keys in both shift states
-- [ ] 1.3 Write failing renderer tests from the spec ("ghbdtn"→"привет", ",tp"→"без", "Ghbdtn"→"Привет", Caps Lock "GHBDTN"→"ПРИВЕТ", dead key → not rendered); implement; verify they pass
+- [x] 1.1 Define `Keystroke`, `KeyMap`, `LayoutId` records; verify a JSON round-trip test of a KeyMap fixture passes
+- [x] 1.2 Capture KeyMap fixtures for English (US), Russian, Ukrainian, Ukrainian (Enhanced) on a Windows machine (small console using `ToUnicodeEx`), commit under `tests/fixtures/keymaps/`; verify each fixture has all 47 printable keys in both shift states
+- [x] 1.3 Write failing renderer tests from the spec ("ghbdtn"→"привет", ",tp"→"без", "Ghbdtn"→"Привет", Caps Lock "GHBDTN"→"ПРИВЕТ", dead key → not rendered); implement; verify they pass
 
 ## 2. Scoring
 
