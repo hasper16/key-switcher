@@ -12,7 +12,12 @@ permissions:
 jobs:
   dependencies:
     name: Snyk (dependencies)
-    runs-on: windows-latest
+    # Fork pull requests get no SNYK_TOKEN; they skip here and are scanned after merge on main.
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    # The Snyk installer does not support Windows runners.
+    runs-on: ubuntu-latest
     env:
       DOTNET_NOLOGO: true
     steps:
@@ -26,9 +31,9 @@ jobs:
 
       # Snyk reads the restored package graph (obj/project.assets.json).
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore -p:EnableWindowsTargeting=true
 
-      - uses: snyk/actions/setup@v1.0.0
+      - uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
 
       - name: Test dependencies
         run: snyk test --all-projects --severity-threshold=high
