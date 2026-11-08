@@ -5,6 +5,7 @@ namespace Rekey.Core.Languages {
       PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
       RespectNullableAnnotations = true,
       RespectRequiredConstructorParameters = true)]
+  [JsonSerializable(typeof(Language))]
   [JsonSerializable(typeof(LanguageProfileDocument))]
   internal sealed partial class LanguageProfileJsonContext : JsonSerializerContext {
   }

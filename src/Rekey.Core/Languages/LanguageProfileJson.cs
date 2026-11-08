@@ -31,6 +31,17 @@ namespace Rekey.Core.Languages {
       return JsonSerializer.Serialize(document, _typeInfo) + "\n";
     }
 
+    /// <summary>
+    /// Returns the file name of a Language's profile, such as <c>ru.json</c>.
+    /// </summary>
+    /// <param name="language">The Language.</param>
+    /// <returns>The file name.</returns>
+    public static string FileNameOf(Language language) {
+      string quotedCode = JsonSerializer.Serialize(
+          language, LanguageProfileJsonContext.Default.Language);
+      return $"{quotedCode.Trim('"')}.json";
+    }
+
     private static JsonTypeInfo<LanguageProfileDocument> CreateTypeInfo() {
       var options = new JsonSerializerOptions(LanguageProfileJsonContext.Default.Options) {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,

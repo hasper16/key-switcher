@@ -13,11 +13,11 @@
 
 ## 3. Profile generator
 
-- [ ] 3.1 Create `tools/Rekey.ProfileBuilder` console app using `WordNormaliser` from `Rekey.Core`; verify it builds
-- [ ] 3.2 Write a failing test: a tiny frequency list produces the expected words, short words and top n-grams; implement the pipeline; verify it passes
-- [ ] 3.3 Write a failing test that two runs over the same input are byte-identical; make output deterministic; verify it passes
-- [ ] 3.4 Download source lists for en/ru/uk into `data/sources/`, write curated `short-words.txt` and `language.json` per language and `SOURCES.md` with origin and licence; verify `SOURCES.md` lists every file in `data/sources/`
-- [ ] 3.5 Generate `en.json`, `ru.json`, `uk.json` into `src/Rekey.Core/Profiles/` as embedded resources; verify a test loads all three and checks spec examples ("я", "не", "еще", "п'ять", Ukrainian layout ids)
+- [x] 3.1 Create `tools/Rekey.ProfileBuilder` console app using `WordNormaliser` from `Rekey.Core`; verify it builds
+- [x] 3.2 Write a failing test: a tiny frequency list produces the expected words, short words and top n-grams; implement the pipeline; verify it passes
+- [x] 3.3 Write a failing test that two runs over the same input are byte-identical; make output deterministic; verify it passes
+- [x] 3.4 Download source lists for en/ru/uk into `data/sources/`, write curated `short-words.txt` and `language.json` per language and `SOURCES.md` with origin and licence; verify `SOURCES.md` lists every file in `data/sources/`
+- [x] 3.5 Generate `en.json`, `ru.json`, `uk.json` into `src/Rekey.Core/Profiles/` as embedded resources; verify a test loads all three and checks spec examples ("я", "не", "еще", "п'ять", Ukrainian layout ids)
 
 ## 4. Docs
 

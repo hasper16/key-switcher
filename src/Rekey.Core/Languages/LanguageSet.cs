@@ -18,6 +18,19 @@ namespace Rekey.Core.Languages {
     public IReadOnlyList<LanguageProfile> Profiles { get; }
 
     /// <summary>
+    /// Loads the Language Profiles shipped inside Rekey, skipping each one that cannot be read or
+    /// fails validation.
+    /// </summary>
+    /// <param name="now">The time to stamp on Incidents.</param>
+    /// <returns>The loaded profiles and an Incident for each skipped one.</returns>
+    public static LanguageSetLoad LoadBundled(DateTimeOffset now) {
+      return Load(
+          Enum.GetValues<Language>().Select(language => KeyValuePair.Create(
+              language, (Func<Stream>)(() => OpenBundled(language)))),
+          now);
+    }
+
+    /// <summary>
     /// Loads Language Profiles, skipping each one that cannot be read or fails validation.
     /// </summary>
     /// <param name="sources">
@@ -69,6 +82,12 @@ namespace Rekey.Core.Languages {
       return Profiles.FirstOrDefault(profile => profile.LayoutIds.Contains(layout))
           ?? Profiles.FirstOrDefault(profile => profile.LayoutIds.Any(
               listed => listed.LanguageId == layout.LanguageId));
+    }
+
+    private static Stream OpenBundled(Language language) {
+      string name = $"Rekey.Core.Profiles.{LanguageProfileJson.FileNameOf(language)}";
+      return typeof(LanguageSet).Assembly.GetManifestResourceStream(name)
+          ?? throw new FileNotFoundException("The Language Profile is not bundled.", name);
     }
 
     private static LanguageProfile? TryLoad(Language language, Func<Stream> open) {

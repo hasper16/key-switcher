@@ -45,5 +45,13 @@ namespace Rekey.Core.Tests.Languages {
       string expected = _handWritten.ReplaceLineEndings("\n") + "\n";
       Assert.Equal(expected, LanguageProfileJson.Write(document));
     }
+
+    [Theory]
+    [InlineData(Language.English, "en.json")]
+    [InlineData(Language.Russian, "ru.json")]
+    [InlineData(Language.Ukrainian, "uk.json")]
+    public void FileNameUsesTheLanguageCode(Language language, string expected) {
+      Assert.Equal(expected, LanguageProfileJson.FileNameOf(language));
+    }
   }
 }

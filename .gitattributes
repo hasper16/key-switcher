@@ -1,3 +1,6 @@
 * text=auto
 .githooks/* text eol=lf
 *.sh text eol=lf
+# Generated Language Profiles and their sources stay byte-stable (docs/language-profiles.md).
+data/sources/** text eol=lf
+src/Rekey.Core/Profiles/*.json text eol=lf
