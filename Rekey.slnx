@@ -6,6 +6,10 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Rekey.Core.Tests/Rekey.Core.Tests.csproj" />
+    <Project Path="tests/Rekey.ProfileBuilder.Tests/Rekey.ProfileBuilder.Tests.csproj" />
     <Project Path="tests/Rekey.Win32.Tests/Rekey.Win32.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Rekey.ProfileBuilder/Rekey.ProfileBuilder.csproj" />
   </Folder>
 </Solution>

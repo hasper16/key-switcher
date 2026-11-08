@@ -6,6 +6,13 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Rekey.Core.Tests" />
+    <InternalsVisibleTo Include="Rekey.ProfileBuilder" />
+    <InternalsVisibleTo Include="Rekey.ProfileBuilder.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Profiles\*.json"
+                      LogicalName="Rekey.Core.Profiles.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

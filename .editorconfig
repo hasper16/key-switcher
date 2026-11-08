@@ -18,6 +18,10 @@ end_of_line = lf
 [*.md]
 trim_trailing_whitespace = false
 
+# Generated Language Profiles and their sources: LF, as the generator writes them.
+[{data/sources/**,src/Rekey.Core/Profiles/*.json}]
+end_of_line = lf
+
 [*.{cs,csx}]
 # Whitespace: 2-space indent, no tabs, column limit 100.
 indent_size = 2

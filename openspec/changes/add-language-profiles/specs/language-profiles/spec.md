@@ -71,3 +71,7 @@ The profile generator SHALL produce byte-identical Language Profiles from the sa
 #### Scenario: Source record
 - **WHEN** the generator finishes
 - **THEN** a sources file lists every input list with its origin and licence
+
+#### Scenario: Unlisted source
+- **WHEN** a file in the sources folder is missing from the sources file
+- **THEN** the generator stops without writing any Language Profile

@@ -1,0 +1,7 @@
+{
+  "code": "en",
+  "displayName": "English",
+  "alphabet": "abcdefghijklmnopqrstuvwxyz",
+  "layoutIds": ["00000409", "00000809", "00020409", "00001809", "00004009"],
+  "frequencyList": "en_full_top100k.txt"
+}

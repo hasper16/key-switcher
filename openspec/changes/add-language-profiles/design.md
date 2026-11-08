@@ -44,16 +44,17 @@ Profiles are embedded in `Rekey.Core` so the app is a single file. A loader take
 One `WordNormaliser` used by both the generator and the loader: lower-case with invariant culture, `ё→е`, apostrophes `’ ʼ → '`. One decision lives in one place, so generated data and runtime lookups cannot drift.
 
 ### D4. Generator (`tools/Rekey.ProfileBuilder`)
-- Inputs: a frequency list per language (`word count` lines) and a small hand-curated short-word list per language (`data/sources/<code>/short-words.txt`), because frequency lists contain noise among one- and two-letter tokens.
+- Inputs per language in `data/sources/<code>/`: a word-frequency list (`word count` lines); a hand-curated short-word list (`short-words.txt`), because frequency lists contain noise among one- and two-letter tokens; and a hand-written `language.json` with the display name, alphabet, Layout ids and the frequency list's file name.
 - Steps: normalise → keep tokens made only of the language alphabet (plus apostrophe/hyphen inside the word) → drop count < threshold → take top N (default 80,000) → compute bigram/trigram frequencies from the kept words weighted by count, keep top 300 → write JSON with sorted keys and fixed number formatting (`R` → 6 significant digits) for byte-stable output.
-- Candidate source: OpenSubtitles-derived frequency lists (e.g. the FrequencyWords project, CC BY-SA 4.0) for all three languages. Licence and attribution go into `data/sources/SOURCES.md` and the app's About/licences text.
+- Sources: English and Russian use the OpenSubtitles 2018 lists of the FrequencyWords project (data CC BY-SA 4.0). Ukrainian uses the Ukrainian Wikipedia list of the wikipedia-word-frequency project (code MIT, data from Wikipedia, CC BY-SA): the FrequencyWords Ukrainian list has its apostrophes stripped by its tokenizer ("п'ять" is stored as "пять") and many Russian words.
+- Each committed list is the first 100,000 lines of the upstream file, unchanged otherwise. `data/sources/SOURCES.md` records each file's origin, upstream commit, SHA-256 and licence; the generator refuses to run while a file in `data/sources/` is missing from it. Attribution also goes into the app's About/licences text.
 
 ### D5. Active Languages
 `LanguageSet.Activate(installedLayoutIds)` returns the profiles whose `layoutIds` (or language id fallback) intersect the installed list. It is recomputed when the Win32 side reports a layout list change (`WM_INPUTLANGCHANGE` / periodic check — done in `add-keyboard-capture-and-layouts`).
 
 ## Risks / Trade-offs
 
-- [Subtitle corpora skew toward spoken language, missing technical words] → Learned Words and the Protected Word list cover gaps; scorer also uses n-grams, not only word lists.
+- [Subtitle corpora (en, ru) skew toward spoken language and Wikipedia (uk) toward encyclopedic language, so each misses some words] → Learned Words and the Protected Word list cover gaps; scorer also uses n-grams, not only word lists.
 - [CC BY-SA data imposes share-alike on the derived profile files] → profiles stay separate data files under CC BY-SA 4.0 with attribution in `data/sources/SOURCES.md`; CC BY-SA 4.0 is one-way compatible with GPLv3 (Creative Commons, 2015), so shipping them inside the GPL-3.0-or-later app is allowed.
 - [Ukrainian/Russian overlap: both Cyrillic, most keys produce the same letters, many words are valid in both] → profiles stay independent; same-script Corrections get stricter rules in the scorer (change `add-language-scorer`).
 

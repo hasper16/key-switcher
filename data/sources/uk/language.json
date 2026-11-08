@@ -1,0 +1,7 @@
+{
+  "code": "uk",
+  "displayName": "Ukrainian",
+  "alphabet": "абвгґдеєжзиіїйклмнопрстуфхцчшщьюя",
+  "layoutIds": ["00000422", "00020422"],
+  "frequencyList": "ukwiki-2022-08-30_top100k.txt"
+}

@@ -1,0 +1,7 @@
+{
+  "code": "ru",
+  "displayName": "Russian",
+  "alphabet": "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
+  "layoutIds": ["00000419", "00010419", "00020419"],
+  "frequencyList": "ru_full_top100k.txt"
+}
