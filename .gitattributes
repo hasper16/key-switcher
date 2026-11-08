@@ -6,3 +6,5 @@ data/sources/** text eol=lf
 src/Rekey.Core/Profiles/*.json text eol=lf
 # Captured Key Maps are written by tools/Rekey.KeyMapCapture with LF.
 tests/fixtures/** text eol=lf
+# Accuracy corpus: byte-stable samples.
+data/accuracy/** text eol=lf

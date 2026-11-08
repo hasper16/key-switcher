@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Rekey.Accuracy" />
     <InternalsVisibleTo Include="Rekey.Core.Tests" />
     <InternalsVisibleTo Include="Rekey.KeyMapCapture" />
     <InternalsVisibleTo Include="Rekey.ProfileBuilder" />
