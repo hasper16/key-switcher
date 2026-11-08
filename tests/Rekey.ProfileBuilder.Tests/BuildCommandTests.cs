@@ -49,6 +49,23 @@ namespace Rekey.ProfileBuilder.Tests {
       Assert.False(Directory.Exists(_output));
     }
 
+    [Theory]
+    [InlineData("../outside.txt")]
+    [InlineData("sub/list.txt")]
+    [InlineData("C:/outside.txt")]
+    public void FrequencyListOutsideTheLanguageFolderIsRejected(string frequencyList) {
+      WriteSource("en/language.json", $$"""
+          {
+            "code": "en", "displayName": "English", "alphabet": "abc",
+            "layoutIds": ["00000409"], "frequencyList": "{{frequencyList}}"
+          }
+          """);
+      WriteRecord("`en/language.json` `en/list.txt` `en/short-words.txt`");
+
+      Assert.Throws<InvalidDataException>(
+          () => BuildCommand.Run(_sources, _output, TextWriter.Null, TextWriter.Null));
+    }
+
     private void WriteRecord(string text) {
       WriteSource(SourcesRecord.FileName, text);
     }

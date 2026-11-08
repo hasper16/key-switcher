@@ -54,6 +54,12 @@ namespace Rekey.ProfileBuilder {
             ?? throw new InvalidDataException($"{_definitionFile} in {folder} is null.");
       }
 
+      // A path could read a file outside the folder that SOURCES.md checks.
+      if (Path.GetFileName(definition.FrequencyList) != definition.FrequencyList) {
+        throw new InvalidDataException(
+            $"frequencyList in {folder} must be a file name in the same folder.");
+      }
+
       LanguageProfileDocument document = ProfileGenerator.Build(
           definition,
           File.ReadLines(Path.Join(folder, definition.FrequencyList)),
