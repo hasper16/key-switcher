@@ -1,0 +1,36 @@
+name: Snyk
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    name: Snyk (dependencies)
+    runs-on: windows-latest
+    env:
+      DOTNET_NOLOGO: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # Snyk reads the restored package graph (obj/project.assets.json).
+      - name: Restore
+        run: dotnet restore
+
+      - uses: snyk/actions/setup@v1.0.0
+
+      - name: Test dependencies
+        run: snyk test --all-projects --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
