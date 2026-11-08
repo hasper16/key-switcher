@@ -42,38 +42,40 @@ namespace Rekey.Core.Detection {
       RenderingScore typedScore =
           RenderingScorer.Score(typedIn.Profile, TrimToLetters(typed, typedIn.Profile));
       List<Candidate> candidates = [.. Candidates(word, typedIn)
-          .Where(candidate => candidate.Score.Value >= thresholds.GibberishCeiling)];
-      if (typedScore.IsWord || candidates.Count == 0 || IsAmbiguous(candidates)) {
+          .Where(candidate => candidate.Score.Value >= thresholds.GibberishCeiling
+              && IsEvidence(candidate, typedIn, typed))
+          .OrderByDescending(candidate => candidate.Score.Value)];
+      List<Candidate> words = [.. candidates.Where(candidate => candidate.Score.IsWord)];
+      if (candidates.Count == 0 || (typedScore.IsWord && words.Count == 0)) {
         return Decision.Keep;
       }
 
-      Candidate best = candidates.MaxBy(candidate => candidate.Score.Value)!;
-      if (SharesScript(typedIn, best.Layout) && (!best.Score.IsWord || best.Text == typed)) {
-        return Decision.Keep;
+      // Ambiguous Word: the next Word shows which Layout the user is typing in.
+      if (typedScore.IsWord || IsAmbiguous(words)) {
+        return Decision.Defer([.. words.Select(candidate => candidate.Target)]);
       }
 
-      LayoutId target = best.Layout.KeyMap.Layout;
+      Candidate best = candidates[0];
       bool isShort = best.Letters.Length <= 2;
       return DecisionPolicy.Decide(typedScore, best.Score, isShort, thresholds) switch {
-        DecisionKind.Correct => Decision.Correct(target, best.Text),
-        DecisionKind.Defer => Decision.Defer(target, best.Text),
+        DecisionKind.Correct => Decision.Correct(best.Target.Layout, best.Text),
+        DecisionKind.Defer =>
+            Decision.Defer([.. candidates.Select(candidate => candidate.Target)]),
         _ => Decision.Keep,
       };
     }
 
-    private static bool IsAmbiguous(IEnumerable<Candidate> candidates) {
-      // Two Languages with the same word give the same text, so only distinct words conflict.
-      return candidates.Where(candidate => candidate.Score.IsWord)
-          .Select(candidate => candidate.Letters)
-          .Distinct()
-          .Skip(1)
-          .Any();
+    // Two Languages with the same word give the same text, so only distinct words conflict.
+    private static bool IsAmbiguous(IEnumerable<Candidate> words) {
+      return words.Select(candidate => candidate.Letters).Distinct().Skip(1).Any();
     }
 
     // Russian and Ukrainian share most letters, so a Rendering there is only evidence when a key
     // differs and the result is a word (spec: stricter rules between same-script Layouts).
-    private static bool SharesScript(DetectionLayout a, DetectionLayout b) {
-      return a.Profile.Alphabet.AsSpan().ContainsAny(b.Profile.Alphabet);
+    private static bool IsEvidence(Candidate candidate, DetectionLayout typedIn, string typed) {
+      bool sharesScript =
+          typedIn.Profile.Alphabet.AsSpan().ContainsAny(candidate.Layout.Profile.Alphabet);
+      return !sharesScript || (candidate.Score.IsWord && candidate.Text != typed);
     }
 
     // Punctuation at the edges is typed with the Correction but says nothing about the Language.
@@ -83,9 +85,11 @@ namespace Rekey.Core.Detection {
     }
 
     private static bool LooksLikeCode(string text) {
-      return text.Any(c => char.IsDigit(c) || _codeCharacters.Contains(c))
-          || text.Zip(text.Skip(1))
-              .Any(pair => char.IsLower(pair.First) && char.IsUpper(pair.Second));
+      string core = text.Trim([.. text.Where(c => !char.IsLetterOrDigit(c))]);
+      return text.Any(char.IsDigit)
+          || core.Any(_codeCharacters.Contains)
+          || Enumerable.Range(1, Math.Max(0, core.Length - 2))
+              .Any(i => char.IsLower(core[i - 1]) && char.IsUpper(core[i]));
     }
 
     private IEnumerable<Candidate> Candidates(
@@ -101,6 +105,8 @@ namespace Rekey.Core.Detection {
     }
 
     private sealed record Candidate(
-        DetectionLayout Layout, string Text, string Letters, RenderingScore Score);
+        DetectionLayout Layout, string Text, string Letters, RenderingScore Score) {
+      public TargetRendering Target => new(Layout.KeyMap.Layout, Text);
+    }
   }
 }

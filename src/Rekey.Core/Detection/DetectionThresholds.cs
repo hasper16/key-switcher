@@ -38,7 +38,7 @@ namespace Rekey.Core.Detection {
         0.35, 0.30, 0.80, DecisionKind.Defer, DecisionKind.Defer, false);
 
     private static readonly DetectionThresholds _balanced = new(
-        0.35, 0, 0.80, DecisionKind.Defer, DecisionKind.Keep, false);
+        0.35, 0, 0.80, DecisionKind.Defer, DecisionKind.Defer, false);
 
     private static readonly DetectionThresholds _aggressive = new(
         0.35, 0, 0.80, DecisionKind.Correct, DecisionKind.Keep, true);

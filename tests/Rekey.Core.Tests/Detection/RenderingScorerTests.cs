@@ -26,10 +26,17 @@ namespace Rekey.Core.Tests.Detection {
       Assert.True(RenderingScorer.Score(_profile, text).IsWord);
     }
 
+    [Fact]
+    public void ContractionSplitByTheWordListIsAWord() {
+      Assert.True(RenderingScorer.Score(_profile, "plim'zorbit").IsWord);
+    }
+
     [Theory]
     [InlineData("zorbin")]
     [InlineData("zx")]
     [InlineData("x")]
+    [InlineData("plim'zorbin")]
+    [InlineData("plim'")]
     public void OtherTextIsNotAWord(string text) {
       Assert.False(RenderingScorer.Score(_profile, text).IsWord);
     }

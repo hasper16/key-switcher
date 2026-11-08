@@ -20,6 +20,21 @@ namespace Rekey.Core.Tests.Detection {
     }
 
     [Fact]
+    public void SentenceEndTypedInTheWrongLayoutIsCorrected() {
+      Assert.Equal(
+          Decision.Correct(KeyMapFixtures.Russian.Layout, "дела."),
+          Decide(KeyMapFixtures.EnglishUs, "ltkf/"));
+    }
+
+    [Fact]
+    public void TrailingCapitalIsPunctuationOfTheTargetLayout() {
+      // Shift and the semicolon key type a colon in English (US) and "Ж" in Russian.
+      Assert.Equal(
+          Decision.Correct(KeyMapFixtures.EnglishUs.Layout, "hello:"),
+          Decide(KeyMapFixtures.Russian, "руддщЖ"));
+    }
+
+    [Fact]
     public void DigitAtTheEdgeKeepsTheWord() {
       Assert.Equal(Decision.Keep, Decide(KeyMapFixtures.EnglishUs, "ghbdtn1"));
     }

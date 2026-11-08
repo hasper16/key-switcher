@@ -29,7 +29,7 @@ namespace Rekey.Core.Detection {
       string word = WordNormaliser.Normalise(letters);
       bool isWord = word.Length <= 2
           ? profile.Words1.Contains(word) || profile.Words2.Contains(word)
-          : profile.CommonWordRanks.ContainsKey(word);
+          : profile.CommonWordRanks.ContainsKey(word) || IsSplitContraction(profile, word);
       if (isWord) {
         return new RenderingScore(true, 1 + RankBonus(profile, word));
       }
@@ -61,6 +61,13 @@ namespace Rekey.Core.Detection {
       }
 
       return count == 0 ? Math.Log(_unseenShare) : sum / count;
+    }
+
+    // Some word lists split contractions at the apostrophe ("don't" became "don" and "t").
+    private static bool IsSplitContraction(LanguageProfile profile, string word) {
+      string[] parts = word.Split('\'');
+      return parts.Length > 1
+          && parts.All(part => part.Length > 0 && profile.CommonWordRanks.ContainsKey(part));
     }
 
     private static double LogShare(FrozenDictionary<string, float> shares, string group) {

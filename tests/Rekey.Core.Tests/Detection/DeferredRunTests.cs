@@ -42,6 +42,27 @@ namespace Rekey.Core.Tests.Detection {
     }
 
     [Fact]
+    public void DeferredWordIsConfirmedByAnyLayoutItReadsIn() {
+      var run = new DeferredRun();
+      run.Add(Decision.Defer([new(_russian, "ну"), new(_ukrainian, "ну")]));
+      run.Add(Decision.Defer([new(_ukrainian, "ів")]));
+
+      Correction? correction = run.Add(Decision.Correct(_ukrainian, "вапро"));
+
+      Assert.Equal(new Correction(_ukrainian, ["ну", "ів", "вапро"]), correction);
+    }
+
+    [Fact]
+    public void ConfirmationTypesEachWordAsItReadsInTheConfirmedLayout() {
+      var run = new DeferredRun();
+      run.Add(Decision.Defer([new(_russian, "ыф"), new(_ukrainian, "іф")]));
+
+      Correction? correction = run.Add(Decision.Correct(_ukrainian, "вапро"));
+
+      Assert.Equal(new Correction(_ukrainian, ["іф", "вапро"]), correction);
+    }
+
+    [Fact]
     public void DeferralTowardsAnotherLayoutStartsANewRun() {
       var run = new DeferredRun();
       run.Add(Decision.Defer(_russian, "ыф"));

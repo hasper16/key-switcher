@@ -19,13 +19,13 @@
 - [x] 3.4 Write failing tests for short words ("yt" deferred under Balanced, corrected to "не" under Aggressive); implement; verify they pass
 - [x] 3.5 Write failing tests for same-script rule ("привыт"→"привіт"; no differing key → keep); implement; verify they pass
 - [x] 3.6 Write failing tests for edge punctuation ("ghbdtn!" → "привет!"; "ghbdtn1" kept as code-like); implement; verify they pass
-- [ ] 3.7 Write failing tests for the rules revised after the first harness run (Ambiguous Words defer, including a valid current word; edge punctuation never makes a Word code-like; split contractions are words; short Renderings are words only through the short-word lists); implement; verify they pass
+- [x] 3.7 Write failing tests for the rules revised after the first harness run (Ambiguous Words defer, including a valid current word; edge punctuation never makes a Word code-like; split contractions are words; short Renderings are words only through the short-word lists); implement; verify they pass
 
 ## 4. Deferred Words
 
 - [x] 4.1 Write failing tests: "yt" + "pyf." → one Correction "не знаю"; deferred + kept next word → nothing; fourth deferral drops the oldest; implement `DeferredRun`; verify they pass
 - [x] 4.2 Expose `Reset()` for focus change / user Layout Switch / typing gap, with a test that a reset run produces no Correction; verify it passes
-- [ ] 4.3 Write failing tests for confirmation by any Layout the deferred Word reads in, typed as it reads there; implement; verify they pass
+- [x] 4.3 Write failing tests for confirmation by any Layout the deferred Word reads in, typed as it reads there; implement; verify they pass
 
 ## 5. Accuracy harness and tuning
 

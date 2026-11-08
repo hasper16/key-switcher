@@ -14,14 +14,16 @@ namespace Rekey.Core.Tests.Detection {
     }
 
     [Fact]
-    public void ValidWordIsKeptWhateverItsOtherRenderings() {
+    public void ValidWordWithAnotherWordRenderingIsDeferred() {
       // Invented words: the keys of "plimo" in English (US) read "здшьщ" in Russian.
       var detector = new WrongLayoutDetector([
           new DetectionLayout(KeyMapFixtures.EnglishUs, Invented("en", "00000409", "plimo")),
           new DetectionLayout(KeyMapFixtures.Russian, Invented("ru", "00000419", "здшьщ"))]);
       IReadOnlyList<Keystroke> word = Keys(KeyMapFixtures.EnglishUs, "plimo");
 
-      Assert.Equal(Decision.Keep, detector.Decide(word, KeyMapFixtures.EnglishUs.Layout, default));
+      Assert.Equal(
+          Decision.Defer(KeyMapFixtures.Russian.Layout, "здшьщ"),
+          detector.Decide(word, KeyMapFixtures.EnglishUs.Layout, default));
     }
 
     [Theory]
@@ -62,7 +64,7 @@ namespace Rekey.Core.Tests.Detection {
     }
 
     [Fact]
-    public void AmbiguousWordIsKept() {
+    public void AmbiguousWordIsDeferredTowardsEachWord() {
       // Invented words: the keys of "сыпа" in Russian read "сіпа" in Ukrainian and "csgf" in
       // English.
       IReadOnlyList<Keystroke> word = Keys(KeyMapFixtures.Russian, "сыпа");
@@ -70,10 +72,26 @@ namespace Rekey.Core.Tests.Detection {
       WrongLayoutDetector clear = InventedDetector(ukrainianWord: "ліпа");
 
       Assert.Equal(
-          Decision.Keep, ambiguous.Decide(word, KeyMapFixtures.EnglishUs.Layout, default));
+          Decision.Defer([
+              new(KeyMapFixtures.Russian.Layout, "сыпа"),
+              new(KeyMapFixtures.Ukrainian.Layout, "сіпа")]),
+          ambiguous.Decide(word, KeyMapFixtures.EnglishUs.Layout, default));
       Assert.Equal(
           Decision.Correct(KeyMapFixtures.Russian.Layout, "сыпа"),
           clear.Decide(word, KeyMapFixtures.EnglishUs.Layout, default));
+    }
+
+    [Fact]
+    public void AmbiguousWordFollowsTheLayoutOfTheNextWord() {
+      var run = new DeferredRun();
+      IReadOnlyList<Keystroke> word = Keys(KeyMapFixtures.Russian, "сыпа");
+
+      run.Add(InventedDetector(ukrainianWord: "сіпа")
+          .Decide(word, KeyMapFixtures.EnglishUs.Layout, default));
+      Correction? correction = run.Add(Decision.Correct(KeyMapFixtures.Ukrainian.Layout, "ліс"));
+
+      Assert.Equal(
+          new Correction(KeyMapFixtures.Ukrainian.Layout, ["сіпа", "ліс"]), correction);
     }
 
     private static WrongLayoutDetector InventedDetector(string ukrainianWord) {

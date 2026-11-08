@@ -37,7 +37,7 @@ namespace Rekey.Core.Tests.Detection {
 
     [Theory]
     [InlineData(Sensitivity.Cautious, DecisionKind.Defer)]
-    [InlineData(Sensitivity.Balanced, DecisionKind.Keep)]
+    [InlineData(Sensitivity.Balanced, DecisionKind.Defer)]
     [InlineData(Sensitivity.Aggressive, DecisionKind.Keep)]
     public void WeakLetterEvidenceOnly(Sensitivity sensitivity, DecisionKind expected) {
       DetectionThresholds t = DetectionThresholds.For(sensitivity);

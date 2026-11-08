@@ -7,9 +7,13 @@ namespace Rekey.Core.Tests.Detection {
   public sealed class ShortWordTests {
     [Fact]
     public void ShortWordIsDeferredUnderBalanced() {
+      Decision decision = Decide(KeyMapFixtures.EnglishUs, "yt", Sensitivity.Balanced);
+
+      // "не" reads the same in Russian and Ukrainian, so either can confirm it.
+      Assert.Equal(DecisionKind.Defer, decision.Kind);
       Assert.Equal(
-          Decision.Defer(KeyMapFixtures.Russian.Layout, "не"),
-          Decide(KeyMapFixtures.EnglishUs, "yt", Sensitivity.Balanced));
+          [new(KeyMapFixtures.Russian.Layout, "не"), new(KeyMapFixtures.Ukrainian.Layout, "не")],
+          decision.Targets);
     }
 
     [Fact]
