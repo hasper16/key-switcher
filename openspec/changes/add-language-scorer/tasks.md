@@ -22,8 +22,8 @@
 
 ## 4. Deferred Words
 
-- [ ] 4.1 Write failing tests: "yt" + "pyf." → one Correction "не знаю"; deferred + kept next word → nothing; fourth deferral drops the oldest; implement `DeferredRun`; verify they pass
-- [ ] 4.2 Expose `Reset()` for focus change / user Layout Switch / typing gap, with a test that a reset run produces no Correction; verify it passes
+- [x] 4.1 Write failing tests: "yt" + "pyf." → one Correction "не знаю"; deferred + kept next word → nothing; fourth deferral drops the oldest; implement `DeferredRun`; verify they pass
+- [x] 4.2 Expose `Reset()` for focus change / user Layout Switch / typing gap, with a test that a reset run produces no Correction; verify it passes
 
 ## 5. Accuracy harness and tuning
 
