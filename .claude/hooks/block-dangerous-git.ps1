@@ -18,7 +18,8 @@ $patterns = @(
     'git\s+update-ref\s+-d\b',
     '--no-verify\b',
     'core\.hooksPath\s+(?!\.githooks(\s|;|$))[^\s;]+',
-    '--unset(-all)?\s+core\.hooksPath'
+    '--unset(-all)?\s+core\.hooksPath',
+    'gh\s+pr\s+merge\b.*\s--admin\b'
 )
 
 foreach ($p in $patterns) {
