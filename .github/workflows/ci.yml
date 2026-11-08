@@ -29,3 +29,7 @@ jobs:
 
       - name: Test
         run: dotnet test -c Release --no-build
+
+      # Spec limits on a sample of the held-out corpus (docs/accuracy.md).
+      - name: Accuracy
+        run: dotnet run --project tools/Rekey.Accuracy -c Release --no-build -- data/accuracy tests/fixtures/keymaps --sample 500 --check

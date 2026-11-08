@@ -31,4 +31,4 @@
 
 - [x] 5.1 Create `tools/Rekey.Accuracy`; collect held-out sentence sets per language and a technical-text negative set under `data/accuracy/` with sources noted; verify the tool runs and prints all metrics
 - [x] 5.2 Tune `DetectionThresholds` until Balanced meets ≤ 0.5% false corrections and ≥ 95% corrections; record the final report in `docs/accuracy.md`; verify the report matches a fresh run
-- [ ] 5.3 Add a latency benchmark test (30-keystroke word, 3 languages, p99 < 5 ms) and a CI step running the harness on a sample with spec limits; verify CI fails when a threshold is deliberately broken and passes when restored
+- [x] 5.3 Add a latency benchmark test (30-keystroke word, 3 languages, p99 < 5 ms) and a CI step running the harness on a sample with spec limits; verify CI fails when a threshold is deliberately broken and passes when restored
