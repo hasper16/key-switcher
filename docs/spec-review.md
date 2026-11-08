@@ -62,7 +62,7 @@ Review of the 14 OpenSpec changes in `openspec/changes/` against: coverage of th
 | Source code | Public, licence GPL-3.0-or-later (`LICENSE`). CC BY-SA 4.0 data is one-way compatible with GPLv3, so generated Language Profiles can ship inside the app. |
 | Reverse-engineering notes | Kept outside the repository; specs describe the original's behavior in our own words only. |
 
-## Still open
+## Deferred until the first release (owner decision)
 
-- Telemetry services (recommended: Sentry EU for crashes, Aptabase EU for the digest and setup signal, GitHub Watch/Issues instead of email sign-up) — owner deferred.
-- Code-signing certificate (recommended for an open-source individual: Certum Open Source Code Signing in the cloud) — owner deferred.
+- Telemetry services. Recommendation on record: Sentry EU for crashes and freezes, Aptabase EU for the daily digest and setup signal, GitHub Watch/Issues instead of the email sign-up. `add-telemetry` keeps its current spec until then.
+- Code-signing certificate. Recommendation on record: Certum Open Source Code Signing in the cloud (names the owner as publisher, which the update publisher pin needs). `add-auto-update-and-installer` D2 pins the publisher once it is chosen.
