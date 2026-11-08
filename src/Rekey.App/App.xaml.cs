@@ -40,10 +40,13 @@ namespace Rekey.App {
     }
 
     protected override void OnExit(ExitEventArgs e) {
-      FlushSettings();
-      _trayIcon?.Dispose();
-      _guard?.Dispose();
-      base.OnExit(e);
+      try {
+        FlushSettings();
+      } finally {
+        _trayIcon?.Dispose();
+        _guard?.Dispose();
+        base.OnExit(e);
+      }
     }
 
     private void FlushSettings() {

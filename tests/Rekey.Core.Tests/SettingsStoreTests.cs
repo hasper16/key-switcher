@@ -50,6 +50,25 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void CorruptFileIsKeptWhenTheUsualBackupIsLocked() {
+      var store = new SettingsStore(_folder);
+      Directory.CreateDirectory(_folder);
+      File.WriteAllText(store.FilePath, "{ broken");
+      string lockedBackup = store.FilePath + ".bak";
+      File.WriteAllText(lockedBackup, "older backup");
+
+      Settings settings;
+      using (File.Open(lockedBackup, FileMode.Open, FileAccess.Read, FileShare.None)) {
+        settings = store.Load();
+      }
+
+      Assert.Equal(new Settings(), settings);
+      Assert.Equal("older backup", File.ReadAllText(lockedBackup));
+      string kept = Assert.Single(Directory.GetFiles(_folder, "settings.json.*.bak"));
+      Assert.Equal("{ broken", File.ReadAllText(kept));
+    }
+
+    [Fact]
     public void UnknownFieldsAreIgnored() {
       Settings settings =
           LoadFrom("{ \"autoCorrectionEnabled\": false, \"futureField\": [1, 2] }");

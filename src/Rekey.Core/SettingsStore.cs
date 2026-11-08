@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace Rekey.Core {
@@ -28,7 +29,8 @@ namespace Rekey.Core {
     /// </summary>
     /// <remarks>
     /// When the file is missing, writes the defaults and returns them. When the file cannot be
-    /// parsed, renames it with a <c>.bak</c> suffix, then does the same.
+    /// parsed, renames it with a <c>.bak</c> suffix (a dated one when that backup is locked), then
+    /// does the same.
     /// </remarks>
     /// <returns>The stored settings, or the defaults when there are none to read.</returns>
     public Settings Load() {
@@ -41,7 +43,7 @@ namespace Rekey.Core {
         return settings;
       }
 
-      File.Move(FilePath, FilePath + ".bak", overwrite: true);
+      KeepUnreadableFile();
       return SaveDefaults();
     }
 
@@ -72,6 +74,17 @@ namespace Rekey.Core {
         return JsonSerializer.Deserialize(stream, SettingsJsonContext.Default.Settings);
       } catch (JsonException) {
         return null;
+      }
+    }
+
+    private void KeepUnreadableFile() {
+      try {
+        File.Move(FilePath, FilePath + ".bak", overwrite: true);
+      } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+        // The usual backup can be locked or read-only; a dated name still keeps the file safe from
+        // the defaults written next.
+        string stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture);
+        File.Move(FilePath, $"{FilePath}.{stamp}.bak");
       }
     }
 
