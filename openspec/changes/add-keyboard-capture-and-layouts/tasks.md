@@ -24,6 +24,7 @@
 - [ ] 4.2 Implement KeyMap building with `ToUnicodeEx` (flag 0x4); verify a test that compares built maps with the checked-in fixtures from `add-language-scorer`
 - [ ] 4.3 Implement current-Layout tracking for the foreground thread (incl. console via `GetGUIThreadInfo`); verify manually in global and per-window Layout modes
 - [ ] 4.4 Write failing tests for switch verification with a fake clock and fake layout reader (lands → adopted; not landed after 500 ms → real Layout adopted + Incident); implement verified Layout Switch with `WM_INPUTLANGCHANGEREQUEST`; verify the tests pass and manually in Notepad, a browser and Windows Terminal
+- [ ] 4.5 Load the Language Profiles with `LanguageSet.LoadBundled` on the worker at start-up, record its Incidents, and recompute active Languages with `LanguageSet.Activate` on every `LayoutsInstalledChanged`; verify a test with a fake Layout list that only English and Russian are active with English (US) and Russian Layouts installed, and that Ukrainian becomes active after a Ukrainian Layout is added (spec `language-profiles`)
 
 ## 5. Watchdog
 
