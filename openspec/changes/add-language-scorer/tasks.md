@@ -13,12 +13,12 @@
 
 ## 3. Decision policy
 
-- [ ] 3.1 Write failing tests for Keep rules: valid current word, code-like words ("user@example.com", "getValue"), no plausible rendering ("qzxv"), Ambiguous Word; implement; verify they pass
-- [ ] 3.2 Write failing tests for Correct rules: "руддщ"→"hello", "ghbdtn"→"привет"; implement; verify they pass
-- [ ] 3.3 Write failing tests for Sensitivity differences (Cautious defers rare word, Aggressive corrects it, Balanced defers n-gram-only evidence); implement table-driven policy; verify they pass
-- [ ] 3.4 Write failing tests for short words ("yt" deferred under Balanced, corrected to "не" under Aggressive); implement; verify they pass
-- [ ] 3.5 Write failing tests for same-script rule ("привыт"→"привіт"; no differing key → keep); implement; verify they pass
-- [ ] 3.6 Write failing tests for edge punctuation ("ghbdtn!" → "привет!"; "ghbdtn1" kept as code-like); implement; verify they pass
+- [x] 3.1 Write failing tests for Keep rules: valid current word, code-like words ("user@example.com", "getValue"), no plausible rendering ("qzxv"), Ambiguous Word; implement; verify they pass
+- [x] 3.2 Write failing tests for Correct rules: "руддщ"→"hello", "ghbdtn"→"привет"; implement; verify they pass
+- [x] 3.3 Write failing tests for Sensitivity differences (Cautious defers rare word, Aggressive corrects it, Balanced defers n-gram-only evidence); implement table-driven policy; verify they pass
+- [x] 3.4 Write failing tests for short words ("yt" deferred under Balanced, corrected to "не" under Aggressive); implement; verify they pass
+- [x] 3.5 Write failing tests for same-script rule ("привыт"→"привіт"; no differing key → keep); implement; verify they pass
+- [x] 3.6 Write failing tests for edge punctuation ("ghbdtn!" → "привет!"; "ghbdtn1" kept as code-like); implement; verify they pass
 
 ## 4. Deferred Words
 
