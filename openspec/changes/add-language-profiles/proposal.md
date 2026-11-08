@@ -25,5 +25,5 @@ None.
 ## Impact
 
 - New code: `Rekey.Core/Languages` (profile model, loader, normaliser), `tools/Rekey.ProfileBuilder` (console app).
-- New data: `src/Rekey.Core/Profiles/{en,ru,uk}.json` (embedded resources), `data/sources/` with source lists and `SOURCES.md`.
+- New data: `src/Rekey.Core/Profiles/{en,ru,uk}.json` (embedded resources), `data/sources/<code>/` with trimmed source lists, `short-words.txt` and `language.json` per Language, plus `data/sources/SOURCES.md`.
 - Depends on `bootstrap-solution`.
