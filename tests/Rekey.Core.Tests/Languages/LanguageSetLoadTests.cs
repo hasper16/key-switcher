@@ -10,6 +10,7 @@ namespace Rekey.Core.Tests.Languages {
       { "corrupt JSON", () => Stream("{ \"format\": 1, ") },
       { "wrong code", () => Stream(Json("ru", "00000422")) },
       { "unreadable", () => throw new IOException("The resource is missing.") },
+      { "access denied", () => throw new UnauthorizedAccessException("No access.") },
     };
 
     [Theory]

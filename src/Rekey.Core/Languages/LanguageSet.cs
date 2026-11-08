@@ -95,7 +95,8 @@ namespace Rekey.Core.Languages {
         using Stream stream = open();
         LanguageProfile profile = LanguageProfileLoader.Load(stream);
         return profile.Language == language ? profile : null;
-      } catch (Exception e) when (e is ProfileLoadException or IOException) {
+      } catch (Exception e)
+          when (e is ProfileLoadException or IOException or UnauthorizedAccessException) {
         return null;
       }
     }
