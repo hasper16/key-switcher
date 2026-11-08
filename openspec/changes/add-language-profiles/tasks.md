@@ -2,9 +2,9 @@
 
 ## 1. Profile model and normalisation (data shape first)
 
-- [ ] 1.1 Write failing tests for `WordNormaliser`: case folding, `ё→е`, apostrophe variants; implement; verify tests pass
-- [ ] 1.2 Define the `LanguageProfile` record and JSON contract (`format: 1`); verify a round-trip test of a small hand-written profile passes
-- [ ] 1.3 Write failing loader tests: valid profile loads into frozen sets; invalid JSON or missing required field throws a typed `ProfileLoadException`; implement; verify tests pass
+- [x] 1.1 Write failing tests for `WordNormaliser`: case folding, `ё→е`, apostrophe variants; implement; verify tests pass
+- [x] 1.2 Define the `LanguageProfile` record and JSON contract (`format: 1`); verify a round-trip test of a small hand-written profile passes
+- [x] 1.3 Write failing loader tests: valid profile loads into frozen sets; invalid JSON or missing required field throws a typed `ProfileLoadException`; implement; verify tests pass
 
 ## 2. Active Languages
 
