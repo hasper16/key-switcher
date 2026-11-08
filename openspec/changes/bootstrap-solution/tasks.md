@@ -22,11 +22,11 @@
 
 ## 4. Windows host
 
-- [ ] 4.1 Add CsWin32 with `NativeMethods.txt` to `Rekey.Win32`; verify generated code compiles
-- [ ] 4.2 Implement the single-instance guard (`Local\Rekey-<SID>` mutex); verify with a `Rekey.Win32.Tests` test that a second acquire in the same session fails
-- [ ] 4.3 Create the WPF host: `OnExplicitShutdown`, no main window, H.NotifyIcon tray icon with a Quit item; verify manually that the icon appears, no taskbar button exists, and Quit exits with code 0
-- [ ] 4.4 Wire the single-instance guard into start-up; verify manually that a second launch exits within 2 s and only one tray icon remains
-- [ ] 4.5 Handle `SessionEnding` and `Exit`: flush settings, dispose adapters; verify manually that `settings.json`, deleted while Rekey runs, is back on disk after sign-out and sign-in
+- [x] 4.1 Add CsWin32 with `NativeMethods.txt` to `Rekey.Win32`; verify generated code compiles
+- [x] 4.2 Implement the single-instance guard (`Local\Rekey-<SID>` mutex); verify with a `Rekey.Win32.Tests` test that a second acquire in the same session fails
+- [x] 4.3 Create the WPF host: `OnExplicitShutdown`, no main window, H.NotifyIcon tray icon with a Quit item; verify manually that the icon appears, no taskbar button exists, and Quit exits with code 0
+- [x] 4.4 Wire the single-instance guard into start-up; verify manually that a second launch exits within 2 s and only one tray icon remains
+- [x] 4.5 Handle `SessionEnding` and `Exit`: flush settings, dispose adapters; verify manually that `settings.json`, deleted while Rekey runs, is back on disk after sign-out and sign-in
 
 ## 5. CI and docs
 

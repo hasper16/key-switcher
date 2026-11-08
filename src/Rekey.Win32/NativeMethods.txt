@@ -1,0 +1,2 @@
+CreateMutex
+WIN32_ERROR

@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="H.NotifyIcon.Wpf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Rekey.Win32\Rekey.Win32.csproj" />
   </ItemGroup>
 
