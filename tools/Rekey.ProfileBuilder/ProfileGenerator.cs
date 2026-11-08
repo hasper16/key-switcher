@@ -46,8 +46,7 @@ namespace Rekey.ProfileBuilder {
     private static Dictionary<string, long> CountWords(
         IEnumerable<string> lines, HashSet<char> letters) {
       var counts = new Dictionary<string, long>(StringComparer.Ordinal);
-      foreach (string line in lines) {
-        string[] parts = line.Split(' ');
+      foreach (string[] parts in lines.Select(line => line.Split(' '))) {
         long n = 0;
         if (parts.Length == 2
             && long.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out n)) {

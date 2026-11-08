@@ -54,6 +54,12 @@ namespace Rekey.Core.Tests.Languages {
     [InlineData("\"00010419\"", "\"10419\"")]
     [InlineData("\"00010419\"", "\"0001041G\"")]
     [InlineData("\"layoutIds\": [\"00000419\", \"00010419\"]", "\"layoutIds\": []")]
+    [InlineData("\"words1\": [\"ю\"]", "\"words1\": [\"ю\", null]")]
+    [InlineData("\"words2\": [\"жё\"]", "\"words2\": [null]")]
+    [InlineData("\"commonWords\": [\"жо\", \"крывёл\"]", "\"commonWords\": [null]")]
+    [InlineData("\"00010419\"", "null")]
+    [InlineData("{ \"ры\": 0.25 }", "{ \"ры\": 0.25, \"РЫ\": 0.5 }")]
+    [InlineData("{ \"рыв\": 0.125 }", "{ \"рыв\": 0.125, \"рЫв\": 0.5 }")]
     public void InvalidValueThrows(string valid, string invalid) {
       Assert.Throws<ProfileLoadException>(() => Load(ProfileJson(valid, invalid)));
     }

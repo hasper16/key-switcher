@@ -8,8 +8,8 @@ namespace Rekey.ProfileBuilder.Tests {
     private readonly string _output;
 
     public BuildCommandTests() {
-      _sources = Path.Combine(_root.FullName, "sources");
-      _output = Path.Combine(_root.FullName, "profiles");
+      _sources = Path.Join(_root.FullName, "sources");
+      _output = Path.Join(_root.FullName, "profiles");
       WriteSource("en/language.json", """
           {
             "code": "en", "displayName": "English", "alphabet": "abcdefghijklmnopqrstuvwxyz",
@@ -31,7 +31,7 @@ namespace Rekey.ProfileBuilder.Tests {
       int exitCode = BuildCommand.Run(_sources, _output, TextWriter.Null, TextWriter.Null);
 
       Assert.Equal(0, exitCode);
-      using FileStream stream = File.OpenRead(Path.Combine(_output, "en.json"));
+      using FileStream stream = File.OpenRead(Path.Join(_output, "en.json"));
       LanguageProfile profile = LanguageProfileLoader.Load(stream);
       Assert.True(profile.ContainsCommonWord("Blim"));
       Assert.True(profile.ContainsShortWord("ZO"));
@@ -40,7 +40,7 @@ namespace Rekey.ProfileBuilder.Tests {
     [Fact]
     public void UnlistedSourceStopsWithoutWritingProfiles() {
       WriteRecord("`en/language.json` `en/list.txt`");
-      var error = new StringWriter();
+      using var error = new StringWriter();
 
       int exitCode = BuildCommand.Run(_sources, _output, TextWriter.Null, error);
 
@@ -54,7 +54,7 @@ namespace Rekey.ProfileBuilder.Tests {
     }
 
     private void WriteSource(string relativePath, string text) {
-      string path = Path.Combine(_sources, relativePath);
+      string path = Path.Join(_sources, relativePath);
       Directory.CreateDirectory(Path.GetDirectoryName(path)!);
       File.WriteAllText(path, text);
     }

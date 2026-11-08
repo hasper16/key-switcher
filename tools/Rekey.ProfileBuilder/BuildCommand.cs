@@ -39,8 +39,7 @@ namespace Rekey.ProfileBuilder {
       Directory.CreateDirectory(outputFolder);
       IEnumerable<string> folders =
           Directory.GetDirectories(sourcesFolder).Order(StringComparer.Ordinal);
-      foreach (string folder in folders) {
-        string path = BuildOne(folder, outputFolder);
+      foreach (string path in folders.Select(folder => BuildOne(folder, outputFolder))) {
         log.WriteLine($"Wrote {path}");
       }
 
@@ -49,7 +48,7 @@ namespace Rekey.ProfileBuilder {
 
     private static string BuildOne(string folder, string outputFolder) {
       LanguageDefinition definition;
-      using (FileStream stream = File.OpenRead(Path.Combine(folder, _definitionFile))) {
+      using (FileStream stream = File.OpenRead(Path.Join(folder, _definitionFile))) {
         definition = JsonSerializer.Deserialize(
             stream, LanguageDefinitionJsonContext.Default.LanguageDefinition)
             ?? throw new InvalidDataException($"{_definitionFile} in {folder} is null.");
@@ -57,10 +56,10 @@ namespace Rekey.ProfileBuilder {
 
       LanguageProfileDocument document = ProfileGenerator.Build(
           definition,
-          File.ReadLines(Path.Combine(folder, definition.FrequencyList)),
-          File.ReadLines(Path.Combine(folder, _shortWordsFile)),
+          File.ReadLines(Path.Join(folder, definition.FrequencyList)),
+          File.ReadLines(Path.Join(folder, _shortWordsFile)),
           new BuildOptions());
-      string path = Path.Combine(outputFolder, LanguageProfileJson.FileNameOf(definition.Code));
+      string path = Path.Join(outputFolder, LanguageProfileJson.FileNameOf(definition.Code));
       File.WriteAllText(path, LanguageProfileJson.Write(document), new UTF8Encoding(false));
       return path;
     }

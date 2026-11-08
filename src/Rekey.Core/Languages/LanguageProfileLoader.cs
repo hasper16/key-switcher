@@ -58,13 +58,13 @@ namespace Rekey.Core.Languages {
     }
 
     private static FrozenSet<string> NormaliseAll(IEnumerable<string> words) {
-      return words.Select(WordNormaliser.Normalise).ToFrozenSet(StringComparer.Ordinal);
+      return words.Select(Normalise).ToFrozenSet(StringComparer.Ordinal);
     }
 
     private static FrozenDictionary<string, int> RankCommonWords(IReadOnlyList<string> words) {
       var ranks = new Dictionary<string, int>(words.Count, StringComparer.Ordinal);
       for (int rank = 0; rank < words.Count; rank++) {
-        ranks.TryAdd(WordNormaliser.Normalise(words[rank]), rank);
+        ranks.TryAdd(Normalise(words[rank]), rank);
       }
 
       return ranks.ToFrozenDictionary(StringComparer.Ordinal);
@@ -72,10 +72,21 @@ namespace Rekey.Core.Languages {
 
     private static FrozenDictionary<string, float> NormaliseKeys(
         IReadOnlyDictionary<string, double> frequencies) {
-      return frequencies.ToFrozenDictionary(
-          pair => WordNormaliser.Normalise(pair.Key),
-          pair => (float)pair.Value,
-          StringComparer.Ordinal);
+      var normalised = new Dictionary<string, float>(frequencies.Count, StringComparer.Ordinal);
+      foreach ((string key, double value) in frequencies) {
+        if (!normalised.TryAdd(Normalise(key), (float)value)) {
+          throw new ProfileLoadException("Two letter groups are the same after normalising.");
+        }
+      }
+
+      return normalised.ToFrozenDictionary(StringComparer.Ordinal);
+    }
+
+    // JSON null inside a list passes the nullable checks, which cover only properties.
+    private static string Normalise(string? word) {
+      return word is null
+          ? throw new ProfileLoadException("A word is null.")
+          : WordNormaliser.Normalise(word);
     }
   }
 }

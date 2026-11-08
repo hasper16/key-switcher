@@ -26,7 +26,7 @@ namespace Rekey.ProfileBuilder.Tests {
     }
 
     private void WriteFile(string relativePath, string text = "") {
-      string path = Path.Combine(_root.FullName, relativePath);
+      string path = Path.Join(_root.FullName, relativePath);
       Directory.CreateDirectory(Path.GetDirectoryName(path)!);
       File.WriteAllText(path, text);
     }
