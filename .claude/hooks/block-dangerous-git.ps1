@@ -18,11 +18,16 @@ $patterns = @(
     'git\s+update-ref\s+-d\b',
     '--no-verify\b',
     'core\.hooksPath\s+(?!\.githooks(\s|;|$))[^\s;]+',
-    '--unset(-all)?\s+core\.hooksPath'
+    '--unset(-all)?\s+core\.hooksPath',
+    'gh\s+pr\s+merge\b.*\s--admin\b'
 )
 
+# Quotes and line breaks can hide a flag from the patterns ('--admin', `-continued lines), so
+# each command is also checked with quotes removed and all whitespace collapsed.
+$normalized = (($command -replace "[`"'``]", '') -replace '\s+', ' ').Trim()
+
 foreach ($p in $patterns) {
-    if ($command -match $p) {
+    if ($command -match $p -or $normalized -match $p) {
         [Console]::Error.WriteLine("BLOCKED: '$command' matches protected pattern '$p'. Ask the user to run this command themselves.")
         exit 2
     }
