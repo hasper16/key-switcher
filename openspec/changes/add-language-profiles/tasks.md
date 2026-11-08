@@ -21,4 +21,4 @@
 
 ## 4. Docs
 
-- [ ] 4.1 Document the profile format and how to regenerate profiles in `docs/language-profiles.md`; verify the documented command regenerates identical files
+- [x] 4.1 Document the profile format and how to regenerate profiles in `docs/language-profiles.md`; verify the documented command regenerates identical files
