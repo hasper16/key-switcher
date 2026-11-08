@@ -8,8 +8,8 @@
 
 ## 2. Scoring
 
-- [ ] 2.1 Write failing tests for `isWord`, n-gram score and rank bonus on a tiny fixture profile; implement `RenderingScorer`; verify they pass
-- [ ] 2.2 Add the `Sensitivity` setting (Cautious, Balanced default, Aggressive) to `Settings` and a `DetectionThresholds` record with initial values per Sensitivity; verify the settings defaults/round-trip tests pass and a test that each Sensitivity resolves to its own record
+- [x] 2.1 Write failing tests for `isWord`, n-gram score and rank bonus on a tiny fixture profile; implement `RenderingScorer`; verify they pass
+- [x] 2.2 Add the `Sensitivity` setting (Cautious, Balanced default, Aggressive) to `Settings` and a `DetectionThresholds` record with initial values per Sensitivity; verify the settings defaults/round-trip tests pass and a test that each Sensitivity resolves to its own record
 
 ## 3. Decision policy
 
