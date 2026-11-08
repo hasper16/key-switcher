@@ -12,15 +12,22 @@ permissions:
 jobs:
   dependencies:
     name: Snyk (dependencies)
-    # Fork pull requests get no SNYK_TOKEN; they skip here and are scanned after merge on main.
-    if: >-
-      github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name == github.repository
     # The Snyk installer does not support Windows runners.
     runs-on: ubuntu-latest
     env:
       DOTNET_NOLOGO: true
     steps:
+      # Fork pull requests get no SNYK_TOKEN. Fail rather than skip: a skipped required job counts
+      # as passed, which would let unscanned dependency changes merge.
+      - name: Require the Snyk token
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::error::Not scanned: no SNYK_TOKEN (fork pull request?). Push the branch here to scan it."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
