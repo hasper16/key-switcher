@@ -57,12 +57,13 @@ Word lookup SHALL ignore letter case, SHALL treat Russian "ё" as "е", and SHAL
 If a Language Profile cannot be read or fails validation, the app MUST record an Incident, skip that Language, and continue with the remaining Languages.
 
 #### Scenario: Corrupt profile
-- **WHEN** the Ukrainian Language Profile is corrupt
+- **WHEN** the user has English, Russian and Ukrainian Layouts installed
+- **AND** the Ukrainian Language Profile is corrupt
 - **THEN** Rekey starts with English and Russian active
 - **AND** an Incident names the Ukrainian Language Profile
 
 ### Requirement: Reproducible profile generation
-The profile generator SHALL produce byte-identical Language Profiles from the same source lists and settings, and SHALL record each source and its licence.
+The profile generator SHALL produce byte-identical Language Profiles from the same source lists and settings. Contributors SHALL record each source file with its origin and licence in a sources record, and the generator SHALL check that the record names every source file.
 
 #### Scenario: Rebuild
 - **WHEN** the generator runs twice on the same inputs
@@ -70,8 +71,8 @@ The profile generator SHALL produce byte-identical Language Profiles from the sa
 
 #### Scenario: Source record
 - **WHEN** the generator finishes
-- **THEN** a sources file lists every input list with its origin and licence
+- **THEN** the sources record names every input file it read
 
 #### Scenario: Unlisted source
-- **WHEN** a file in the sources folder is missing from the sources file
+- **WHEN** a file in the sources folder, other than the sources record itself, is missing from the sources record
 - **THEN** the generator stops without writing any Language Profile
