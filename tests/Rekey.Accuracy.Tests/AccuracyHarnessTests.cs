@@ -38,6 +38,17 @@ namespace Rekey.Accuracy.Tests {
     }
 
     [Fact]
+    public void LayoutSwitchDropsTheDeferredWord() {
+      // "yt" is typed in English (US) and deferred; switching to Russian for "привыт" (spec
+      // example) drops it, so only "привыт" is corrected.
+      AccuracyReport report = _harness.Run(
+          [], [new Passage(Language.Russian, "yt привыт")], Sensitivity.Balanced);
+
+      Assert.Equal(2, report.Negatives);
+      Assert.Equal(1, report.FalseCorrections);
+    }
+
+    [Fact]
     public void ConfirmedDeferredWordCountsAsCorrected() {
       AccuracyReport report = _harness.Run(
           [new Passage(Language.Russian, "не знаю")], [], Sensitivity.Balanced);
