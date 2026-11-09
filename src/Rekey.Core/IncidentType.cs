@@ -17,5 +17,11 @@ namespace Rekey.Core {
     /// Incident; Windows removes a hook that is too slow. No details.
     /// </summary>
     SlowHookCallback,
+
+    /// <summary>
+    /// A Layout Switch Rekey requested did not take effect within 500 ms; Rekey adopted the
+    /// window's real Layout. No details.
+    /// </summary>
+    SwitchNotLanded,
   }
 }

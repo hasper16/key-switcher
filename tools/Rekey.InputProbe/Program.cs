@@ -1,4 +1,6 @@
+using System.Globalization;
 using Rekey.Core;
+using Rekey.Core.Languages;
 using Rekey.Win32;
 using Windows.Win32;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
@@ -14,12 +16,20 @@ namespace Rekey.InputProbe {
   internal static class Program {
     private static int Main(string[] args) {
       using var worker = new InputWorker(Print, TimeProvider.System);
-      worker.Observed += inputEvent => Console.WriteLine(inputEvent);
+      worker.Observed += inputEvent => Console.WriteLine(Describe(inputEvent));
       worker.Start();
       Console.WriteLine("Rekey input probe. Press Ctrl+C in this window to quit.");
 
       if (args.Contains("--inject")) {
         Inject();
+      }
+
+      int switchAt = Array.IndexOf(args, "--switch");
+      if (switchAt >= 0 && switchAt + 1 < args.Length
+          && LayoutId.TryParse(args[switchAt + 1], out LayoutId target)) {
+        Console.WriteLine($"Focus the window to switch; switching to {Klid(target)} in 5 seconds.");
+        Thread.Sleep(TimeSpan.FromSeconds(5));
+        worker.SwitchLayout(target);
       }
 
       using var quit = new ManualResetEventSlim();
@@ -29,6 +39,19 @@ namespace Rekey.InputProbe {
       };
       quit.Wait();
       return 0;
+    }
+
+    private static string Describe(InputEvent inputEvent) {
+      return inputEvent switch {
+        LayoutsInstalledChanged installed =>
+            $"LayoutsInstalledChanged {string.Join(' ', installed.Layouts.Select(Klid))}",
+        LayoutChanged changed => $"LayoutChanged {Klid(changed.Layout)}",
+        _ => inputEvent.ToString(),
+      };
+    }
+
+    private static string Klid(LayoutId layout) {
+      return layout.Value.ToString("X8", CultureInfo.InvariantCulture);
     }
 
     private static void Print(Incident incident) {

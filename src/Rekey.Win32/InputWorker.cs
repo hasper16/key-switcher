@@ -1,7 +1,11 @@
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using Rekey.Core;
+using Rekey.Core.Detection;
+using Rekey.Core.Languages;
 using Rekey.Win32.Focus;
 using Rekey.Win32.Keyboard;
+using Rekey.Win32.Layouts;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
@@ -14,24 +18,38 @@ namespace Rekey.Win32 {
   /// </summary>
   /// <remarks>
   /// Everything the engine touches lives on this one thread, so nothing in it is shared. The
-  /// thread waits on the hook's signal and on its own message queue at once.
+  /// thread waits on the hook's signal and on its own message queue at once, and runs its timed
+  /// checks between waits.
   /// </remarks>
   public sealed class InputWorker : IDisposable {
     private const int _ringCapacity = 4096;
-    private const uint _pollMilliseconds = 250;
+    private const uint _switchMessage = PInvoke.WM_APP + 1;
+    private const uint _idleWaitMilliseconds = 250;
+
+    // Design D6: a pending Layout Switch is checked every 25 ms.
+    private const uint _switchWaitMilliseconds = 25;
+
+    // Design D5: Windows does not tell other processes about added Layouts, so poll.
+    private static readonly TimeSpan _layoutPollPeriod = TimeSpan.FromSeconds(2);
 
     private readonly InputRing _ring = new(_ringCapacity);
     private readonly AutoResetEvent _signal = new(initialState: false);
     private readonly SlowCallbackMeter _meter;
     private readonly InputHook _hook;
     private readonly Action<Incident> _recordIncident;
-    private readonly Engine _engine = new();
+    private readonly TimeProvider _time;
     private readonly RawInputTranslator _translator;
+    private readonly LayoutList _layouts = new(SystemLayouts.ReadHandles, SystemLayouts.Read);
+    private readonly Dictionary<LayoutId, KeyMap?> _keyMaps = [];
+    private readonly LayoutSwitcher _switcher;
+    private readonly ForegroundLayout _foregroundLayout;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
+    private Engine _engine = new();
     private uint _threadId;
     private Exception? _startError;
     private long _heartbeat;
+    private long _lastLayoutPoll;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InputWorker" /> class.
@@ -42,10 +60,13 @@ namespace Rekey.Win32 {
     /// <param name="time">The clock; <see cref="TimeProvider.System" /> outside tests.</param>
     public InputWorker(Action<Incident> recordIncident, TimeProvider time) {
       _recordIncident = recordIncident;
+      _time = time;
       _meter = new SlowCallbackMeter(time);
       _hook = new InputHook(_ring, _signal, _meter, time);
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
       _translator = new RawInputTranslator(capsLockOn);
+      _foregroundLayout = new ForegroundLayout(_layouts);
+      _switcher = new LayoutSwitcher(_foregroundLayout, time);
       _thread = new Thread(Run) { Name = "Rekey worker", IsBackground = true };
     }
 
@@ -65,15 +86,22 @@ namespace Rekey.Win32 {
     /// <summary>
     /// Starts the hook and worker threads and returns once both run.
     /// </summary>
-    /// <exception cref="System.ComponentModel.Win32Exception">
-    /// Windows refused a low-level hook.
-    /// </exception>
+    /// <exception cref="Win32Exception">Windows refused a low-level hook.</exception>
     public void Start() {
       _thread.Start();
       _started.Wait();
       if (_startError is not null) {
         throw _startError;
       }
+    }
+
+    /// <summary>
+    /// Asks the worker to switch the foreground window to a Layout and confirm the switch; safe
+    /// to call from any thread.
+    /// </summary>
+    /// <param name="target">The Layout to switch to.</param>
+    public void SwitchLayout(LayoutId target) {
+      PInvoke.PostThreadMessage(_threadId, _switchMessage, default, (nint)target.Value);
     }
 
     /// <inheritdoc />
@@ -88,19 +116,13 @@ namespace Rekey.Win32 {
       _started.Dispose();
     }
 
-    // Dispatches waiting messages; returns false once WM_QUIT arrives.
-    private static bool PumpMessages() {
-      while (PInvoke.PeekMessage(
-          out MSG message, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
-        if (message.message == PInvoke.WM_QUIT) {
-          return false;
-        }
+    // Hook timestamps count the same milliseconds since system start.
+    private static TimeSpan Now() {
+      return TimeSpan.FromMilliseconds(Environment.TickCount64);
+    }
 
-        PInvoke.TranslateMessage(message);
-        PInvoke.DispatchMessage(message);
-      }
-
-      return true;
+    private static bool IsInputMethod(LayoutId layout) {
+      return layout.Value >> 28 == 0xE;
     }
 
     [SuppressMessage(
@@ -110,22 +132,24 @@ namespace Rekey.Win32 {
     private void Run() {
       _threadId = PInvoke.GetCurrentThreadId();
       PInvoke.PeekMessage(out _, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_NOREMOVE);
+      LoadLanguages();
       try {
         _hook.Start();
-      } catch (System.ComponentModel.Win32Exception e) {
+      } catch (Win32Exception e) {
         _startError = e;
         _started.Set();
         return;
       }
 
       _started.Set();
-      using var focus = new FocusTracker(Send);
+      RefreshLayouts();
+      using var focus = new FocusTracker(OnFocusChanged);
       focus.Start();
       HANDLE[] handles = [(HANDLE)_signal.SafeWaitHandle.DangerousGetHandle()];
       do {
         PInvoke.MsgWaitForMultipleObjectsEx(
             handles,
-            _pollMilliseconds,
+            _switcher.IsPending ? _switchWaitMilliseconds : _idleWaitMilliseconds,
             QUEUE_STATUS_FLAGS.QS_ALLINPUT,
             MSG_WAIT_FOR_MULTIPLE_OBJECTS_EX_FLAGS.MWMO_INPUTAVAILABLE);
         DrainInput();
@@ -134,18 +158,89 @@ namespace Rekey.Win32 {
       } while (PumpMessages());
     }
 
+    private void LoadLanguages() {
+      LanguageSetLoad load = LanguageSet.LoadBundled(_time.GetUtcNow());
+      foreach (Incident incident in load.Incidents) {
+        _recordIncident(incident);
+      }
+
+      _engine = new Engine(load.Languages);
+    }
+
     private void DrainInput() {
+      bool any = false;
       while (_ring.TryRead(out RawInput raw)) {
-        InputEvent? inputEvent = _translator.Translate(raw);
-        if (inputEvent is not null) {
+        any = true;
+        if (_translator.Translate(raw) is { } inputEvent) {
           Send(inputEvent);
         }
+      }
+
+      // The user may have switched Layout with the keys just read.
+      if (any) {
+        FollowForegroundLayout();
       }
     }
 
     private void Poll() {
-      if (_meter.TakeIncident() is { } incident) {
-        _recordIncident(incident);
+      if (_meter.TakeIncident() is { } slow) {
+        _recordIncident(slow);
+      }
+
+      if (_switcher.Check() is { } result) {
+        if (result.Incident is { } incident) {
+          _recordIncident(incident);
+        }
+
+        if (result.Adopted is { } adopted) {
+          Send(new LayoutChanged(Now(), adopted));
+        }
+      }
+
+      if (_time.GetElapsedTime(_lastLayoutPoll) >= _layoutPollPeriod) {
+        RefreshLayouts();
+      }
+    }
+
+    private void RefreshLayouts() {
+      _lastLayoutPoll = _time.GetTimestamp();
+      if (!_layouts.Refresh()) {
+        return;
+      }
+
+      _translator.UseKeyMaps(_layouts.Layouts.Select(KeyMapOf).OfType<KeyMap>());
+      Send(new LayoutsInstalledChanged(Now(), _layouts.Layouts));
+      FollowForegroundLayout();
+    }
+
+    private KeyMap? KeyMapOf(LayoutId layout) {
+      if (!_keyMaps.TryGetValue(layout, out KeyMap? map)) {
+        try {
+          map = IsInputMethod(layout) ? null : KeyMapReader.Read(layout);
+        } catch (Win32Exception) {
+          // A Layout Windows cannot load types nothing Rekey can read back.
+          map = null;
+        }
+
+        _keyMaps[layout] = map;
+      }
+
+      return map;
+    }
+
+    private void OnFocusChanged(FocusChanged focus) {
+      Send(focus);
+      FollowForegroundLayout();
+    }
+
+    private void FollowForegroundLayout() {
+      if (_switcher.IsPending) {
+        return;
+      }
+
+      LayoutId? current = _foregroundLayout.CurrentLayout();
+      if (current is { } layout && layout != _engine.CurrentLayout) {
+        Send(new LayoutChanged(Now(), layout));
       }
     }
 
@@ -157,9 +252,36 @@ namespace Rekey.Win32 {
       Observed?.Invoke(inputEvent);
     }
 
+    // Dispatches waiting messages; returns false once WM_QUIT arrives.
+    private bool PumpMessages() {
+      while (PInvoke.PeekMessage(
+          out MSG message, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
+        if (message.message == PInvoke.WM_QUIT) {
+          return false;
+        }
+
+        if (message.message == _switchMessage && message.hwnd.IsNull) {
+          Execute(new SwitchLayout(new LayoutId((uint)message.lParam.Value)));
+          continue;
+        }
+
+        PInvoke.TranslateMessage(message);
+        PInvoke.DispatchMessage(message);
+      }
+
+      return true;
+    }
+
     private void Execute(EngineAction action) {
-      if (action is RecordIncident record) {
-        _recordIncident(record.Incident);
+      switch (action) {
+        case RecordIncident record:
+          _recordIncident(record.Incident);
+          break;
+        case SwitchLayout switchLayout:
+          _switcher.Switch(switchLayout.Target);
+          break;
+        default:
+          break;
       }
     }
   }

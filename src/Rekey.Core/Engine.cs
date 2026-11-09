@@ -1,4 +1,5 @@
 using Rekey.Core.Detection;
+using Rekey.Core.Languages;
 
 namespace Rekey.Core {
   /// <summary>
@@ -12,7 +13,23 @@ namespace Rekey.Core {
     private static readonly TimeSpan _typingGap = TimeSpan.FromSeconds(2);
 
     private readonly WordTracker _word = new();
+    private readonly LanguageSet _languages;
     private TimeSpan? _lastKeyDown;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Engine" /> class without Language Profiles.
+    /// </summary>
+    public Engine()
+        : this(new LanguageSet([])) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Engine" /> class.
+    /// </summary>
+    /// <param name="languages">The loaded Language Profiles.</param>
+    public Engine(LanguageSet languages) {
+      _languages = languages;
+    }
 
     /// <summary>
     /// Gets the Keystrokes of the current Word.
@@ -30,6 +47,17 @@ namespace Rekey.Core {
     public Context? Focus { get; private set; }
 
     /// <summary>
+    /// Gets the Layout of the foreground window, or <see langword="null" /> before the first
+    /// report.
+    /// </summary>
+    public LayoutId? CurrentLayout { get; private set; }
+
+    /// <summary>
+    /// Gets the profiles of the Languages the installed Layouts make active, in load order.
+    /// </summary>
+    public IReadOnlyList<LanguageProfile> ActiveProfiles { get; private set; } = [];
+
+    /// <summary>
     /// Returns the actions that respond to one input.
     /// </summary>
     /// <param name="inputEvent">The input to respond to.</param>
@@ -44,6 +72,12 @@ namespace Rekey.Core {
           break;
         case FocusChanged focus:
           OnFocusChanged(focus);
+          break;
+        case LayoutChanged layout:
+          CurrentLayout = layout.Layout;
+          break;
+        case LayoutsInstalledChanged installed:
+          ActiveProfiles = _languages.Activate(installed.Layouts);
           break;
         default:
           break;
