@@ -39,9 +39,10 @@ Rekey sees every keystroke. Typed text exists only in the engine's memory:
 
 ## Git
 
-- One branch per OpenSpec change: `change/<change-name>`. Merge to `main` through a PR after CI is green.
+- Changes are implemented one at a time under an orchestrator session. Before working as the orchestrator or as an implementer, read `docs/agents/orchestration.md`.
+- One branch per OpenSpec change: `change/<change-name>`; its archive goes on `chore/archive-<change-name>`. Only the orchestrator merges into `main`, through the PR, once every required check passes and every review thread is resolved. Implementers never merge and never start the next change.
 - Commit messages follow Conventional Commits 1.0.0 (https://www.conventionalcommits.org/en/v1.0.0/#specification), in English, one commit per finished task group: `<type>(<scope>)!: <description>`, blank line, body, footers. Types: feat, fix, build, chore, ci, docs, style, refactor, perf, test, revert. Lowercase type and scope; header up to 100 characters; breaking changes via `!` or a `BREAKING CHANGE:` footer. Scopes name a module or area: core, win32, app, profiles, detection, capture, layouts, replacement, ui, telemetry, update, l10n, specs, tools, deps. `.githooks/commit-msg` rejects other formats.
-- Push only when the user asks. Force-push, history rewrites, hard resets and branch deletion are the user's to run (blocked by `.claude/hooks/`).
+- Implementers push their own `change/*` and `chore/archive-*` branches; any other push happens only when the user asks. Force-push, history rewrites, hard resets and branch deletion are the user's to run (blocked by `.claude/hooks/`).
 - Secrets (`.env`, certificates, keys, tokens) stay local or in CI secrets. `.githooks/pre-commit` blocks them and checks formatting and Core tests; after cloning run `git config core.hooksPath .githooks`. When the hook fails, fix the cause and commit again.
 
 ## Language
