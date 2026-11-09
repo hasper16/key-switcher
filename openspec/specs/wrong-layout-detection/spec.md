@@ -97,7 +97,7 @@ Rekey SHALL support three Sensitivity levels. Cautious corrects only on a common
 - **THEN** the Decision is to correct it
 
 ### Requirement: Short words need confirmation
-Outside Aggressive Sensitivity, a Word of one or two letters SHALL NOT be corrected on its own; it SHALL be deferred. Under Aggressive, it SHALL be corrected when its target Rendering is a valid short word and its current Rendering is not.
+Outside Aggressive Sensitivity, when no Keep condition applies, a Word of one or two letters SHALL NOT be corrected on its own; it SHALL be deferred. Under Aggressive, it SHALL be corrected when its target Rendering is a valid short word and its current Rendering is not.
 
 #### Scenario: Short word under Balanced
 - **WHEN** Sensitivity is Balanced and the user types "yt" in English (US)
@@ -108,7 +108,7 @@ Outside Aggressive Sensitivity, a Word of one or two letters SHALL NOT be correc
 - **THEN** the Decision is to correct it to "не"
 
 ### Requirement: Deferred Words are confirmed by the next Word
-A deferred Word SHALL be corrected together with the next Word when that Word is corrected to a Layout in which the deferred Word reads as plausible text; the deferred Word is then typed as it reads in that Layout. It SHALL be kept when the next Word is kept or corrected to a Layout in which it does not read as plausible text. At most 3 Words SHALL wait at once (design decision); the oldest is kept when a fourth is deferred.
+The deferred Words waiting together SHALL be corrected with the next Word when that Word is corrected to a Layout in which every waiting Word reads as plausible text; each is then typed as it reads in that Layout. They SHALL be kept when the next Word is kept or corrected to a Layout in which any of them does not read as plausible text. A newly deferred Word that shares no such Layout with the waiting Words SHALL leave them as typed and start a new run. At most 3 Words SHALL wait at once (design decision); the oldest is kept when a fourth is deferred.
 
 #### Scenario: Confirmed run
 - **WHEN** Sensitivity is Balanced and the user types "yt" then "pyf.", both in English (US)
@@ -117,6 +117,10 @@ A deferred Word SHALL be corrected together with the next Word when that Word is
 #### Scenario: Not confirmed
 - **WHEN** a Word was deferred and the next Word is kept
 - **THEN** the deferred Word is kept as typed
+
+#### Scenario: Mixed run
+- **WHEN** one deferred Word reads as plausible text only in Russian, a second reads as plausible text in Russian and Ukrainian, and the next Word is corrected to Ukrainian
+- **THEN** both deferred Words are kept as typed and only the next Word is corrected
 
 ### Requirement: Stricter rules between same-script Layouts
 Between two Layouts whose Languages share a script (Russian and Ukrainian), Rekey SHALL correct only when the Word contains a key that produces different letters in the two Layouts, the target Rendering is a common word, and the current Rendering is not a word.
