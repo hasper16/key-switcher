@@ -7,10 +7,10 @@ namespace Rekey.Accuracy {
     /// Writes a report.
     /// </summary>
     /// <param name="report">The report to write.</param>
+    /// <param name="output">The writer to write to.</param>
     /// <remarks>
     /// Numbers follow the current culture; the tool sets the invariant culture.
     /// </remarks>
-    /// <param name="output">The writer to write to.</param>
     public static void Write(AccuracyReport report, TextWriter output) {
       output.WriteLine($"### {report.Sensitivity}");
       output.WriteLine();

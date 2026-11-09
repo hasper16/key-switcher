@@ -58,20 +58,24 @@ namespace Rekey.Accuracy {
             [.. natural.Where(p => p.Language == typist.Language).SelectMany(Words)];
         tally.Stream(
             $"{typist.Code} typed correctly",
+            isPositive: false,
             words.Select(word => Typed(word, typist, typist)));
         foreach (Typist wrong in _typists.Where(other => other != typist)) {
           tally.Stream(
               $"{typist.Code} typed in {wrong.Code}",
+              isPositive: true,
               words.Select(word => Typed(word, typist, wrong)));
         }
       }
 
-      tally.Stream("technical", technical.SelectMany(passage => Words(passage).Select(word => {
-        Typist typist = _typists.Single(t => t.Language == (word.Any(char.IsAsciiLetter)
-            ? Language.English
-            : passage.Language));
-        return Typed(word, typist, typist);
-      })));
+      IEnumerable<TypedWord> technicalWords = technical.SelectMany(
+          passage => Words(passage).Select(word => {
+            Typist typist = _typists.Single(t => t.Language == (word.Any(char.IsAsciiLetter)
+                ? Language.English
+                : passage.Language));
+            return Typed(word, typist, typist);
+          }));
+      tally.Stream("technical", isPositive: false, technicalWords);
       return tally.Report(_worstCount);
     }
 
@@ -109,7 +113,7 @@ namespace Rekey.Accuracy {
       private readonly List<TimeSpan> _latencies = [];
       private readonly Dictionary<string, int> _problems = [];
 
-      public void Stream(string name, IEnumerable<TypedWord> words) {
+      public void Stream(string name, bool isPositive, IEnumerable<TypedWord> words) {
         var run = new DeferredRun();
         var history = new List<TypedWord>();
         var corrections = new List<string?>();
@@ -122,7 +126,7 @@ namespace Rekey.Accuracy {
           }
         }
 
-        _streams.Add(Count(name, history, corrections));
+        _streams.Add(Count(name, isPositive, history, corrections));
       }
 
       public AccuracyReport Report(int worstCount) {
@@ -153,17 +157,15 @@ namespace Rekey.Accuracy {
       }
 
       private StreamResult Count(
-          string name, List<TypedWord> history, List<string?> corrections) {
+          string name, bool positive, List<TypedWord> history, List<string?> corrections) {
         int words = 0;
         int hits = 0;
-        bool positive = false;
         for (int i = 0; i < history.Count; i++) {
           TypedWord word = history[i];
           if (!word.Counts) {
             continue;
           }
 
-          positive = word.IsPositive;
           words++;
           string? correction = corrections[i];
           bool hit = positive ? correction == word.Source : correction is not null;
