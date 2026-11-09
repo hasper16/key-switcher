@@ -19,7 +19,7 @@ ADR 0002: the engine consumes events and returns actions; this change builds the
 
 ### D1. Hook thread
 - Dedicated `Thread` (above-normal priority) runs `SetWindowsHookEx(WH_KEYBOARD_LL)` and `SetWindowsHookEx(WH_MOUSE_LL)` and a `GetMessage` loop.
-- Keyboard callback: ignore events with `LLKHF_INJECTED` *and* our `dwExtraInfo` tag (`0x52454B59`, "REKY"); copy `(vkCode, scanCode, flags, time)` + modifier snapshot into a bounded lock-free ring buffer (`System.Threading.Channels` single-writer); return `CallNextHookEx`. No allocation, no locks, no logging on this path.
+- Keyboard callback: ignore events with `LLKHF_INJECTED` *and* our `dwExtraInfo` tag (`0x52454B59`, "REKY"); copy `(vkCode, scanCode, flags, time)` into a bounded single-producer/single-consumer ring buffer (a preallocated struct array with volatile head and tail; `System.Threading.Channels` is not used because its bounded writer takes a lock and its unbounded one allocates) and signal the worker through an auto-reset event; return `CallNextHookEx`. No allocation, no locks, no logging on this path. Key-ups are copied too, so the worker can track Shift, Ctrl, Alt, Win and AltGr itself. When the buffer is full the event is dropped and counted.
 - Mouse callback: only `WM_*BUTTONDOWN` → enqueue `MouseClick`.
 - The callback measures its own duration; over 1 ms increments a "slow callback" counter reported as an Incident in aggregate.
 
