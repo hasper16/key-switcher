@@ -86,10 +86,10 @@ A correction SHALL produce the Rendering with the same Shift and Caps Lock state
 - **THEN** the correction text is "ПРИВЕТ"
 
 ### Requirement: Sensitivity levels
-Rekey SHALL support three Sensitivity levels. Cautious corrects only on a common-word match and defers otherwise. Balanced (default) corrects on a common-word match and defers when only letter-frequency evidence exists. Aggressive also corrects on strong letter-frequency evidence.
+Rekey SHALL support three Sensitivity levels; they apply only when no Keep rule applies. Cautious corrects only on a common-word match and defers otherwise. Balanced (default) corrects on a common-word match and defers when only letter-frequency evidence exists. Aggressive also corrects on strong letter-frequency evidence.
 
 #### Scenario: Rare word under Cautious
-- **WHEN** Sensitivity is Cautious and a wrong-layout Word's target Rendering is not a common word
+- **WHEN** Sensitivity is Cautious and a wrong-layout Word's target Rendering is plausible text but not a common word
 - **THEN** the Decision is to defer it
 
 #### Scenario: Rare word under Aggressive
