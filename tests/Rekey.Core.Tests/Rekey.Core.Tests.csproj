@@ -13,4 +13,10 @@
     <ProjectReference Include="..\..\src\Rekey.Core\Rekey.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\fixtures\keymaps\*.json"
+          Link="fixtures\keymaps\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

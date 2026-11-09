@@ -43,7 +43,7 @@ How plausible a Rendering is as text in a Language.
 _Avoid_: confidence, probability
 
 **Ambiguous Word**:
-A Word whose Renderings are valid words in more than one Language, so Rekey leaves it as typed.
+A Word whose Renderings are valid words in more than one Language, so Rekey waits for the next Word to show which Layout the user is typing in.
 _Avoid_: conflict word
 
 **Sensitivity**:

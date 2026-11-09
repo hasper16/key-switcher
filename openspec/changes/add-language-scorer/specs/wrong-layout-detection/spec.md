@@ -29,18 +29,22 @@ Rekey SHALL decide to correct a Word when its Rendering in another active Layout
 - **THEN** the Decision is to correct it to "привет" in Russian
 
 ### Requirement: Keep valid words
-Rekey SHALL keep a Word whose Rendering in the current Layout is a word of the current Language, whatever its other Renderings are.
+Rekey SHALL keep a Word whose Rendering in the current Layout is a word of the current Language when no Rendering in another active Layout is a word of its Language.
 
 #### Scenario: Correctly typed word
 - **WHEN** the current Layout is English (US) and the user types "hello"
 - **THEN** the Decision is to keep it
 
-### Requirement: Keep Ambiguous Words
-When Renderings in two or more Layouts are words of their Languages, Rekey SHALL keep the Word as typed.
+### Requirement: Ambiguous Words wait for the next Word
+When Renderings in two or more Layouts, the current one included, are different words of their Languages, Rekey SHALL defer the Word towards each other Layout whose Rendering is a word and SHALL NOT correct it on its own (design decision: the next Word shows which Layout the user is typing in).
 
 #### Scenario: Word valid in both Layouts
-- **WHEN** a Word's English (US) Rendering and its Russian Rendering are both common words
-- **THEN** the Decision is to keep it
+- **WHEN** a Word's English (US) Rendering and its Russian Rendering are both common words and the next Word is kept
+- **THEN** the Word is kept as typed
+
+#### Scenario: Word valid in two other Layouts
+- **WHEN** the current Layout is English (US), the Word's Russian and Ukrainian Renderings are different words, and the next Word is corrected to Ukrainian
+- **THEN** both Words are corrected to their Ukrainian Renderings
 
 ### Requirement: Keep unrecognisable Words
 When no Rendering scores as plausible text in its Language, Rekey SHALL keep the Word.
@@ -57,7 +61,7 @@ Characters at the start or end of a Rendering that are not letters SHALL be rend
 - **THEN** the Decision is to correct it to "привет!" in Russian
 
 ### Requirement: Keep Words that look like code, numbers or addresses
-Rekey SHALL keep a Word containing digits or any of `@ / \ _ : #`, or a Word with an upper-case letter after a lower-case one.
+Rekey SHALL keep a Word containing digits, a Word containing any of `@ / \ _ : #` with another character on each side, or a Word with an upper-case letter that follows a lower-case one and is not the last character. Punctuation at the edges of a Word does not make it look like code (design decision: the Russian period, comma and quote keys type `/`, `?` and `@` in English (US)).
 
 #### Scenario: Email address
 - **WHEN** the user types "user@example.com"
@@ -66,6 +70,10 @@ Rekey SHALL keep a Word containing digits or any of `@ / \ _ : #`, or a Word wit
 #### Scenario: Identifier
 - **WHEN** the user types "getValue"
 - **THEN** the Decision is to keep it
+
+#### Scenario: Sentence end typed in the wrong Layout
+- **WHEN** the current Layout is English (US) and the user types "ltkf/"
+- **THEN** the Decision is to correct it to "дела." in Russian
 
 ### Requirement: Preserve letter case
 A correction SHALL produce the Rendering with the same Shift and Caps Lock state per key, so capitalisation follows what the user typed.
@@ -101,7 +109,7 @@ Outside Aggressive Sensitivity, a Word of one or two letters SHALL NOT be correc
 - **THEN** the Decision is to correct it to "не"
 
 ### Requirement: Deferred Words are confirmed by the next Word
-A deferred Word SHALL be corrected together with the next Word when that Word is corrected to the same target Layout. It SHALL be kept when the next Word is kept or corrected to another Layout. At most 3 Words SHALL wait at once (design decision); the oldest is kept when a fourth is deferred.
+A deferred Word SHALL be corrected together with the next Word when that Word is corrected to a Layout in which the deferred Word reads as plausible text; the deferred Word is then typed as it reads in that Layout. It SHALL be kept when the next Word is kept or corrected to a Layout in which it does not read as plausible text. At most 3 Words SHALL wait at once (design decision); the oldest is kept when a fourth is deferred.
 
 #### Scenario: Confirmed run
 - **WHEN** Sensitivity is Balanced and the user types "yt" then "pyf.", both in English (US)
@@ -130,7 +138,7 @@ Rekey SHALL reach a Decision within 5 ms for a Word of up to 30 Keystrokes on a 
 - **THEN** the Decision is returned within 5 ms
 
 ### Requirement: Measured accuracy
-Default thresholds SHALL be chosen so that, on the project's held-out accuracy corpus under Balanced Sensitivity, at most 0.5% of correctly typed Words are corrected and at least 95% of wrong-layout Words are corrected or confirmed through deferral (design decision).
+Default thresholds SHALL be chosen so that, on the project's held-out accuracy corpus under Balanced Sensitivity, at most 0.5% of correctly typed Words are corrected and at least 95% of wrong-layout Words end up as the intended text, directly or through deferral (design decision). A wrong-layout Word counts only when its Rendering in the Layout it was typed in differs from the intended text.
 
 #### Scenario: Accuracy run
 - **WHEN** the accuracy harness runs on the held-out corpus with Balanced Sensitivity

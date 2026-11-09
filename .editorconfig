@@ -18,8 +18,8 @@ end_of_line = lf
 [*.md]
 trim_trailing_whitespace = false
 
-# Generated Language Profiles and their sources: LF, as the generator writes them.
-[{data/sources/**,src/Rekey.Core/Profiles/*.json}]
+# Generated Language Profiles, their sources and captured Key Maps: LF, as the tools write them.
+[{data/sources/**,data/accuracy/**,src/Rekey.Core/Profiles/*.json,tests/fixtures/**}]
 end_of_line = lf
 
 [*.{cs,csx}]

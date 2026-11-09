@@ -1,0 +1,90 @@
+en	Run dotnet build -c Release and check that the build has zero warnings.
+en	The method getValue returns null when the cache is empty.
+en	Open http://localhost:5000/api/health in the browser.
+en	Send the logs to support@example.com before Friday.
+en	Use git rebase --onto main feature/login to move the branch.
+en	The config file lives in C:\Users\demo\AppData\Roaming\App\settings.json now.
+en	Set MAX_RETRIES=5 in the .env file and restart the service.
+en	npm install --save-dev typescript@5.4 eslint prettier
+en	The p99 latency dropped from 120ms to 45ms after the fix.
+en	Call useEffect only once and pass an empty dependency array.
+en	SELECT id, name FROM users WHERE created_at > NOW() - INTERVAL 7 DAY;
+en	Merge PR #42 after the CI pipeline turns green.
+en	The JSON payload has fields userId, sessionToken and expiresAt.
+en	Use kubectl get pods -n staging to list the pods.
+en	Install Python 3.12 and run pip install -r requirements.txt first.
+en	The iPhone app crashes on iOS 17 when the user taps Settings.
+en	Rename the variable tmp2 to retryCount for clarity.
+en	Docker compose up -d starts the database and the API.
+en	The regex ^[a-z0-9_]+$ matches lower-case identifiers.
+en	Ping me on Slack at 10:30 tomorrow about the deploy.
+en	Upload the file to s3://backups/2024/db.dump and check the checksum.
+en	Use Ctrl+Shift+P to open the command palette in VS Code.
+en	Our README says to run make test before every commit.
+en	The function parseHeader throws when the header is missing.
+en	Bump the version to 2.3.1 and tag the release.
+en	Check the CPU usage with top or htop on the server.
+en	The endpoint POST /v1/orders returns 201 on success.
+en	Add the SSH key to ~/.ssh/authorized_keys on the host.
+en	WiFi drops every hour, so I restarted the router.
+en	The macOS build signs the app with the Developer ID certificate.
+ru	Запусти npm install и проверь, что package.json обновился.
+ru	Открой файл settings.json и поменяй значение timeout на 30.
+ru	Сервер отвечает 500 на запрос GET /api/users, посмотри логи.
+ru	Напиши мне в Telegram, когда закончишь с деплоем.
+ru	Мы перешли с MySQL на PostgreSQL в прошлом месяце.
+ru	Функция getUserName возвращает пустую строку для гостей.
+ru	Почта для вопросов: help@example.org, отвечаем в течение дня.
+ru	Сделай git pull, потом git checkout -b fix/login и закоммить правку.
+ru	В Windows 11 эта настройка находится в разделе Параметры.
+ru	Скачай драйвер с сайта производителя и перезагрузи компьютер.
+ru	Ошибка NullReferenceException появляется только в Release сборке.
+ru	Поставь Docker Desktop и запусти docker compose up.
+ru	Код ревью займёт полчаса, потом мержим в main.
+ru	Нужно обновить Node.js до версии 20, иначе сборка падает.
+ru	Таблица orders растёт на миллион строк в сутки.
+ru	Добавь индекс по полю created_at, запрос станет быстрее.
+ru	Клиент жалуется, что приложение на Android вылетает при запуске.
+ru	Я завёл задачу в Jira, ссылка в описании PR.
+ru	Проверь, что переменная API_KEY задана в окружении.
+ru	Тесты на xUnit проходят локально, но падают в CI.
+ru	Курс доллара сегодня 92,5 рубля, вчера был 91,8.
+ru	Встреча в Zoom перенесена на 15:00 по Москве.
+ru	Выгрузи отчёт в Excel и отправь его бухгалтерии.
+ru	Пароль должен быть не короче 12 символов.
+ru	На ноутбуке стоит Ubuntu 22.04 и Windows в виртуалке.
+ru	Логи пишутся в /var/log/app/error.log, ротация раз в неделю.
+ru	Купи SSD на 1 ТБ, старый диск уже не справляется.
+ru	В Figma есть новый макет главной страницы.
+ru	Обнови сертификат SSL до конца месяца.
+ru	Посмотри видео на YouTube про настройку роутера.
+uk	Запусти npm install і перевір, що package.json оновився.
+uk	Відкрий файл config.yaml і зміни значення port на 8080.
+uk	Сервер повертає 404 на запит GET /api/orders, подивись логи.
+uk	Напиши мені в Telegram, коли закінчиш із деплоєм.
+uk	Ми перейшли з MongoDB на PostgreSQL минулого року.
+uk	Функція calculateTotal повертає неправильну суму для знижок.
+uk	Пошта для питань: info@example.net, відповідаємо протягом дня.
+uk	Зроби git pull, потім git checkout -b fix/payment і закоміть зміни.
+uk	У Windows 11 це налаштування є в розділі Параметри.
+uk	Завантаж драйвер із сайту виробника та перезавантаж комп'ютер.
+uk	Помилка TimeoutException з'являється лише на продакшені.
+uk	Встанови Docker Desktop і запусти docker compose up.
+uk	Код рев'ю займе пів години, потім зливаємо в main.
+uk	Треба оновити Python до версії 3.12, інакше збірка падає.
+uk	Таблиця events зростає на мільйон рядків на добу.
+uk	Додай індекс за полем user_id, запит стане швидшим.
+uk	Клієнт скаржиться, що застосунок на iOS вилітає під час запуску.
+uk	Я створив задачу в Jira, посилання в описі PR.
+uk	Перевір, що змінна DATABASE_URL задана в оточенні.
+uk	Тести на xUnit проходять локально, але падають у CI.
+uk	Курс євро сьогодні 44,2 гривні, вчора був 44,0.
+uk	Зустріч у Zoom перенесено на 16:00 за Києвом.
+uk	Вивантаж звіт у Excel і надішли його бухгалтерії.
+uk	Пароль має бути не коротший за 12 символів.
+uk	На ноутбуці стоїть Fedora 40 і Windows у віртуалці.
+uk	Логи пишуться в /var/log/app/error.log, ротація щотижня.
+uk	Купи SSD на 2 ТБ, старий диск уже не встигає.
+uk	У Figma є новий макет головної сторінки.
+uk	Онови сертифікат SSL до кінця місяця.
+uk	Подивись відео на YouTube про налаштування роутера.
