@@ -2,10 +2,10 @@
 
 ## 1. Word tracking in Core (data shape and rules first)
 
-- [ ] 1.1 Extend `InputEvent` with `KeyDown`, `MouseClick`, `FocusChanged(appId, isPassword, isElevated)`, `LayoutChanged`, `LayoutsInstalledChanged`; verify the project builds and existing tests pass
-- [ ] 1.2 Write failing engine tests for Word boundaries (letters, Backspace, arrows/Home/End/Delete/Escape, Ctrl/Alt/Win combos, mouse click, focus change); implement `WordTracker`; verify they pass
-- [ ] 1.3 Write failing tests: gap > 2 s ends the Word and drops Deferred Words; implement; verify they pass
-- [ ] 1.4 Write failing tests: Password Field focus → no Keystrokes kept, no Correction; elevated foreground → no Correction; implement; verify they pass
+- [x] 1.1 Extend `InputEvent` with `KeyDown`, `MouseClick`, `FocusChanged(appId, isPassword, isElevated)`, `LayoutChanged`, `LayoutsInstalledChanged`; verify the project builds and existing tests pass
+- [x] 1.2 Write failing engine tests for Word boundaries (letters, Backspace, arrows/Home/End/Delete/Escape, Ctrl/Alt/Win combos, mouse click, focus change); implement `WordTracker`; verify they pass
+- [x] 1.3 Write failing tests: gap > 2 s ends the Word and drops Deferred Words; implement; verify they pass
+- [x] 1.4 Write failing tests: Password Field focus → no Keystrokes kept, no Correction; elevated foreground → no Correction; implement; verify they pass
 
 ## 2. Hook thread and event pipe
 
