@@ -17,7 +17,7 @@ For a finished Word, Rekey SHALL compute its Rendering in each Layout of an acti
 - **THEN** the Russian Rendering is "без"
 
 ### Requirement: Correct a clear wrong-layout Word
-Rekey SHALL decide to correct a Word when its Rendering in another active Layout is a common word of that Layout's Language and its Rendering in the current Layout is not a word of the current Language, unless the Word is an Ambiguous Word or a short Word, or its Sensitivity needs more evidence (requirements below).
+Rekey SHALL decide to correct a Word when its Rendering in another active Layout is a common word of that Layout's Language and its Rendering in the current Layout is not a word of the current Language, unless a Keep rule applies (code, numbers and addresses, valid words, unrecognisable Words), the Word is an Ambiguous Word or a short Word, or its Sensitivity needs more evidence (requirements below).
 
 #### Scenario: English typed as Russian
 - **WHEN** the current Layout is Russian and the user types "руддщ"
