@@ -63,6 +63,17 @@ namespace Rekey.Core.Tests.Detection {
     }
 
     [Fact]
+    public void MixedRunIsKeptWhenOneWordDoesNotReadInTheTarget() {
+      var run = new DeferredRun();
+      run.Add(Decision.Defer(_russian, "ыф"));
+      run.Add(Decision.Defer([new(_russian, "ну"), new(_ukrainian, "ну")]));
+
+      Correction? correction = run.Add(Decision.Correct(_ukrainian, "вапро"));
+
+      Assert.Equal(new Correction(_ukrainian, ["вапро"]), correction);
+    }
+
+    [Fact]
     public void DeferralTowardsAnotherLayoutStartsANewRun() {
       var run = new DeferredRun();
       run.Add(Decision.Defer(_russian, "ыф"));
