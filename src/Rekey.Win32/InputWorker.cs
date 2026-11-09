@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Rekey.Core;
+using Rekey.Win32.Focus;
 using Rekey.Win32.Keyboard;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -118,6 +119,8 @@ namespace Rekey.Win32 {
       }
 
       _started.Set();
+      using var focus = new FocusTracker(Send);
+      focus.Start();
       HANDLE[] handles = [(HANDLE)_signal.SafeWaitHandle.DangerousGetHandle()];
       do {
         PInvoke.MsgWaitForMultipleObjectsEx(
