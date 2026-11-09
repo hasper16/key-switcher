@@ -118,6 +118,11 @@ namespace Rekey.Accuracy {
         var history = new List<TypedWord>();
         var corrections = new List<string?>();
         foreach (TypedWord word in words) {
+          // A Layout Switch by the user drops the waiting Words (design D4).
+          if (history.Count > 0 && history[^1].Current != word.Current) {
+            run.Reset();
+          }
+
           history.Add(word);
           corrections.Add(null);
           IReadOnlyList<string> texts = run.Add(Decide(word))?.Texts ?? [];
