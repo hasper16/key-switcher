@@ -11,5 +11,11 @@ namespace Rekey.Core {
     /// Details: the <see cref="Languages.Language" /> skipped.
     /// </summary>
     LanguageProfileSkipped,
+
+    /// <summary>
+    /// A keyboard or mouse hook callback took longer than 1 ms at least once since the last such
+    /// Incident; Windows removes a hook that is too slow. No details.
+    /// </summary>
+    SlowHookCallback,
   }
 }

@@ -10,6 +10,7 @@
     <InternalsVisibleTo Include="Rekey.KeyMapCapture" />
     <InternalsVisibleTo Include="Rekey.ProfileBuilder" />
     <InternalsVisibleTo Include="Rekey.ProfileBuilder.Tests" />
+    <InternalsVisibleTo Include="Rekey.Win32.Tests" />
   </ItemGroup>
 
   <ItemGroup>

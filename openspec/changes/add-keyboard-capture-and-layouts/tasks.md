@@ -10,8 +10,8 @@
 ## 2. Hook thread and event pipe
 
 - [ ] 2.1 Implement the hook thread with `WH_KEYBOARD_LL` + `WH_MOUSE_LL`, message loop, ring buffer, injected-input filter by `dwExtraInfo` tag; verify with a manual test app that typed keys appear in a debug log and Rekey-tagged `SendInput` keys do not
-- [ ] 2.2 Implement the worker that converts raw events to `InputEvent` using KeyMaps; verify a `Rekey.Win32.Tests` test that synthetic raw events produce the expected `InputEvent` sequence
-- [ ] 2.3 Add callback duration measurement and the aggregated slow-callback Incident; verify by a test with an injected clock
+- [x] 2.2 Implement the worker that converts raw events to `InputEvent` using KeyMaps; verify a `Rekey.Win32.Tests` test that synthetic raw events produce the expected `InputEvent` sequence
+- [x] 2.3 Add callback duration measurement and the aggregated slow-callback Incident; verify by a test with an injected clock
 
 ## 3. Focus, password and elevation
 

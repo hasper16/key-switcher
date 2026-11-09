@@ -12,6 +12,7 @@
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Rekey.Accuracy/Rekey.Accuracy.csproj" />
+    <Project Path="tools/Rekey.InputProbe/Rekey.InputProbe.csproj" />
     <Project Path="tools/Rekey.KeyMapCapture/Rekey.KeyMapCapture.csproj" />
     <Project Path="tools/Rekey.ProfileBuilder/Rekey.ProfileBuilder.csproj" />
   </Folder>
