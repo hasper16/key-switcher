@@ -39,6 +39,11 @@ namespace Rekey.Win32.Keyboard {
     private int _installError;
     private long _lastInputTick;
     private long _reattachments;
+#if DEBUG
+    private long _stallRequests;
+    private long _stallsDone;
+    private long _stallMilliseconds;
+#endif
     private UnhookWindowsHookExSafeHandle? _keyboardHook;
     private UnhookWindowsHookExSafeHandle? _mouseHook;
 
@@ -101,6 +106,18 @@ namespace Rekey.Win32.Keyboard {
       _installed.Dispose();
     }
 
+#if DEBUG
+    /// <summary>
+    /// Makes the next keyboard callback wait longer than Windows allows, so Windows removes the
+    /// hook; for the desktop checks of the hook watchdog. Debug builds only.
+    /// </summary>
+    /// <param name="length">How long the callback waits.</param>
+    public void StallNextKeyForCheck(TimeSpan length) {
+      Volatile.Write(ref _stallMilliseconds, (long)length.TotalMilliseconds);
+      Volatile.Write(ref _stallRequests, _stallRequests + 1);
+    }
+
+#endif
     private void Run() {
       _threadId = PInvoke.GetCurrentThreadId();
 
@@ -157,6 +174,9 @@ namespace Rekey.Win32.Keyboard {
     }
 
     private LRESULT OnKeyboard(int code, WPARAM wParam, LPARAM lParam) {
+#if DEBUG
+      StallIfRequested();
+#endif
       long started = _time.GetTimestamp();
       if (code == PInvoke.HC_ACTION) {
         KBDLLHOOKSTRUCT* info = (KBDLLHOOKSTRUCT*)lParam.Value;
@@ -193,6 +213,16 @@ namespace Rekey.Win32.Keyboard {
       return PInvoke.CallNextHookEx(null, code, wParam, lParam);
     }
 
+#if DEBUG
+    // The caller writes the requests; only this thread writes the stalls done.
+    private void StallIfRequested() {
+      if (Volatile.Read(ref _stallRequests) != _stallsDone) {
+        _stallsDone = Volatile.Read(ref _stallRequests);
+        Thread.Sleep(TimeSpan.FromMilliseconds(Volatile.Read(ref _stallMilliseconds)));
+      }
+    }
+
+#endif
     private void Enqueue(in RawInput input) {
       if (_ring.TryWrite(input)) {
         _signal.Set();

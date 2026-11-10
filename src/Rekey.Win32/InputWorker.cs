@@ -149,15 +149,26 @@ namespace Rekey.Win32 {
       PInvoke.PostThreadMessage(_threadId, _resumeMessage, default, default);
     }
 
+#if DEBUG
     /// <summary>
-    /// Blocks the worker thread for a while, to check the freeze guard by hand; safe to call from
-    /// any thread.
+    /// Blocks the worker thread for a while, to check the freeze guard; safe to call from any
+    /// thread. Debug builds only.
     /// </summary>
     /// <param name="length">How long the worker stays blocked.</param>
     public void FreezeForCheck(TimeSpan length) {
       PInvoke.PostThreadMessage(
           _threadId, _freezeMessage, default, (nint)length.TotalMilliseconds);
     }
+
+    /// <summary>
+    /// Makes the next keyboard hook callback wait past Windows' limit, so Windows removes the
+    /// hook; safe to call from any thread. Debug builds only.
+    /// </summary>
+    /// <param name="length">How long the callback waits.</param>
+    public void StallHookForCheck(TimeSpan length) {
+      _hook.StallNextKeyForCheck(length);
+    }
+#endif
 
     /// <inheritdoc />
     public void Dispose() {

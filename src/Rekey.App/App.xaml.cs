@@ -16,6 +16,10 @@ namespace Rekey.App {
       Justification = "WPF ends the Application through OnExit, which disposes the fields.")]
   internal sealed partial class App {
     private const string _restartedAfterFreeze = "--restarted-after-freeze";
+#if DEBUG
+    private const string _checkFreeze = "--check-freeze";
+    private const string _checkSelfPause = "--check-self-pause";
+#endif
     private const string _toolTip = "Rekey";
     private const string _selfPausedToolTip =
         "Rekey paused itself: it lost the keyboard twice. It retries in 10 minutes.";
@@ -56,6 +60,15 @@ namespace Rekey.App {
       // Efficiency Mode throttles the process; the keyboard hook must stay fast.
       _trayIcon.ForceCreate(enablesEfficiencyMode: false);
       StartInput(_settings);
+#if DEBUG
+      if (e.Args.Contains(_checkFreeze)) {
+        FreezeTwiceForCheck();
+      }
+
+      if (e.Args.Contains(_checkSelfPause)) {
+        DropHookTwiceForCheck();
+      }
+#endif
     }
 
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e) {
@@ -146,6 +159,30 @@ namespace Rekey.App {
       Environment.Exit(0);
     }
 
+#if DEBUG
+    // For tools/Rekey.DesktopChecks: two 7 s freezes 15 s apart, which the freeze guard answers
+    // with a restart while the checks keep typing.
+    private void FreezeTwiceForCheck() {
+      _ = Task.Run(async () => {
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        _worker?.FreezeForCheck(TimeSpan.FromSeconds(7));
+        await Task.Delay(TimeSpan.FromSeconds(15));
+        _worker?.FreezeForCheck(TimeSpan.FromSeconds(7));
+      });
+    }
+
+    // For the manual tray check: the next key after 3 s and after 10 s stalls the hook past
+    // Windows' limit, so Windows drops it twice and the app pauses itself while the user types.
+    private void DropHookTwiceForCheck() {
+      _ = Task.Run(async () => {
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        _worker?.StallHookForCheck(TimeSpan.FromSeconds(3));
+        await Task.Delay(TimeSpan.FromSeconds(7));
+        _worker?.StallHookForCheck(TimeSpan.FromSeconds(3));
+      });
+    }
+
+#endif
     private void AddMenuItems(TaskbarIcon trayIcon) {
       _resumeItem = new MenuItem { Header = "Resume", Visibility = Visibility.Collapsed };
       _resumeItem.Click += (_, _) => _worker?.ResumeSelfPause();
