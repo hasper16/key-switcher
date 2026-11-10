@@ -21,9 +21,11 @@ namespace Rekey.Win32 {
   /// thread waits on the hook's signal and on its own message queue at once, and runs its timed
   /// checks between waits.
   /// </remarks>
-  public sealed class InputWorker : IDisposable {
+  public sealed class InputWorker : IDisposable, IWorkerPulse {
     private const int _ringCapacity = 4096;
     private const uint _switchMessage = PInvoke.WM_APP + 1;
+    private const uint _resumeMessage = PInvoke.WM_APP + 2;
+    private const uint _freezeMessage = PInvoke.WM_APP + 3;
     private const uint _idleWaitMilliseconds = 250;
 
     // Design D6: a pending Layout Switch is checked every 25 ms.
@@ -43,6 +45,7 @@ namespace Rekey.Win32 {
     private readonly Dictionary<LayoutId, KeyMap?> _keyMaps = [];
     private readonly LayoutSwitcher _switcher;
     private readonly ForegroundLayout _foregroundLayout;
+    private readonly HookWatchdog _hookWatchdog;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
     private Engine _engine = new();
@@ -54,11 +57,12 @@ namespace Rekey.Win32 {
     /// <summary>
     /// Initializes a new instance of the <see cref="InputWorker" /> class.
     /// </summary>
+    /// <param name="settings">The settings that turn the keyboard watchdog on or off.</param>
     /// <param name="recordIncident">
     /// The sink that records Incidents; it is called on the worker thread.
     /// </param>
     /// <param name="time">The clock; <see cref="TimeProvider.System" /> outside tests.</param>
-    public InputWorker(Action<Incident> recordIncident, TimeProvider time) {
+    public InputWorker(Settings settings, Action<Incident> recordIncident, TimeProvider time) {
       _recordIncident = recordIncident;
       _time = time;
       _meter = new SlowCallbackMeter(time);
@@ -67,6 +71,9 @@ namespace Rekey.Win32 {
       _translator = new RawInputTranslator(capsLockOn);
       _foregroundLayout = new ForegroundLayout(_layouts);
       _switcher = new LayoutSwitcher(_foregroundLayout, time);
+      _hookWatchdog = new HookWatchdog(new SessionInputActivity(_hook), time) {
+        Enabled = settings.KeyboardWatchdogEnabled,
+      };
       _thread = new Thread(Run) { Name = "Rekey worker", IsBackground = true };
     }
 
@@ -79,9 +86,18 @@ namespace Rekey.Win32 {
     public event Action<InputEvent>? Observed;
 
     /// <summary>
+    /// Occurs on the worker thread when Rekey paused itself after repeated keyboard failures,
+    /// with the time the pause ends, and when the pause ends, with <see langword="null" />.
+    /// </summary>
+    public event Action<DateTimeOffset?>? SelfPauseChanged;
+
+    /// <summary>
     /// Gets the number of input batches the worker finished; only the worker thread writes it.
     /// </summary>
     public long Heartbeat => Volatile.Read(ref _heartbeat);
+
+    /// <inheritdoc />
+    int IWorkerPulse.QueuedInput => _ring.Count;
 
     /// <summary>
     /// Starts the hook and worker threads and returns once both run.
@@ -102,6 +118,23 @@ namespace Rekey.Win32 {
     /// <param name="target">The Layout to switch to.</param>
     public void SwitchLayout(LayoutId target) {
       PInvoke.PostThreadMessage(_threadId, _switchMessage, default, (nint)target.Value);
+    }
+
+    /// <summary>
+    /// Ends a self-pause and reattaches to the keyboard at once; safe to call from any thread.
+    /// </summary>
+    public void ResumeSelfPause() {
+      PInvoke.PostThreadMessage(_threadId, _resumeMessage, default, default);
+    }
+
+    /// <summary>
+    /// Blocks the worker thread for a while, to check the freeze guard by hand; safe to call from
+    /// any thread.
+    /// </summary>
+    /// <param name="length">How long the worker stays blocked.</param>
+    public void FreezeForCheck(TimeSpan length) {
+      PInvoke.PostThreadMessage(
+          _threadId, _freezeMessage, default, (nint)length.TotalMilliseconds);
     }
 
     /// <inheritdoc />
@@ -200,6 +233,23 @@ namespace Rekey.Win32 {
       if (_time.GetElapsedTime(_lastLayoutPoll) >= _layoutPollPeriod) {
         RefreshLayouts();
       }
+
+      DateTimeOffset? pausedBefore = _hookWatchdog.SelfPausedUntil;
+      Apply(_hookWatchdog.Check(_engine.Focus?.IsElevated ?? false), pausedBefore);
+    }
+
+    private void Apply(WatchdogOutcome outcome, DateTimeOffset? pausedBefore) {
+      foreach (Incident incident in outcome.Incidents) {
+        _recordIncident(incident);
+      }
+
+      if (outcome.Reinstall) {
+        _hook.Reinstall();
+      }
+
+      if (_hookWatchdog.SelfPausedUntil != pausedBefore) {
+        SelfPauseChanged?.Invoke(_hookWatchdog.SelfPausedUntil);
+      }
     }
 
     private void RefreshLayouts() {
@@ -260,8 +310,7 @@ namespace Rekey.Win32 {
           return false;
         }
 
-        if (message.message == _switchMessage && message.hwnd.IsNull) {
-          Execute(new SwitchLayout(new LayoutId((uint)message.lParam.Value)));
+        if (message.hwnd.IsNull && HandleOwnMessage(message)) {
           continue;
         }
 
@@ -270,6 +319,23 @@ namespace Rekey.Win32 {
       }
 
       return true;
+    }
+
+    private bool HandleOwnMessage(in MSG message) {
+      switch (message.message) {
+        case _switchMessage:
+          Execute(new SwitchLayout(new LayoutId((uint)message.lParam.Value)));
+          return true;
+        case _resumeMessage:
+          Apply(_hookWatchdog.Resume(), _hookWatchdog.SelfPausedUntil);
+          SelfPauseChanged?.Invoke(null);
+          return true;
+        case _freezeMessage:
+          Thread.Sleep(TimeSpan.FromMilliseconds(message.lParam.Value));
+          return true;
+        default:
+          return false;
+      }
     }
 
     private void Execute(EngineAction action) {

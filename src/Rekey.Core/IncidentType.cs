@@ -23,5 +23,29 @@ namespace Rekey.Core {
     /// window's real Layout. No details.
     /// </summary>
     SwitchNotLanded,
+
+    /// <summary>
+    /// Windows stopped delivering input to Rekey's hooks while the user typed; Rekey removed and
+    /// installed them again. No details.
+    /// </summary>
+    HookReinstalled,
+
+    /// <summary>
+    /// Keyboard observation failed twice within 10 minutes; Rekey paused Auto Correction for
+    /// 10 minutes. No details.
+    /// </summary>
+    SelfPaused,
+
+    /// <summary>
+    /// Rekey's input processing stopped for more than 5 seconds with input waiting, and Rekey
+    /// did not restart for it. No details.
+    /// </summary>
+    InputFrozen,
+
+    /// <summary>
+    /// Rekey's input processing froze a second time within an hour; Rekey restarted itself.
+    /// No details.
+    /// </summary>
+    FreezeRestart,
   }
 }

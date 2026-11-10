@@ -28,10 +28,10 @@
 
 ## 5. Watchdog
 
-- [ ] 5.1 Add `KeyboardWatchdogEnabled` and `RestartAfterFreezeEnabled` (both on) to `Settings`; verify the settings defaults and round-trip tests pass
-- [ ] 5.2 Write failing tests (fake clock and fake input-info source): system input newer than hook input by > 1.5 s → reinstall + Incident; two reinstalls in 10 min → SelfPause; manual Resume clears; watchdog off → no checks; implement the watchdog logic; verify they pass
+- [x] 5.1 Add `KeyboardWatchdogEnabled` and `RestartAfterFreezeEnabled` (both on) to `Settings`; verify the settings defaults and round-trip tests pass
+- [x] 5.2 Write failing tests (fake clock and fake input-info source): system input newer than hook input by > 1.5 s → reinstall + Incident; two reinstalls in 10 min → SelfPause; manual Resume clears; watchdog off → no checks; implement the watchdog logic; verify they pass
 - [ ] 5.3 Wire the watchdog to the real hook thread; verify manually by blocking the callback with a debugger long enough for Windows to drop the hook and observing automatic reinstall
-- [ ] 5.4 Write failing tests for the freeze watchdog with a fake clock (stalled heartbeat with queued input > 5 s = freeze; second freeze within 1 h → restart request; no second restart within 10 min; restart off → Incident only); implement; verify they pass
+- [x] 5.4 Write failing tests for the freeze watchdog with a fake clock (stalled heartbeat with queued input > 5 s = freeze; second freeze within 1 h → restart request; no second restart within 10 min; restart off → Incident only); implement; verify they pass
 - [ ] 5.5 Implement self-restart (`--restarted-after-freeze <pid>`, wait for old PID, restart-time state file); verify manually by freezing the worker with a debug command twice and seeing one restart and one Incident
 
 ## 6. Docs
