@@ -125,10 +125,22 @@ namespace Rekey.App {
 
     // Runs on the freeze guard's thread while the worker is stuck; the UI thread may still run.
     private void RestartAfterFreeze() {
-      _restartStore.SaveLastRestart(DateTimeOffset.UtcNow);
-      Process.Start(
-          Environment.ProcessPath!,
-          [_restartedAfterFreeze, Environment.ProcessId.ToString(CultureInfo.InvariantCulture)]);
+      // Without the saved time the next process could not keep the once-per-10-minutes limit,
+      // so Rekey keeps running instead; the freeze Incident is already recorded.
+      if (!_restartStore.TrySaveLastRestart(DateTimeOffset.UtcNow)) {
+        Trace.WriteLine("Rekey could not save the restart time and will not restart.");
+        return;
+      }
+
+      try {
+        Process.Start(
+            Environment.ProcessPath!,
+            [_restartedAfterFreeze, Environment.ProcessId.ToString(CultureInfo.InvariantCulture)]);
+      } catch (Win32Exception) {
+        Trace.WriteLine("Rekey could not start its replacement and keeps running.");
+        return;
+      }
+
       Dispatcher.Invoke(() => _trayIcon?.Dispose(), TimeSpan.FromSeconds(1));
       FlushSettings();
       Environment.Exit(0);

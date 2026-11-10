@@ -43,9 +43,18 @@ namespace Rekey.Core {
     /// Writes the time of a restart after a freeze.
     /// </summary>
     /// <param name="time">The time of the restart.</param>
-    public void SaveLastRestart(DateTimeOffset time) {
-      Directory.CreateDirectory(_folder);
-      File.WriteAllText(FilePath, time.ToString("O", CultureInfo.InvariantCulture));
+    /// <returns>
+    /// <see langword="true" /> if the time was written; <see langword="false" /> if the file or
+    /// its folder cannot be written, such as when it is read-only or the disk is full.
+    /// </returns>
+    public bool TrySaveLastRestart(DateTimeOffset time) {
+      try {
+        Directory.CreateDirectory(_folder);
+        File.WriteAllText(FilePath, time.ToString("O", CultureInfo.InvariantCulture));
+        return true;
+      } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+        return false;
+      }
     }
   }
 }

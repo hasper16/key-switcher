@@ -17,9 +17,28 @@ namespace Rekey.Core.Tests {
     [Fact]
     public void SavedRestartTimeSurvivesReload() {
       var time = new DateTimeOffset(2026, 11, 9, 12, 30, 15, TimeSpan.Zero);
-      new RestartStateStore(_root.FullName).SaveLastRestart(time);
+      new RestartStateStore(_root.FullName).TrySaveLastRestart(time);
 
       Assert.Equal(time, new RestartStateStore(_root.FullName).LoadLastRestart());
+    }
+
+    [Fact]
+    public void ReadOnlyFileReportsAFailedSave() {
+      var store = new RestartStateStore(_root.FullName);
+      File.WriteAllText(store.FilePath, "x");
+      File.SetAttributes(store.FilePath, FileAttributes.ReadOnly);
+      try {
+        Assert.False(store.TrySaveLastRestart(DateTimeOffset.UnixEpoch));
+      } finally {
+        File.SetAttributes(store.FilePath, FileAttributes.Normal);
+      }
+    }
+
+    [Fact]
+    public void SuccessfulSaveIsReported() {
+      var store = new RestartStateStore(_root.FullName);
+
+      Assert.True(store.TrySaveLastRestart(DateTimeOffset.UnixEpoch));
     }
 
     [Fact]
@@ -34,7 +53,7 @@ namespace Rekey.Core.Tests {
     public void SaveCreatesTheFolder() {
       string folder = Path.Join(_root.FullName, "Rekey");
 
-      new RestartStateStore(folder).SaveLastRestart(DateTimeOffset.UnixEpoch);
+      new RestartStateStore(folder).TrySaveLastRestart(DateTimeOffset.UnixEpoch);
 
       Assert.True(File.Exists(Path.Join(folder, "restart-state.txt")));
     }

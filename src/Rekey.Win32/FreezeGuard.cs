@@ -29,7 +29,9 @@ namespace Rekey.Win32 {
     /// The sink that records Incidents; it is called on the guard's thread and must write before
     /// it returns, because a restart follows.
     /// </param>
-    /// <param name="restart">The host's restart; called on the guard's thread.</param>
+    /// <param name="restart">
+    /// The host's restart; called on the guard's thread. It may return without restarting.
+    /// </param>
     /// <param name="time">The clock; <see cref="TimeProvider.System" /> outside tests.</param>
     public FreezeGuard(
         InputWorker worker,
@@ -68,9 +70,9 @@ namespace Rekey.Win32 {
           _recordIncident(incident);
         }
 
+        // The host may decline to restart, so the guard keeps watching afterwards.
         if (outcome.Restart) {
           _restart();
-          return;
         }
       }
     }
