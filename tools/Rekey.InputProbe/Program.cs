@@ -82,7 +82,13 @@ namespace Rekey.InputProbe {
       return new INPUT {
         type = INPUT_TYPE.INPUT_KEYBOARD,
         Anonymous = new INPUT._Anonymous_e__Union {
-          ki = new KEYBDINPUT { wVk = VIRTUAL_KEY.VK_A, dwFlags = flags, dwExtraInfo = extraInfo },
+          // The scan code of the A key, as a real keyboard sends it.
+          ki = new KEYBDINPUT {
+            wVk = VIRTUAL_KEY.VK_A,
+            wScan = 0x1E,
+            dwFlags = flags,
+            dwExtraInfo = extraInfo,
+          },
         },
       };
     }

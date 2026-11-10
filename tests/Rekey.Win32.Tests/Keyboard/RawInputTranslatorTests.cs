@@ -176,6 +176,18 @@ namespace Rekey.Win32.Tests.Keyboard {
       Assert.Equal(KeyModifiers.Shift, letter.Modifiers);
     }
 
+    [Theory]
+    [InlineData(0x41)]
+    [InlineData(0x35)]
+    [InlineData(0xBA)]
+    [InlineData(0xE2)]
+    public void InjectedCharacterKeyWithoutScanCodeIsStillACharacter(int virtualKey) {
+      // Some tools inject keys by virtual-key code only; the key still types a character.
+      IReadOnlyList<InputEvent> events = Translate(Down((ushort)virtualKey, 0));
+
+      Assert.Equal(KeyKind.Character, Assert.IsType<KeyDown>(Assert.Single(events)).Kind);
+    }
+
     [Fact]
     public void MouseButtonBecomesAClick() {
       IReadOnlyList<InputEvent> events =

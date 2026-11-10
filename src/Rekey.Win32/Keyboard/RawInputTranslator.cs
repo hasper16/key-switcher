@@ -113,6 +113,16 @@ namespace Rekey.Win32.Keyboard {
       }
     }
 
+    // Keys injected by virtual-key code alone carry no scan code. Such a key still types a
+    // character, so it builds the Word; no Key Map renders it, so that Word is never corrected.
+    private static bool IsCharacterVirtualKey(VIRTUAL_KEY key) {
+      return key is (>= VIRTUAL_KEY.VK_0 and <= VIRTUAL_KEY.VK_9)
+          or (>= VIRTUAL_KEY.VK_A and <= VIRTUAL_KEY.VK_Z)
+          or (>= VIRTUAL_KEY.VK_OEM_1 and <= VIRTUAL_KEY.VK_OEM_3)
+          or (>= VIRTUAL_KEY.VK_OEM_4 and <= VIRTUAL_KEY.VK_OEM_8)
+          or VIRTUAL_KEY.VK_OEM_102;
+    }
+
     private static ModifierState ModifierOf(VIRTUAL_KEY key) {
       return key switch {
         VIRTUAL_KEY.VK_LSHIFT => ModifierState.ShiftLeft,
@@ -178,6 +188,7 @@ namespace Rekey.Win32.Keyboard {
         _ when _keypadCharacters.Contains(key) => KeyKind.Character,
         _ when !input.Extended && _characterScanCodes.Contains(input.ScanCode) =>
             KeyKind.Character,
+        _ when IsCharacterVirtualKey(key) => KeyKind.Character,
         _ => KeyKind.Other,
       };
     }

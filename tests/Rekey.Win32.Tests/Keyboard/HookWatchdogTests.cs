@@ -25,6 +25,16 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void InputBeforeTheWatchdogStartedIsNotADrop() {
+      // The Enter that launched Rekey came before its hooks existed.
+      var activity = new FakeActivity();
+      activity.UserTypesUnseen(TimeSpan.FromSeconds(5));
+      var watchdog = new HookWatchdog(activity, _time);
+
+      Assert.Equal(WatchdogOutcome.None, watchdog.Check(foregroundElevated: false));
+    }
+
+    [Fact]
     public void ShortGapIsNotADrop() {
       _activity.UserTypesUnseen(TimeSpan.FromMilliseconds(1500));
 

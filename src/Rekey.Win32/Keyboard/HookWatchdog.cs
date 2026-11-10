@@ -20,12 +20,15 @@ namespace Rekey.Win32.Keyboard {
 
     // System input up to this tick is already accounted for: it went to an elevated window, came
     // before a reinstall, or arrived while the watchdog was off.
-    private long _accountedTick = long.MinValue;
+    private long _accountedTick;
     private DateTimeOffset? _lastFailure;
 
     public HookWatchdog(IInputActivity activity, TimeProvider time) {
       _activity = activity;
       _time = time;
+
+      // Input before the hooks existed, such as the key that started Rekey, never reached them.
+      _accountedTick = activity.SystemLastInputTick;
     }
 
     /// <summary>Gets or sets a value indicating whether the watchdog checks the hooks.</summary>

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -73,6 +74,9 @@ namespace Rekey.Win32.Keyboard {
     /// </summary>
     /// <exception cref="Win32Exception">Windows refused a hook.</exception>
     public void Start() {
+      // A callback compiled on its first call can exceed the hook's time budget.
+      RuntimeHelpers.PrepareDelegate(_keyboardProc);
+      RuntimeHelpers.PrepareDelegate(_mouseProc);
       _thread.Start();
       _installed.Wait();
       if (_installError != 0) {

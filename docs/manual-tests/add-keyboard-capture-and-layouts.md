@@ -8,12 +8,12 @@ The input probe prints what Rekey's worker sees, never the typed characters (a `
 dotnet run --project tools/Rekey.InputProbe
 ```
 
-Stop it with Ctrl+C in its window. Use invented text when typing.
+Stop it with Ctrl+C in its window. Run only one probe or Rekey at a time: each installs its own hooks, and a second one adds callback time to the first. Close every probe before rebuilding. Use invented text when typing.
 
 ## Hooks and injected input (task 2.1)
 
-- [ ] **Typed keys reach the worker, Rekey's own keys do not.** Run `dotnet run --project tools/Rekey.InputProbe -- --inject`, then click into Notepad within 5 seconds.
-  Expected: Notepad shows `aa`. After "Injecting a tagged key" no `KeyDown` line appears; after "Injecting an untagged key" one `KeyDown { …, Kind = Character, … }` line appears. Typing a few letters in Notepad prints one `KeyDown` line per key; clicking prints `MouseClick`.
+- [ ] **Typed keys reach the worker, Rekey's own keys do not.** Open Notepad first. With no other probe running, run `dotnet run --project tools/Rekey.InputProbe -- --inject` in a terminal, then within 5 seconds click into Notepad's text area (not the terminal).
+  Expected: no `INCIDENT` line at start-up. Notepad shows `aa`. After "Injecting a tagged key" no `KeyDown` line appears; after "Injecting an untagged key" one `KeyDown { …, Kind = Character, … }` line appears. Typing a few letters in Notepad prints one `KeyDown` line per key; clicking prints `MouseClick`.
 
 ## Focus, Password Fields and elevation (tasks 3.1, 3.2)
 
