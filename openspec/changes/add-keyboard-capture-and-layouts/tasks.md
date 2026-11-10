@@ -17,6 +17,7 @@
 
 - [ ] 3.1 Implement WinEvent foreground/focus hooks, app id, elevation check; verify manually that switching between Notepad and an elevated cmd logs the right `FocusChanged` values
 - [ ] 3.2 Implement Password Field detection via UI Automation `IsPassword` with `ES_PASSWORD` fallback; verify manually in a browser login form and a Win32 password dialog
+- [ ] 3.3 Write failing tests (fake focus check, controlled ring): a character key is kept only when the check says "not a Password Field" and nothing written after it is queued, otherwise it is dropped with the rest of its Word; implement the per-key confirmation on the worker; verify the tests pass, and manually that typing into a browser password box right after Tab shows `Word keys = 0`
 
 ## 4. Layouts
 
