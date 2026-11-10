@@ -71,7 +71,41 @@ namespace Rekey.Core.Tests {
       engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
 
       engine.Handle(Letter(Seconds(11)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void KeyStampedWithTheFocusChangeIsNotKept() {
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: true, IsElevated: false));
+      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+
       engine.Handle(Letter(Seconds(12)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void RestOfAWordWithARejectedKeyIsNotKept() {
+      // A rejected key may be the Word's first; keeping the rest would leave a partial Word.
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Letter(Seconds(12)));
+
+      engine.Handle(Letter(Seconds(13)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void WordBoundaryAfterARejectedKeyStartsAFreshWord() {
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Letter(Seconds(12)));
+
+      engine.Handle(new KeyDown(Seconds(13), new Keystroke(0x39, false, false), KeyKind.Space, 0));
+      engine.Handle(Letter(Seconds(14)));
 
       Assert.Single(engine.Word);
     }

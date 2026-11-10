@@ -10,11 +10,18 @@ namespace Rekey.Core {
 
     private readonly List<Keystroke> _keystrokes = [];
 
+    // Set when a Keystroke of the current Word was dropped; the rest of that Word is not kept.
+    private bool _spoiled;
+
     public IReadOnlyList<Keystroke> Keystrokes => _keystrokes;
 
     public void Add(KeyDown keyDown) {
       if (EndsWord(keyDown)) {
         Clear();
+        return;
+      }
+
+      if (_spoiled) {
         return;
       }
 
@@ -29,6 +36,14 @@ namespace Rekey.Core {
 
     public void Clear() {
       _keystrokes.Clear();
+      _spoiled = false;
+    }
+
+    // Drops a key whose focus is unknown. A key that ends the Word still ends it; any other key
+    // spoils the Word, because keeping the rest would leave a Word missing a Keystroke.
+    public void Drop(KeyDown keyDown) {
+      Clear();
+      _spoiled = !EndsWord(keyDown);
     }
 
     private static bool EndsWord(KeyDown keyDown) {

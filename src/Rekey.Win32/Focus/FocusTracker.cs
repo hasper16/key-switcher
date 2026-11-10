@@ -21,6 +21,7 @@ namespace Rekey.Win32.Focus {
     private readonly WINEVENTPROC _onEvent;
     private UnhookWinEventSafeHandle? _foregroundHook;
     private UnhookWinEventSafeHandle? _focusHook;
+    private bool _blind;
 
     public FocusTracker(Action<InputEvent> report) {
       _report = report;
@@ -33,6 +34,10 @@ namespace Rekey.Win32.Focus {
     public void Start() {
       _foregroundHook = Hook(PInvoke.EVENT_SYSTEM_FOREGROUND);
       _focusHook = Hook(PInvoke.EVENT_OBJECT_FOCUS);
+
+      // Without both hooks a move into a Password Field could go unseen, so focus stays unknown
+      // and the engine keeps no Keystrokes.
+      _blind = _foregroundHook.IsInvalid || _focusHook.IsInvalid;
       ReportCurrent(TimeSpan.FromMilliseconds(Environment.TickCount64));
     }
 
@@ -66,7 +71,7 @@ namespace Rekey.Win32.Focus {
     }
 
     private void ReportCurrent(TimeSpan time) {
-      if (FocusTarget.Read() is not { } target) {
+      if (_blind || FocusTarget.Read() is not { } target) {
         // Keys typed now may go to a Password Field the tracker cannot see.
         _report(new FocusLost(time));
         return;

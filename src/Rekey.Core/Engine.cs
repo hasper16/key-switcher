@@ -102,11 +102,16 @@ namespace Rekey.Core {
 
       _lastKeyDown = keyDown.Timestamp;
 
-      // An unknown focus may be a Password Field, so nothing is kept until it is known. A key
-      // typed before the latest focus change belongs to a Word that change ended, and its
-      // focus is no longer known: the worker may read it late.
-      bool typedUnderCurrentFocus = keyDown.Timestamp >= _focusSince;
-      if (typedUnderCurrentFocus && Focus is { IsPasswordField: false, IsElevated: false }) {
+      // A key stamped at or before the latest focus change may belong to the previous control,
+      // perhaps a Password Field: the worker can read queued keys after focus moved on, and the
+      // timestamps share one clock tick of about 15 ms.
+      if (keyDown.Timestamp <= _focusSince) {
+        _word.Drop(keyDown);
+        return;
+      }
+
+      // An unknown focus may be a Password Field, so nothing is kept until it is known.
+      if (Focus is { IsPasswordField: false, IsElevated: false }) {
         _word.Add(keyDown);
       }
     }
