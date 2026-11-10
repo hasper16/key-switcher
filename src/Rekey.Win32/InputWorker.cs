@@ -54,6 +54,7 @@ namespace Rekey.Win32 {
     private Exception? _startError;
     private long _heartbeat;
     private long _lastLayoutPoll;
+    private bool _quitting;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InputWorker" /> class.
@@ -193,7 +194,7 @@ namespace Rekey.Win32 {
         DrainInput();
         Poll();
         Volatile.Write(ref _heartbeat, _heartbeat + 1);
-      } while (PumpMessages());
+      } while (!_quitting && PumpMessages());
     }
 
     private void LoadLanguages() {
@@ -212,7 +213,10 @@ namespace Rekey.Win32 {
       }
 
       bool any = false;
-      while (_ring.TryRead(out RawInput raw)) {
+
+      // Focus callbacks run while messages are dispatched, so dispatching before each key applies
+      // a focus change, such as into a Password Field, before the keys typed after it.
+      while (PumpOrQuit() && _ring.TryRead(out RawInput raw)) {
         any = true;
         if (_translator.Translate(raw) is { } inputEvent) {
           Send(inputEvent);
@@ -291,7 +295,12 @@ namespace Rekey.Win32 {
       return map;
     }
 
-    private void OnFocusChanged(FocusChanged focus) {
+    private bool PumpOrQuit() {
+      _quitting = _quitting || !PumpMessages();
+      return !_quitting;
+    }
+
+    private void OnFocusChanged(InputEvent focus) {
       // Key-ups on the secure desktop or in an elevated window never reach the hook.
       ResyncModifiers();
       Send(focus);

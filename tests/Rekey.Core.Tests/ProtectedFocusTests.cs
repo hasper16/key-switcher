@@ -33,6 +33,37 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void NoKeystrokesAreKeptBeforeTheFirstFocusReport() {
+      var engine = new Engine();
+
+      engine.Handle(new KeyDown(
+          TimeSpan.FromSeconds(1), new Keystroke(0x22, false, false), KeyKind.Character, 0));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void LostFocusEndsTheWordAndKeepsNoKeystrokes() {
+      Typist typist = new Typist().Type("ghb");
+
+      typist.Send(new FocusLost(TimeSpan.FromSeconds(11))).Type("dtn");
+
+      Assert.Empty(typist.Engine.Word);
+      Assert.Null(typist.Engine.Focus);
+    }
+
+    [Fact]
+    public void LostFocusDropsDeferredWords() {
+      var typist = new Typist();
+      typist.Engine.DeferredWords.Add(Decision.Defer(_russian, "ыф"));
+
+      typist.Send(new FocusLost(TimeSpan.FromSeconds(11)));
+
+      Correction? next = typist.Engine.DeferredWords.Add(Decision.Correct(_russian, "вапро"));
+      Assert.Equal(["вапро"], next?.Texts);
+    }
+
+    [Fact]
     public void EngineReportsTheFocusedControl() {
       Typist typist = new Typist().Focus(isPassword: true);
 

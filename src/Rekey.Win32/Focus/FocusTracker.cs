@@ -5,7 +5,8 @@ using Windows.Win32.UI.Accessibility;
 
 namespace Rekey.Win32.Focus {
   /// <summary>
-  /// Reports a <see cref="FocusChanged" /> whenever the foreground window or the focused control
+  /// Reports a <see cref="FocusChanged" />, or <see cref="FocusLost" /> when no foreground window
+  /// can be read, whenever the foreground window or the focused control
   /// changes.
   /// </summary>
   /// <remarks>
@@ -13,7 +14,7 @@ namespace Rekey.Win32.Focus {
   /// them, through its message loop: create, start and dispose the tracker on the worker thread.
   /// </remarks>
   internal sealed class FocusTracker : IDisposable {
-    private readonly Action<FocusChanged> _report;
+    private readonly Action<InputEvent> _report;
     private readonly PasswordFieldProbe _passwords = new();
 
     // Windows holds only a function pointer to the delegate.
@@ -21,7 +22,7 @@ namespace Rekey.Win32.Focus {
     private UnhookWinEventSafeHandle? _foregroundHook;
     private UnhookWinEventSafeHandle? _focusHook;
 
-    public FocusTracker(Action<FocusChanged> report) {
+    public FocusTracker(Action<InputEvent> report) {
       _report = report;
       _onEvent = OnEvent;
     }
@@ -59,6 +60,8 @@ namespace Rekey.Win32.Focus {
 
     private void ReportCurrent() {
       if (FocusTarget.Read() is not { } target) {
+        // Keys typed now may go to a Password Field the tracker cannot see.
+        _report(new FocusLost(TimeSpan.FromMilliseconds(Environment.TickCount64)));
         return;
       }
 

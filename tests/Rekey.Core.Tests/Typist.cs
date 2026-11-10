@@ -9,6 +9,11 @@ namespace Rekey.Core.Tests {
 
     private TimeSpan _now = TimeSpan.FromSeconds(10);
 
+    // The worker reports the focused control as it starts; a plain editor here.
+    public Typist() {
+      Focus();
+    }
+
     public Engine Engine { get; } = new();
 
     // The current Word as it reads in English (US).

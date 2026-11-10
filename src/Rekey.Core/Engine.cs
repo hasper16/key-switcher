@@ -42,7 +42,8 @@ namespace Rekey.Core {
     public DeferredRun DeferredWords { get; } = new();
 
     /// <summary>
-    /// Gets the focused control, or <see langword="null" /> before the first focus report.
+    /// Gets the focused control, or <see langword="null" /> while it is unknown: before the first
+    /// focus report and after <see cref="FocusLost" />.
     /// </summary>
     public Context? Focus { get; private set; }
 
@@ -73,6 +74,11 @@ namespace Rekey.Core {
         case FocusChanged focus:
           OnFocusChanged(focus);
           break;
+        case FocusLost:
+          Focus = null;
+          _word.Clear();
+          DeferredWords.Reset();
+          break;
         case LayoutChanged layout:
           CurrentLayout = layout.Layout;
           break;
@@ -93,7 +99,9 @@ namespace Rekey.Core {
       }
 
       _lastKeyDown = keyDown.Timestamp;
-      if (Focus is { IsPasswordField: false, IsElevated: false } or null) {
+
+      // An unknown focus may be a Password Field, so nothing is kept until it is known.
+      if (Focus is { IsPasswordField: false, IsElevated: false }) {
         _word.Add(keyDown);
       }
     }

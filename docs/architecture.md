@@ -26,7 +26,8 @@ RawInputTranslator: RawInput ──────────────▶ KeyDo
 ```
 
 - `RawInputTranslator` tracks Shift, Ctrl, Alt, Win, AltGr and Caps Lock from key-downs and key-ups, and marks a key as a character key when any installed Layout's Key Map types text with it.
-- The `Engine` keeps the current Word (`WordTracker`), the Deferred Words, the focused control, the current Layout and the active Languages. In a Password Field or an elevated window it keeps no Keystrokes.
+- The `Engine` keeps the current Word (`WordTracker`), the Deferred Words, the focused control, the current Layout and the active Languages. In a Password Field, an elevated window, or while focus is unknown (before the first `FocusChanged`, after `FocusLost`) it keeps no Keystrokes.
+- The worker dispatches waiting messages before each key it reads from the ring, so a focus change reaches the engine before the keys typed after it.
 - `LayoutSwitcher` posts `WM_INPUTLANGCHANGEREQUEST` to the focused window and polls its Layout every 25 ms for up to 500 ms.
 - The worker waits with `MsgWaitForMultipleObjectsEx` on the hook signal and its own queue, at most 250 ms (25 ms while a switch is pending), then runs its timed checks: slow-callback report, switch check, Layout poll, hook watchdog.
 
