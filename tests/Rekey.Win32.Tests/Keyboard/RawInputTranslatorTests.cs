@@ -110,6 +110,36 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void ResyncDropsAModifierWhoseKeyUpWasMissed() {
+      // Win+L: the Win key-up goes to the secure desktop, so the hook never sees it.
+      var translator = NewTranslator();
+      translator.Translate(Down(0x5B, 0x5B, extended: true));
+
+      translator.Resync(_ => false, capsLockOn: false);
+
+      Assert.Equal(Character(1002, 0x22), translator.Translate(Down(0x47, 0x22)));
+    }
+
+    [Fact]
+    public void ResyncKeepsModifiersStillHeld() {
+      var translator = NewTranslator();
+
+      translator.Resync(key => (ushort)key == _vkShiftLeft, capsLockOn: false);
+
+      KeyDown keyDown = Assert.IsType<KeyDown>(translator.Translate(Down(0x47, 0x22)));
+      Assert.Equal(KeyModifiers.Shift, keyDown.Modifiers);
+    }
+
+    [Fact]
+    public void ResyncTakesCapsLockFromTheSystem() {
+      var translator = NewTranslator();
+
+      translator.Resync(_ => false, capsLockOn: true);
+
+      Assert.Equal(Character(1001, 0x22, capsLock: true), translator.Translate(Down(0x47, 0x22)));
+    }
+
+    [Fact]
     public void MouseButtonBecomesAClick() {
       IReadOnlyList<InputEvent> events =
           Translate(new RawInput(RawInputKind.MouseDown, 0, 0, false, 1500));
@@ -132,9 +162,14 @@ namespace Rekey.Win32.Tests.Keyboard {
           At(tick), new Keystroke(scanCode, shift, capsLock, altGr), KeyKind.Character, modifiers);
     }
 
-    private static IReadOnlyList<InputEvent> Translate(params RawInput[] inputs) {
+    private static RawInputTranslator NewTranslator() {
       var translator = new RawInputTranslator(capsLockOn: false);
       translator.UseKeyMaps([KeyMapFixtures.EnglishUs, KeyMapFixtures.Russian]);
+      return translator;
+    }
+
+    private static IReadOnlyList<InputEvent> Translate(params RawInput[] inputs) {
+      RawInputTranslator translator = NewTranslator();
       return [.. inputs.Select(input => translator.Translate(input)).OfType<InputEvent>()];
     }
 

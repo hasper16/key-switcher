@@ -28,6 +28,11 @@ namespace Rekey.Win32.Keyboard {
       VIRTUAL_KEY.VK_SUBTRACT, VIRTUAL_KEY.VK_DECIMAL, VIRTUAL_KEY.VK_DIVIDE,
     }.ToFrozenSet();
 
+    private static readonly VIRTUAL_KEY[] _modifierKeys = [
+        VIRTUAL_KEY.VK_LSHIFT, VIRTUAL_KEY.VK_RSHIFT, VIRTUAL_KEY.VK_LCONTROL,
+        VIRTUAL_KEY.VK_RCONTROL, VIRTUAL_KEY.VK_LMENU, VIRTUAL_KEY.VK_RMENU,
+        VIRTUAL_KEY.VK_LWIN, VIRTUAL_KEY.VK_RWIN];
+
     private FrozenSet<ushort> _characterScanCodes = FrozenSet<ushort>.Empty;
     private ModifierState _held;
     private bool _capsLockOn;
@@ -60,6 +65,20 @@ namespace Rekey.Win32.Keyboard {
           .Where(entry => entry.Normal.Length > 0 || entry.Shifted.Length > 0)
           .Select(entry => entry.ScanCode)
           .ToFrozenSet();
+    }
+
+    /// <summary>
+    /// Takes the held modifiers and Caps Lock from the system, for when the hook may have missed
+    /// key-ups: on the secure desktop, in elevated windows, or while Windows had removed it.
+    /// </summary>
+    public void Resync(Func<VIRTUAL_KEY, bool> isDown, bool capsLockOn) {
+      _held = ModifierState.None;
+      foreach (VIRTUAL_KEY key in _modifierKeys.Where(isDown)) {
+        _held |= ModifierOf(key);
+      }
+
+      _capsLockOn = capsLockOn;
+      _capsLockDown = isDown(VIRTUAL_KEY.VK_CAPITAL);
     }
 
     /// <summary>

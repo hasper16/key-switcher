@@ -154,6 +154,10 @@ namespace Rekey.Win32 {
       return TimeSpan.FromMilliseconds(Environment.TickCount64);
     }
 
+    private static bool IsKeyDown(VIRTUAL_KEY key) {
+      return PInvoke.GetAsyncKeyState((int)key) < 0;
+    }
+
     private static bool IsInputMethod(LayoutId layout) {
       return layout.Value >> 28 == 0xE;
     }
@@ -234,6 +238,9 @@ namespace Rekey.Win32 {
         RefreshLayouts();
       }
 
+      // A switch by Win+Space or the language bar lands after the input that asked for it.
+      FollowForegroundLayout();
+
       DateTimeOffset? pausedBefore = _hookWatchdog.SelfPausedUntil;
       Apply(_hookWatchdog.Check(_engine.Focus?.IsElevated ?? false), pausedBefore);
     }
@@ -245,6 +252,9 @@ namespace Rekey.Win32 {
 
       if (outcome.Reinstall) {
         _hook.Reinstall();
+
+        // Key-ups typed while the hook was gone never reached it.
+        ResyncModifiers();
       }
 
       if (_hookWatchdog.SelfPausedUntil != pausedBefore) {
@@ -279,8 +289,15 @@ namespace Rekey.Win32 {
     }
 
     private void OnFocusChanged(FocusChanged focus) {
+      // Key-ups on the secure desktop or in an elevated window never reach the hook.
+      ResyncModifiers();
       Send(focus);
       FollowForegroundLayout();
+    }
+
+    private void ResyncModifiers() {
+      bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
+      _translator.Resync(IsKeyDown, capsLockOn);
     }
 
     private void FollowForegroundLayout() {

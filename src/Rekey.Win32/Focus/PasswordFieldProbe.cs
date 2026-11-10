@@ -14,6 +14,9 @@ namespace Rekey.Win32.Focus {
   /// Create and call it on the worker thread only.
   /// </remarks>
   internal sealed class PasswordFieldProbe {
+    // Design decision: long enough for a responsive app, short enough not to stall typing.
+    private const uint _timeoutMilliseconds = 200;
+
     private readonly IUIAutomation? _automation = CreateAutomation();
 
     /// <summary>
@@ -26,7 +29,16 @@ namespace Rekey.Win32.Focus {
 
     private static IUIAutomation? CreateAutomation() {
       try {
-        return (IUIAutomation)new CUIAutomation();
+        var automation = (IUIAutomation)new CUIAutomation();
+
+        // The query runs on the worker; a hung app must not stall typing for the 20 s default.
+        if (OperatingSystem.IsWindowsVersionAtLeast(8)
+            && automation is IUIAutomation2 limited) {
+          limited.ConnectionTimeout = _timeoutMilliseconds;
+          limited.TransactionTimeout = _timeoutMilliseconds;
+        }
+
+        return automation;
       } catch (COMException) {
         return null;
       }
@@ -49,7 +61,7 @@ namespace Rekey.Win32.Focus {
       try {
         return _automation.GetFocusedElement().CurrentIsPassword;
       } catch (COMException) {
-        // The focused app may not answer UI Automation; the Edit style check still runs.
+        // The focused app may not answer UI Automation in time; the Edit style check still runs.
         return false;
       }
     }

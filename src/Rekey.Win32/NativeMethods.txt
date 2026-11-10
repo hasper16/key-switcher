@@ -5,6 +5,7 @@ DispatchMessage
 ES_PASSWORD
 EVENT_OBJECT_FOCUS
 EVENT_SYSTEM_FOREGROUND
+GetAsyncKeyState
 GetClassName
 GetCurrentProcess
 GetCurrentThreadId
@@ -21,6 +22,7 @@ GetWindowLong
 GetWindowThreadProcessId
 HC_ACTION
 IUIAutomation
+IUIAutomation2
 KBDLLHOOKSTRUCT
 LoadKeyboardLayout
 MSLLHOOKSTRUCT
