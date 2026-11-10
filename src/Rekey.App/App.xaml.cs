@@ -23,7 +23,7 @@ namespace Rekey.App {
     // How long a restarted Rekey waits for the frozen one to exit before it starts anyway.
     private static readonly TimeSpan _oldProcessExitWait = TimeSpan.FromSeconds(10);
 
-    private static readonly string _dataFolder = Path.Combine(
+    private static readonly string _dataFolder = Path.Join(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Rekey");
 
     private readonly SettingsStore _settingsStore = new(_dataFolder);

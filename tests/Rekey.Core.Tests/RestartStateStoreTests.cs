@@ -32,11 +32,11 @@ namespace Rekey.Core.Tests {
 
     [Fact]
     public void SaveCreatesTheFolder() {
-      string folder = Path.Combine(_root.FullName, "Rekey");
+      string folder = Path.Join(_root.FullName, "Rekey");
 
       new RestartStateStore(folder).SaveLastRestart(DateTimeOffset.UnixEpoch);
 
-      Assert.True(File.Exists(Path.Combine(folder, "restart-state.txt")));
+      Assert.True(File.Exists(Path.Join(folder, "restart-state.txt")));
     }
   }
 }

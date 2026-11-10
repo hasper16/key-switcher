@@ -14,7 +14,7 @@ namespace Rekey.Core {
     /// <param name="folder">The folder that holds the file; it is created when missing.</param>
     public RestartStateStore(string folder) {
       _folder = folder;
-      FilePath = Path.Combine(folder, "restart-state.txt");
+      FilePath = Path.Join(folder, "restart-state.txt");
     }
 
     /// <summary>

@@ -34,10 +34,11 @@ namespace Rekey.Win32.Layouts {
       // The registry changes only with the list, so it is read again only then.
       var resolver = new LayoutIdResolver(_readRegistry());
       var byHandle = new Dictionary<uint, LayoutId>();
-      foreach (uint handle in handles) {
-        if (resolver.Resolve(handle) is { } layout) {
-          byHandle[handle] = layout;
-        }
+      var resolved = handles
+          .Select(handle => (Handle: handle, Layout: resolver.Resolve(handle)))
+          .Where(pair => pair.Layout is not null);
+      foreach ((uint handle, LayoutId? layout) in resolved) {
+        byHandle[handle] = layout!.Value;
       }
 
       _handles = handles;
