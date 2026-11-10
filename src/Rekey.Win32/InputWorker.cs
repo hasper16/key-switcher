@@ -46,6 +46,7 @@ namespace Rekey.Win32 {
     private readonly LayoutSwitcher _switcher;
     private readonly ForegroundLayout _foregroundLayout;
     private readonly HookWatchdog _hookWatchdog;
+    private readonly CountFollower _reattachments = new();
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
     private Engine _engine = new();
@@ -205,12 +206,15 @@ namespace Rekey.Win32 {
     }
 
     private void DrainInput() {
+      // A counter cannot be lost the way a queued marker could be when the ring is full.
+      if (_reattachments.Changed(_hook.Reattachments)) {
+        ResyncModifiers();
+      }
+
       bool any = false;
       while (_ring.TryRead(out RawInput raw)) {
         any = true;
-        if (raw.Kind == RawInputKind.Reattached) {
-          ResyncModifiers();
-        } else if (_translator.Translate(raw) is { } inputEvent) {
+        if (_translator.Translate(raw) is { } inputEvent) {
           Send(inputEvent);
         }
       }

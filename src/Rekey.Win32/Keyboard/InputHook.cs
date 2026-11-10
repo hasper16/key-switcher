@@ -37,6 +37,7 @@ namespace Rekey.Win32.Keyboard {
     private uint _threadId;
     private int _installError;
     private long _lastInputTick;
+    private long _reattachments;
     private UnhookWindowsHookExSafeHandle? _keyboardHook;
     private UnhookWindowsHookExSafeHandle? _mouseHook;
 
@@ -60,6 +61,12 @@ namespace Rekey.Win32.Keyboard {
     /// hook last saw any input, including mouse moves and Rekey's own injected keys.
     /// </summary>
     public long LastInputTick => Volatile.Read(ref _lastInputTick);
+
+    /// <summary>
+    /// Gets the number of times both hooks were installed again successfully; key-ups typed while
+    /// they were gone never reached them.
+    /// </summary>
+    public long Reattachments => Volatile.Read(ref _reattachments);
 
     /// <summary>
     /// Starts the hook thread and returns once both hooks are installed.
@@ -104,10 +111,9 @@ namespace Rekey.Win32.Keyboard {
       while (PInvoke.GetMessage(out MSG message, HWND.Null, 0, 0) > 0) {
         if (message.message == _reinstallMessage) {
           Uninstall();
-          Install();
-
-          // In order with the keys, so the worker resyncs only after the hooks are back.
-          Enqueue(new RawInput(RawInputKind.Reattached, 0, 0, false, Environment.TickCount64));
+          if (Install() == 0) {
+            Volatile.Write(ref _reattachments, _reattachments + 1);
+          }
         }
       }
 

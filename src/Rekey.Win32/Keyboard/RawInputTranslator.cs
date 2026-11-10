@@ -93,8 +93,6 @@ namespace Rekey.Win32.Keyboard {
         case RawInputKind.KeyUp:
           Release(key);
           return null;
-        case RawInputKind.Reattached:
-          return null;
         default:
           Press(key);
           return KeyDownOf(input, key, timestamp);

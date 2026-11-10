@@ -46,6 +46,9 @@ namespace Rekey.InputProbe {
         LayoutsInstalledChanged installed =>
             $"LayoutsInstalledChanged {string.Join(' ', installed.Layouts.Select(Klid))}",
         LayoutChanged changed => $"LayoutChanged {Klid(changed.Layout)}",
+
+        // Caps Lock alone tells nothing about the typed text; the scan code would.
+        KeyDown keyDown => $"{keyDown} CapsLock = {keyDown.Keystroke.CapsLock}",
         _ => inputEvent.ToString(),
       };
     }

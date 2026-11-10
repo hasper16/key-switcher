@@ -11,10 +11,5 @@ namespace Rekey.Win32.Keyboard {
 
     /// <summary>A mouse button went down.</summary>
     MouseDown,
-
-    /// <summary>
-    /// The hooks were installed again; key-ups may have been lost while they were gone.
-    /// </summary>
-    Reattached,
   }
 }

@@ -25,7 +25,7 @@ Stop it with Ctrl+C in its window. Use invented text when typing.
   Expected: `IsPassword = True`; the other boxes give `IsPassword = False`.
 
 - [ ] **Modifiers and Caps Lock after missed key-ups (3.1).** With the probe running, press Win+L and unlock; then Alt+Tab into the elevated console, toggle Caps Lock there, and Alt+Tab back to Notepad; type a letter.
-  Expected: the letter's `KeyDown` line shows `Modifiers = None` (or `Shift` while Shift is held), not `Windows` or `Alt`; text typed in Notepad builds a Word as usual.
+  Expected: the letter's `KeyDown` line shows `Modifiers = None` (or `Shift` while Shift is held), not `Windows` or `Alt`, and its `CapsLock` value matches the Caps Lock light.
 
 ## Layouts (tasks 4.1, 4.3, 4.4)
 
@@ -42,7 +42,9 @@ Stop it with Ctrl+C in its window. Use invented text when typing.
 
 Build Debug (`dotnet build src/Rekey.App`) and watch Incidents with Sysinternals DebugView (they go to `Trace`, prefixed `Rekey Incident`).
 
-- [ ] **Dropped hook is reinstalled (5.3).** Start `src/Rekey.App/bin/Debug/net10.0-windows/Rekey.App.exe` under Visual Studio's debugger, set a breakpoint in `InputHook.OnKeyboard`, type one key so it hits, wait 15 seconds, then continue and keep typing in Notepad for a few seconds.
-  Expected: Windows drops the hook while it is stuck; within 2 seconds of typing again DebugView shows `HookReinstalled`, and typing keeps reaching Rekey (set a second breakpoint later to confirm). Doing it twice within 10 minutes also shows `SelfPaused`; the tray tooltip says Rekey paused itself and the tray menu shows Resume. Choosing Resume hides the item and restores the normal tooltip.
+- [ ] **Dropped hook is reinstalled (5.3).** Start `tools/Rekey.InputProbe` under Visual Studio's debugger, set a breakpoint in `InputHook.OnKeyboard`, focus Notepad and hold Shift, press a letter so the breakpoint hits, release Shift, wait 15 seconds, then continue and type letters in Notepad for a few seconds.
+  Expected: Windows drops the hook while it is stuck; within 2 seconds of typing again the probe prints `INCIDENT HookReinstalled`; the next `KeyDown` lines show `Modifiers = None` (the missed Shift release is resynced) and a `CapsLock` value that matches the light; typing keeps printing `KeyDown` lines. Doing it twice within 10 minutes also prints `INCIDENT SelfPaused`.
+- [ ] **Self-pause in the tray (5.3).** Repeat the two drops above with the Debug App (`src/Rekey.App/bin/Debug/net10.0-windows/Rekey.App.exe`) under the debugger, watching Incidents in DebugView.
+  Expected: after the second drop the tray tooltip says Rekey paused itself and the tray menu shows Resume; choosing Resume hides the item and restores the normal tooltip.
 - [ ] **Restart after a repeated freeze (5.5).** Run the Debug App normally. From the tray menu choose "Debug: freeze input for 7 s" and keep typing in Notepad for those 7 seconds; wait for typing to work again; do it once more.
   Expected: the first freeze shows `InputFrozen`; the second shows `FreezeRestart`, the tray icon disappears and comes back within a few seconds (a new Rekey process), and `%LOCALAPPDATA%\Rekey\restart-state.txt` holds the restart time. Repeating both freezes within the next 10 minutes shows `InputFrozen` twice and no restart.
