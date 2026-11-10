@@ -48,7 +48,7 @@ A pause of more than 2 seconds between Keystrokes SHALL end the current Word and
 - **THEN** the current Word is "dtn" and no Deferred Word remains
 
 ### Requirement: Password Fields are never recorded
-Rekey MUST NOT record Keystrokes, keep a Word, or make any Correction while the focused control is a Password Field.
+Rekey MUST NOT record Keystrokes, keep a Word, or make any Correction while the focused control is a Password Field, except for the known limit stated under "Each Keystroke is confirmed outside a Password Field" (a page script moving focus there and back within milliseconds).
 
 #### Scenario: Typing a password
 - **WHEN** the user types in a password box
