@@ -122,23 +122,29 @@ namespace Rekey.Win32.Keyboard {
 
     private int Install() {
       using FreeLibrarySafeHandle module = PInvoke.GetModuleHandle((string?)null);
-      _keyboardHook = PInvoke.SetWindowsHookEx(
-          WINDOWS_HOOK_ID.WH_KEYBOARD_LL, _keyboardProc, module, 0);
-      if (_keyboardHook.IsInvalid) {
-        return Marshal.GetLastPInvokeError();
+      UnhookWindowsHookExSafeHandle? keyboard = null;
+      UnhookWindowsHookExSafeHandle? mouse = null;
+      try {
+        keyboard = PInvoke.SetWindowsHookEx(
+            WINDOWS_HOOK_ID.WH_KEYBOARD_LL, _keyboardProc, module, 0);
+        if (keyboard.IsInvalid) {
+          return Marshal.GetLastPInvokeError();
+        }
+
+        mouse = PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_MOUSE_LL, _mouseProc, module, 0);
+        if (mouse.IsInvalid) {
+          return Marshal.GetLastPInvokeError();
+        }
+
+        (_keyboardHook, _mouseHook) = (keyboard, mouse);
+        (keyboard, mouse) = (null, null);
+        return 0;
+      } finally {
+        // Half a pair would keep the watchdog content while clicks go unseen; whatever was not
+        // handed over is removed, so the watchdog retries.
+        keyboard?.Dispose();
+        mouse?.Dispose();
       }
-
-      _mouseHook = PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_MOUSE_LL, _mouseProc, module, 0);
-      if (_mouseHook.IsInvalid) {
-        int error = Marshal.GetLastPInvokeError();
-
-        // Half a pair would keep the watchdog content while clicks go unseen; drop both so it
-        // retries.
-        _keyboardHook.Dispose();
-        return error;
-      }
-
-      return 0;
     }
 
     private void Uninstall() {
