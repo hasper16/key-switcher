@@ -95,6 +95,15 @@ namespace Rekey.Win32 {
     public event Action<DateTimeOffset?>? SelfPauseChanged;
 
     /// <summary>
+    /// Gets the number of Keystrokes in the engine's current Word; read it only on the worker
+    /// thread, as from <see cref="Observed" />.
+    /// </summary>
+    /// <remarks>
+    /// A count only, for checking by hand that a Password Field leaves the Word empty.
+    /// </remarks>
+    public int WordLength => _engine.Word.Count;
+
+    /// <summary>
     /// Gets the number of input batches the worker finished; only the worker thread writes it.
     /// </summary>
     public long Heartbeat => Volatile.Read(ref _heartbeat);

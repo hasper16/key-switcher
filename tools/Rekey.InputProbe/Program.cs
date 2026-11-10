@@ -16,7 +16,8 @@ namespace Rekey.InputProbe {
   internal static class Program {
     private static int Main(string[] args) {
       using var worker = new InputWorker(new Settings(), Print, TimeProvider.System);
-      worker.Observed += inputEvent => Console.WriteLine(Describe(inputEvent));
+      worker.Observed += inputEvent =>
+          Console.WriteLine($"{Describe(inputEvent)} | Word keys = {worker.WordLength}");
       worker.Start();
       Console.WriteLine("Rekey input probe. Press Ctrl+C in this window to quit.");
 
