@@ -33,13 +33,20 @@ namespace Rekey.Win32.Focus {
     public void Start() {
       _foregroundHook = Hook(PInvoke.EVENT_SYSTEM_FOREGROUND);
       _focusHook = Hook(PInvoke.EVENT_OBJECT_FOCUS);
-      ReportCurrent();
+      ReportCurrent(TimeSpan.FromMilliseconds(Environment.TickCount64));
     }
 
     /// <inheritdoc />
     public void Dispose() {
       _foregroundHook?.Dispose();
       _focusHook?.Dispose();
+    }
+
+    // WinEvents carry 32-bit GetTickCount time; widen it by its distance from the 64-bit now, so
+    // it compares with the hook's key times even when the worker reads it late.
+    private static TimeSpan EventTime(uint time) {
+      long now = Environment.TickCount64;
+      return TimeSpan.FromMilliseconds(now - unchecked((uint)now - time));
     }
 
     private UnhookWinEventSafeHandle Hook(uint winEvent) {
@@ -55,20 +62,19 @@ namespace Rekey.Win32.Focus {
         int childId,
         uint threadId,
         uint time) {
-      ReportCurrent();
+      ReportCurrent(EventTime(time));
     }
 
-    private void ReportCurrent() {
+    private void ReportCurrent(TimeSpan time) {
       if (FocusTarget.Read() is not { } target) {
         // Keys typed now may go to a Password Field the tracker cannot see.
-        _report(new FocusLost(TimeSpan.FromMilliseconds(Environment.TickCount64)));
+        _report(new FocusLost(time));
         return;
       }
 
       (string imagePath, bool isElevated) = ProcessFacts.Read(target.ProcessId);
       bool isPassword = !isElevated && _passwords.IsPassword(target.Window);
-      _report(new FocusChanged(
-          TimeSpan.FromMilliseconds(Environment.TickCount64), imagePath, isPassword, isElevated));
+      _report(new FocusChanged(time, imagePath, isPassword, isElevated));
     }
   }
 }

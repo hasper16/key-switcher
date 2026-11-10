@@ -15,6 +15,7 @@ namespace Rekey.Core {
     private readonly WordTracker _word = new();
     private readonly LanguageSet _languages;
     private TimeSpan? _lastKeyDown;
+    private TimeSpan _focusSince = TimeSpan.MinValue;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Engine" /> class without Language Profiles.
@@ -74,7 +75,8 @@ namespace Rekey.Core {
         case FocusChanged focus:
           OnFocusChanged(focus);
           break;
-        case FocusLost:
+        case FocusLost lost:
+          _focusSince = TimeSpan.FromTicks(Math.Max(_focusSince.Ticks, lost.Timestamp.Ticks));
           Focus = null;
           _word.Clear();
           DeferredWords.Reset();
@@ -100,13 +102,17 @@ namespace Rekey.Core {
 
       _lastKeyDown = keyDown.Timestamp;
 
-      // An unknown focus may be a Password Field, so nothing is kept until it is known.
-      if (Focus is { IsPasswordField: false, IsElevated: false }) {
+      // An unknown focus may be a Password Field, so nothing is kept until it is known. A key
+      // typed before the latest focus change belongs to a Word that change ended, and its
+      // focus is no longer known: the worker may read it late.
+      bool typedUnderCurrentFocus = keyDown.Timestamp >= _focusSince;
+      if (typedUnderCurrentFocus && Focus is { IsPasswordField: false, IsElevated: false }) {
         _word.Add(keyDown);
       }
     }
 
     private void OnFocusChanged(FocusChanged focus) {
+      _focusSince = TimeSpan.FromTicks(Math.Max(_focusSince.Ticks, focus.Timestamp.Ticks));
       Focus = new Context(focus.AppId, focus.IsPassword, focus.IsElevated);
       _word.Clear();
       DeferredWords.Reset();

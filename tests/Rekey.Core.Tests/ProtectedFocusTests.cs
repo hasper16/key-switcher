@@ -64,6 +64,31 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void KeysTypedBeforeTheLatestFocusChangeAreNotKept() {
+      // The worker fell behind: password keys reach the engine after focus left the field.
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: true, IsElevated: false));
+      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+
+      engine.Handle(Letter(Seconds(11)));
+      engine.Handle(Letter(Seconds(12)));
+
+      Assert.Single(engine.Word);
+    }
+
+    [Fact]
+    public void KeysTypedBeforeFocusWasLostAreNotKept() {
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(new FocusLost(Seconds(15)));
+      engine.Handle(new FocusChanged(Seconds(20), "app", IsPassword: false, IsElevated: false));
+
+      engine.Handle(Letter(Seconds(17)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
     public void EngineReportsTheFocusedControl() {
       Typist typist = new Typist().Focus(isPassword: true);
 
@@ -79,6 +104,14 @@ namespace Rekey.Core.Tests {
 
       Correction? next = typist.Engine.DeferredWords.Add(Decision.Correct(_russian, "вапро"));
       Assert.Equal(["вапро"], next?.Texts);
+    }
+
+    private static TimeSpan Seconds(int value) {
+      return TimeSpan.FromSeconds(value);
+    }
+
+    private static KeyDown Letter(TimeSpan at) {
+      return new KeyDown(at, new Keystroke(0x22, false, false), KeyKind.Character, 0);
     }
   }
 }

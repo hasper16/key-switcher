@@ -28,7 +28,8 @@ The worker thread turns raw events into `InputEvent`: decides letter vs boundary
 
 ### D3. Foreground and focus
 - `SetWinEventHook(EVENT_SYSTEM_FOREGROUND)` and `EVENT_OBJECT_FOCUS` (out-of-context) on the worker's own message-loop thread → `FocusChanged(appId, isPassword, isElevated)`. When no foreground window can be read, `FocusLost` instead. The worker dispatches waiting messages before each queued key, so a focus change is applied before the keys typed after it.
-- `isPassword`: UI Automation `IsPassword` property of the focused element (cached per focus event). Fallback: `ES_PASSWORD` style for classic Edit controls.
+- `isPassword`: UI Automation `IsPassword` property of the focused element (cached per focus event), or the `ES_PASSWORD` style for classic Edit controls; when UI Automation cannot answer (unavailable, failed, timed out after 200 ms) the control counts as a Password Field.
+- Focus events carry the WinEvent's own time, and the engine ignores keys typed before the latest focus change, because the worker may read queued keys after focus has already moved on.
 - `isElevated`: `OpenProcessToken` + `GetTokenInformation(TokenElevation)` on the foreground process; compared with Rekey's own elevation.
 - `appId`: full image path via `QueryFullProcessImageName`.
 

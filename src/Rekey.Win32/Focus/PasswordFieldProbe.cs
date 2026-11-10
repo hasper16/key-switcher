@@ -23,8 +23,12 @@ namespace Rekey.Win32.Focus {
     /// Returns whether the focused control is a Password Field.
     /// </summary>
     /// <param name="focus">The focused window.</param>
+    /// <returns>
+    /// <see langword="true" /> if it is one, or if UI Automation cannot tell and the Edit style
+    /// does not settle it: an unknown answer is treated as a Password Field.
+    /// </returns>
     public bool IsPassword(HWND focus) {
-      return AutomationSaysPassword() || IsPasswordEdit(focus);
+      return IsPasswordEdit(focus) || (AutomationSaysPassword() ?? true);
     }
 
     private static IUIAutomation? CreateAutomation() {
@@ -53,16 +57,16 @@ namespace Rekey.Win32.Focus {
       return isEdit && (style & PInvoke.ES_PASSWORD) != 0;
     }
 
-    private bool AutomationSaysPassword() {
+    private bool? AutomationSaysPassword() {
       if (_automation is null) {
-        return false;
+        return null;
       }
 
       try {
         return _automation.GetFocusedElement().CurrentIsPassword;
       } catch (COMException) {
-        // The focused app may not answer UI Automation in time; the Edit style check still runs.
-        return false;
+        // The focused app did not answer in time, or cannot answer at all.
+        return null;
       }
     }
   }
