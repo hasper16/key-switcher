@@ -23,6 +23,7 @@ namespace Rekey.Win32.Focus {
     private UnhookWinEventSafeHandle? _focusHook;
     private bool _blind;
     private HWND _reportedWindow;
+    private IUIAutomationElement? _reportedElement;
 
     public FocusTracker(Action<InputEvent> report) {
       _report = report;
@@ -60,13 +61,16 @@ namespace Rekey.Win32.Focus {
     }
 
     /// <summary>
-    /// Reports the focus at once when the focused window is not the one last reported, as when a
-    /// key arrives before the WinEvent of a window change.
+    /// Reports the focus at once when the focused window or control is not the one last reported,
+    /// as when a key arrives before the WinEvent of a focus move.
     /// </summary>
     /// <param name="keyTime">The time of the key about to be processed.</param>
     public void CatchUp(TimeSpan keyTime) {
+      // A different window, or a different control inside the same window (Tab, a click, the
+      // page's own script), means focus moved without a WinEvent yet.
       FocusTarget? target = FocusTarget.Read();
-      if (target?.Window != _reportedWindow) {
+      if (target?.Window != _reportedWindow
+          || !_passwords.Same(_passwords.FocusedElement(), _reportedElement)) {
         // Stamped with the key's time, so the engine drops that key: its focus is uncertain.
         ReportCurrent(keyTime);
       }
@@ -99,11 +103,13 @@ namespace Rekey.Win32.Focus {
       if (_blind || FocusTarget.Read() is not { } target) {
         // Keys typed now may go to a Password Field the tracker cannot see.
         _reportedWindow = HWND.Null;
+        _reportedElement = null;
         _report(new FocusLost(time));
         return;
       }
 
       _reportedWindow = target.Window;
+      _reportedElement = _passwords.FocusedElement();
       (string imagePath, bool isElevated) = ProcessFacts.Read(target.ProcessId);
       bool isPassword = !isElevated && _passwords.IsPassword(target.Window);
       _report(new FocusChanged(time, imagePath, isPassword, isElevated));

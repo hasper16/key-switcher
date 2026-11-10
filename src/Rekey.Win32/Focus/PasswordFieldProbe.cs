@@ -31,6 +31,33 @@ namespace Rekey.Win32.Focus {
       return IsPasswordEdit(focus) || (AutomationSaysPassword() ?? true);
     }
 
+    /// <summary>
+    /// Returns the focused UI Automation element, or <see langword="null" /> when UI Automation
+    /// cannot tell.
+    /// </summary>
+    public IUIAutomationElement? FocusedElement() {
+      try {
+        return _automation?.GetFocusedElement();
+      } catch (COMException) {
+        return null;
+      }
+    }
+
+    /// <summary>
+    /// Returns whether two elements are the same control; an unknown element never matches.
+    /// </summary>
+    public bool Same(IUIAutomationElement? first, IUIAutomationElement? second) {
+      if (_automation is null || first is null || second is null) {
+        return false;
+      }
+
+      try {
+        return _automation.CompareElements(first, second);
+      } catch (COMException) {
+        return false;
+      }
+    }
+
     private static IUIAutomation? CreateAutomation() {
       try {
         var automation = (IUIAutomation)new CUIAutomation();
