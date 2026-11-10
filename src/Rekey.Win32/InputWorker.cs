@@ -208,7 +208,9 @@ namespace Rekey.Win32 {
       bool any = false;
       while (_ring.TryRead(out RawInput raw)) {
         any = true;
-        if (_translator.Translate(raw) is { } inputEvent) {
+        if (raw.Kind == RawInputKind.Reattached) {
+          ResyncModifiers();
+        } else if (_translator.Translate(raw) is { } inputEvent) {
           Send(inputEvent);
         }
       }
@@ -252,9 +254,6 @@ namespace Rekey.Win32 {
 
       if (outcome.Reinstall) {
         _hook.Reinstall();
-
-        // Key-ups typed while the hook was gone never reached it.
-        ResyncModifiers();
       }
 
       if (_hookWatchdog.SelfPausedUntil != pausedBefore) {
@@ -295,6 +294,8 @@ namespace Rekey.Win32 {
       FollowForegroundLayout();
     }
 
+    // The worker never receives keyboard input itself, so its key state follows the system's
+    // and GetKeyState reports the session's Caps Lock (checked on Windows 11).
     private void ResyncModifiers() {
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
       _translator.Resync(IsKeyDown, capsLockOn);

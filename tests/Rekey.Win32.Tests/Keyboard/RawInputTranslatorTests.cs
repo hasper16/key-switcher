@@ -140,6 +140,14 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void ReattachMarkerIsNotAKey() {
+      var translator = NewTranslator();
+
+      Assert.Null(translator.Translate(new RawInput(RawInputKind.Reattached, 0, 0, false, 1)));
+      Assert.Equal(Character(1001, 0x22), translator.Translate(Down(0x47, 0x22)));
+    }
+
+    [Fact]
     public void MouseButtonBecomesAClick() {
       IReadOnlyList<InputEvent> events =
           Translate(new RawInput(RawInputKind.MouseDown, 0, 0, false, 1500));

@@ -24,6 +24,9 @@ Stop it with Ctrl+C in its window. Use invented text when typing.
 - [ ] **Win32 password dialog (3.2).** Open a classic dialog with a masked box (for example Control Panel → User Accounts → Credential Manager → Add a Windows credential), click the password box.
   Expected: `IsPassword = True`; the other boxes give `IsPassword = False`.
 
+- [ ] **Modifiers and Caps Lock after missed key-ups (3.1).** With the probe running, press Win+L and unlock; then Alt+Tab into the elevated console, toggle Caps Lock there, and Alt+Tab back to Notepad; type a letter.
+  Expected: the letter's `KeyDown` line shows `Modifiers = None` (or `Shift` while Shift is held), not `Windows` or `Alt`; text typed in Notepad builds a Word as usual.
+
 ## Layouts (tasks 4.1, 4.3, 4.4)
 
 - [ ] **Layout added while running (4.1).** With the probe running and no Ukrainian Layout installed, add Ukrainian in Settings → Time & language → Language & region.

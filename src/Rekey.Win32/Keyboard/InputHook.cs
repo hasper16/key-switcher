@@ -105,6 +105,9 @@ namespace Rekey.Win32.Keyboard {
         if (message.message == _reinstallMessage) {
           Uninstall();
           Install();
+
+          // In order with the keys, so the worker resyncs only after the hooks are back.
+          Enqueue(new RawInput(RawInputKind.Reattached, 0, 0, false, Environment.TickCount64));
         }
       }
 
