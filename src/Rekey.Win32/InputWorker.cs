@@ -209,16 +209,17 @@ namespace Rekey.Win32 {
     }
 
     private void DrainInput() {
-      // A counter cannot be lost the way a queued marker could be when the ring is full.
-      if (_reattachments.Changed(_hook.Reattachments)) {
-        ResyncModifiers();
-      }
-
       bool any = false;
 
-      // Focus callbacks run while messages are dispatched, so dispatching before each key applies
-      // a focus change, such as into a Password Field, before the keys typed after it.
-      while (PumpOrQuit() && _ring.TryRead(out RawInput raw)) {
+      // Before each read: focus callbacks run while messages are dispatched, so a focus change,
+      // such as into a Password Field, applies before the keys typed after it; and a reinstall
+      // that finished meanwhile resyncs the modifiers before the keys that followed it.
+      while (PumpOrQuit()) {
+        FollowReattachments();
+        if (!_ring.TryRead(out RawInput raw)) {
+          break;
+        }
+
         any = true;
 
         // WinEvents arrive asynchronously: a key typed into a new window can come first.
@@ -301,6 +302,13 @@ namespace Rekey.Win32 {
       }
 
       return map;
+    }
+
+    // A counter cannot be lost the way a queued marker could be when the ring is full.
+    private void FollowReattachments() {
+      if (_reattachments.Changed(_hook.Reattachments)) {
+        ResyncModifiers();
+      }
     }
 
     private bool PumpOrQuit() {
