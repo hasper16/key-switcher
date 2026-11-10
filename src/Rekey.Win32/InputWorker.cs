@@ -46,7 +46,7 @@ namespace Rekey.Win32 {
     private readonly LayoutSwitcher _switcher;
     private readonly ForegroundLayout _foregroundLayout;
     private readonly HookWatchdog _hookWatchdog;
-    private readonly CountFollower _reattachments = new();
+    private readonly ModifierSync _modifierSync;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
     private Engine _engine = new();
@@ -72,6 +72,8 @@ namespace Rekey.Win32 {
       _hook = new InputHook(_ring, _signal, _meter, time);
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
       _translator = new RawInputTranslator(capsLockOn);
+      _modifierSync = new ModifierSync(
+          _translator, () => _hook.Reattachments, () => _ring.Written, IsKeyDown, IsCapsLockOn);
       _foregroundLayout = new ForegroundLayout(_layouts);
       _switcher = new LayoutSwitcher(_foregroundLayout, time);
       _hookWatchdog = new HookWatchdog(new SessionInputActivity(_hook), time) {
@@ -166,6 +168,12 @@ namespace Rekey.Win32 {
       return TimeSpan.FromMilliseconds(Environment.TickCount64);
     }
 
+    // The worker never receives keyboard input itself, so its key state follows the system's
+    // and GetKeyState reports the session's Caps Lock (checked on Windows 11).
+    private static bool IsCapsLockOn() {
+      return (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
+    }
+
     private static bool IsKeyDown(VIRTUAL_KEY key) {
       return PInvoke.GetAsyncKeyState((int)key) < 0;
     }
@@ -220,16 +228,13 @@ namespace Rekey.Win32 {
     private void DrainInput() {
       bool any = false;
 
-      // Before each read: focus callbacks run while messages are dispatched, so a focus change,
-      // such as into a Password Field, applies before the keys typed after it; and a reinstall
-      // that finished meanwhile resyncs the modifiers before the keys that followed it.
-      while (PumpOrQuit()) {
-        FollowReattachments();
-        if (!_ring.TryRead(out RawInput raw)) {
-          break;
-        }
-
+      // Focus callbacks run while messages are dispatched, so dispatching before each read
+      // applies a focus change, such as into a Password Field, before the keys typed after it.
+      while (PumpOrQuit() && _ring.TryRead(out RawInput raw)) {
         any = true;
+
+        // After the read, so a reinstall that finished just before it still counts for this key.
+        _modifierSync.FollowReattachments();
 
         // WinEvents arrive asynchronously: a key typed into a new window can come first.
         if (raw.Kind == RawInputKind.KeyDown) {
@@ -313,13 +318,6 @@ namespace Rekey.Win32 {
       return map;
     }
 
-    // A counter cannot be lost the way a queued marker could be when the ring is full.
-    private void FollowReattachments() {
-      if (_reattachments.Changed(_hook.Reattachments)) {
-        ResyncModifiers();
-      }
-    }
-
     private bool PumpOrQuit() {
       _quitting = _quitting || !PumpMessages();
       return !_quitting;
@@ -327,19 +325,9 @@ namespace Rekey.Win32 {
 
     private void OnFocusChanged(InputEvent focus) {
       // Key-ups on the secure desktop or in an elevated window never reach the hook.
-      ResyncModifiers();
+      _modifierSync.Resync();
       Send(focus);
       FollowForegroundLayout();
-    }
-
-    // The worker never receives keyboard input itself, so its key state follows the system's
-    // and GetKeyState reports the session's Caps Lock (checked on Windows 11).
-    private void ResyncModifiers() {
-      // Count the queued inputs before sampling: those already show in the sample, so reading
-      // them later must not change the held keys again.
-      long writtenBefore = _ring.Written;
-      bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
-      _translator.Resync(IsKeyDown, capsLockOn, writtenBefore);
     }
 
     private void FollowForegroundLayout() {
