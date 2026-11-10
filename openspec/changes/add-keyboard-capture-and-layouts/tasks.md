@@ -38,3 +38,4 @@
 ## 6. Docs
 
 - [x] 6.1 Document threads, event flow and Incident types in `docs/architecture.md`; verify every Incident type emitted in code is listed
+- [ ] 6.2 Add `tools/Rekey.DesktopChecks`, which drives test windows, a local test page, a console and the Debug app to check tasks 2.1, 3.2, 3.3, 4.1, 4.3, 4.4, 5.3 and 5.5 on a real desktop, printing counts and kinds only and restoring every setting it changes; verify by running it on a desktop with every line ✅ (owner request)
