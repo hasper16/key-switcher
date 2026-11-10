@@ -27,7 +27,7 @@ ADR 0002: the engine consumes events and returns actions; this change builds the
 The worker thread turns raw events into `InputEvent`: decides letter vs boundary using the current Layout's KeyMap (a key is "letter-producing" if it produces a letter in **any** active Layout), tracks Shift/Caps Lock, and timestamps for the 2-second gap rule. The `WordTracker` (current Word) lives in the engine (Core), so the rules in the spec are unit-tested in Core.
 
 ### D3. Foreground and focus
-- `SetWinEventHook(EVENT_SYSTEM_FOREGROUND)` and `EVENT_OBJECT_FOCUS` (out-of-context) on the worker's own message-loop thread → `FocusChanged(appId, isPassword, isElevated)`.
+- `SetWinEventHook(EVENT_SYSTEM_FOREGROUND)` and `EVENT_OBJECT_FOCUS` (out-of-context) on the worker's own message-loop thread → `FocusChanged(appId, isPassword, isElevated)`. When no foreground window can be read, `FocusLost` instead. The worker dispatches waiting messages before each queued key, so a focus change is applied before the keys typed after it.
 - `isPassword`: UI Automation `IsPassword` property of the focused element (cached per focus event). Fallback: `ES_PASSWORD` style for classic Edit controls.
 - `isElevated`: `OpenProcessToken` + `GetTokenInformation(TokenElevation)` on the foreground process; compared with Rekey's own elevation.
 - `appId`: full image path via `QueryFullProcessImageName`.
@@ -57,6 +57,6 @@ The worker thread turns raw events into `InputEvent`: decides letter vs boundary
 ## Risks / Trade-offs
 
 - [`GetLastInputInfo` also counts input from other sessions? No — it is per session; but injected input from other tools also updates it] → only treat as a drop when *our* hook saw nothing for > 1.5 s while the system saw input; other injectors still pass through our hook, so they do not trigger false drops.
-- [UI Automation focus queries are slow in some apps (100+ ms)] → done on the focus worker thread, never on the hook thread; result cached per focus event; while unknown, treat as not-password but do not correct until known (safe default).
+- [UI Automation focus queries are slow in some apps (100+ ms)] → done on the focus worker thread, never on the hook thread; result cached per focus event; while focus is unknown (before the first report, or when no foreground window can be read) the engine keeps no Keystrokes, so a Password Field can never leak into a Word (safe default).
 - [Per-window Layout mode] → handled by always reading the foreground thread's Layout.
 - [`ToUnicodeEx` flag 0x4 needs Windows 10 1607+] → Windows 10/11 only is the supported baseline.
