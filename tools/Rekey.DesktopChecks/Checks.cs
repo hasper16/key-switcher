@@ -121,9 +121,11 @@ namespace Rekey.DesktopChecks {
       return _log.KeyDownsSince(mark);
     }
 
+#if DEBUG
     private bool WaitForIncident(EventLog.Position mark, IncidentType type, TimeSpan timeout) {
       return EventLog.WaitFor(() => _log.IncidentsSince(mark).Contains(type), timeout);
     }
+#endif
 
     // The Layout of the latest LayoutChanged the worker saw.
     private LayoutId? CurrentLayout() {

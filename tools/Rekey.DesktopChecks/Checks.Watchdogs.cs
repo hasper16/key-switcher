@@ -10,9 +10,12 @@ namespace Rekey.DesktopChecks {
   // Checks 5.3 and 5.5: a hook Windows removed is reattached, and a repeated freeze restarts.
   internal sealed partial class Checks {
     private const string _appName = "Rekey.App";
+#if DEBUG
     private static readonly TimeSpan _freeze = TimeSpan.FromSeconds(7);
     private static readonly TimeSpan _watchdogWait = TimeSpan.FromSeconds(4);
+#endif
 
+#if DEBUG
     // Windows removes a low-level hook whose callback runs longer than this.
     private static int HookTimeoutMilliseconds() {
       object? value = Registry.GetValue(
@@ -23,7 +26,9 @@ namespace Rekey.DesktopChecks {
         _ => 1000,
       };
     }
+#endif
 
+#if DEBUG
     private void CheckHookWatchdog() {
       TimeSpan stall = TimeSpan.FromMilliseconds(HookTimeoutMilliseconds() + 1500);
       Focus(First().Ordinary);
@@ -92,6 +97,15 @@ namespace Rekey.DesktopChecks {
           && restartAsked.Wait(_watchdogWait);
       Expect("5.5 a second freeze within an hour asks to restart", restart, $"{restart}");
     }
+#else
+    private void CheckHookWatchdog() {
+      Expect("5.3 hook watchdog", false, "run the checks from a Debug build");
+    }
+
+    private void CheckFreezeWatchdog() {
+      Expect("5.5 freeze watchdog", false, "run the checks from a Debug build");
+    }
+#endif
 
     private void CheckRestart() {
       if (Process.GetProcessesByName(_appName).Length > 0) {
@@ -126,6 +140,7 @@ namespace Rekey.DesktopChecks {
           $"new process {replaced}, restart time saved {saved}");
     }
 
+#if DEBUG
     private void FreezeWhileTyping() {
       _worker.FreezeForCheck(_freeze);
       var clock = Stopwatch.StartNew();
@@ -134,6 +149,7 @@ namespace Rekey.DesktopChecks {
         Thread.Sleep(TimeSpan.FromMilliseconds(300));
       }
     }
+#endif
 
     private void StopTestApps() {
       foreach (Process process in Process.GetProcessesByName(_appName)) {
