@@ -75,6 +75,10 @@ namespace Rekey.Core {
         case FocusChanged focus:
           OnFocusChanged(focus);
           break;
+        case InputLost:
+          _word.Spoil();
+          DeferredWords.Reset();
+          break;
         case FocusLost lost:
           _focusSince = TimeSpan.FromTicks(Math.Max(_focusSince.Ticks, lost.Timestamp.Ticks));
           Focus = null;

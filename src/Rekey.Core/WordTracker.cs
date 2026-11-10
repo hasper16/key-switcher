@@ -46,6 +46,12 @@ namespace Rekey.Core {
       _spoiled = !EndsWord(keyDown);
     }
 
+    // Keystrokes were lost somewhere in the current Word, so none of it is kept until it ends.
+    public void Spoil() {
+      Clear();
+      _spoiled = true;
+    }
+
     private static bool EndsWord(KeyDown keyDown) {
       return keyDown.Kind switch {
         KeyKind.Space or KeyKind.Enter or KeyKind.Tab or KeyKind.Navigation => true,

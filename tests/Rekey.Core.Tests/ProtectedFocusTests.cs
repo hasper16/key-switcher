@@ -123,6 +123,26 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void LostInputDropsTheRestOfTheWord() {
+      // Keystrokes of this Word may be among those lost; a Word missing one must not be kept.
+      Typist typist = new Typist().Type("ghb");
+
+      typist.Send(new InputLost(TimeSpan.FromSeconds(11))).Type("dtn");
+
+      Assert.Empty(typist.Engine.Word);
+    }
+
+    [Fact]
+    public void WordAfterLostInputIsKeptAgain() {
+      Typist typist = new Typist().Type("ghb");
+      typist.Send(new InputLost(TimeSpan.FromSeconds(11)));
+
+      typist.Press(KeyKind.Space).Type("dtn");
+
+      Assert.Equal("dtn", typist.Word);
+    }
+
+    [Fact]
     public void EngineReportsTheFocusedControl() {
       Typist typist = new Typist().Focus(isPassword: true);
 

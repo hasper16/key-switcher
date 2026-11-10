@@ -73,7 +73,12 @@ namespace Rekey.Win32 {
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
       _translator = new RawInputTranslator(capsLockOn);
       _modifierSync = new ModifierSync(
-          _translator, () => _hook.Reattachments, () => _ring.Written, IsKeyDown, IsCapsLockOn);
+          _translator,
+          () => _hook.Reattachments,
+          () => _ring.Dropped,
+          () => _ring.Written,
+          IsKeyDown,
+          IsCapsLockOn);
       _foregroundLayout = new ForegroundLayout(_layouts);
       _switcher = new LayoutSwitcher(_foregroundLayout, time);
       _hookWatchdog = new HookWatchdog(new SessionInputActivity(_hook), time) {
@@ -233,8 +238,10 @@ namespace Rekey.Win32 {
       while (PumpOrQuit() && _ring.TryRead(out RawInput raw)) {
         any = true;
 
-        // After the read, so a reinstall that finished just before it still counts for this key.
-        _modifierSync.FollowReattachments();
+        // After the read, so a reinstall or drop just before it still counts for this key.
+        if (_modifierSync.CatchUp()) {
+          Send(new InputLost(TimeSpan.FromMilliseconds(raw.Tick)));
+        }
 
         // WinEvents arrive asynchronously: a key typed into a new window can come first.
         if (raw.Kind == RawInputKind.KeyDown) {
