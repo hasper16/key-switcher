@@ -36,4 +36,4 @@
 
 ## 6. Docs
 
-- [ ] 6.1 Document threads, event flow and Incident types in `docs/architecture.md`; verify every Incident type emitted in code is listed
+- [x] 6.1 Document threads, event flow and Incident types in `docs/architecture.md`; verify every Incident type emitted in code is listed
