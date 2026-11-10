@@ -65,6 +65,10 @@ Rekey SHALL keep a Keystroke only after confirming that the focused control is n
 - **WHEN** more input is already waiting while Rekey processes a Keystroke
 - **THEN** Rekey keeps nothing more of that Word and makes no Correction of it
 
+#### Scenario: Known limit — a script moves focus there and back at once
+- **WHEN** a page script moves focus into a Password Field and back to the same control within milliseconds of a Keystroke, before Windows reports either move
+- **THEN** that Keystroke may reach the Word until the next focus notice clears it (accepted by the owner: Rekey sees focus only after the Keystroke)
+
 ### Requirement: Own input is ignored
 Input that Rekey injects itself SHALL NOT be recorded as user typing.
 
