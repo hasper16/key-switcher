@@ -41,6 +41,20 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void InputsAreNumberedInWriteOrder() {
+      var ring = new InputRing(capacity: 2);
+      var sequences = new List<long>();
+      for (long tick = 1; tick <= 3; tick++) {
+        ring.TryWrite(Input(tick));
+        ring.TryRead(out RawInput read);
+        sequences.Add(read.Sequence);
+      }
+
+      Assert.Equal([0L, 1L, 2L], sequences);
+      Assert.Equal(3, ring.Written);
+    }
+
+    [Fact]
     public void CapacityMustBeAPowerOfTwo() {
       Assert.Throws<ArgumentOutOfRangeException>(() => new InputRing(capacity: 3));
     }

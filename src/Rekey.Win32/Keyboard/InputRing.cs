@@ -26,6 +26,11 @@ namespace Rekey.Win32.Keyboard {
     /// <summary>Gets the number of inputs waiting to be read.</summary>
     public int Count => (int)(Volatile.Read(ref _tail) - Volatile.Read(ref _head));
 
+    /// <summary>
+    /// Gets the number of inputs written so far, which is also the sequence of the next one.
+    /// </summary>
+    public long Written => Volatile.Read(ref _tail);
+
     /// <summary>Gets the number of inputs dropped because the ring was full.</summary>
     public long Dropped => Volatile.Read(ref _dropped);
 
@@ -37,7 +42,7 @@ namespace Rekey.Win32.Keyboard {
         return false;
       }
 
-      _items[tail & _mask] = input;
+      _items[tail & _mask] = input with { Sequence = tail };
       Volatile.Write(ref _tail, tail + 1);
       return true;
     }

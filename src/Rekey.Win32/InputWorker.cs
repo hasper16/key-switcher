@@ -310,8 +310,11 @@ namespace Rekey.Win32 {
     // The worker never receives keyboard input itself, so its key state follows the system's
     // and GetKeyState reports the session's Caps Lock (checked on Windows 11).
     private void ResyncModifiers() {
+      // Count the queued inputs before sampling: those already show in the sample, so reading
+      // them later must not change the held keys again.
+      long writtenBefore = _ring.Written;
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
-      _translator.Resync(IsKeyDown, capsLockOn);
+      _translator.Resync(IsKeyDown, capsLockOn, writtenBefore);
     }
 
     private void FollowForegroundLayout() {

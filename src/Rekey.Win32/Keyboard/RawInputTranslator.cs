@@ -37,6 +37,7 @@ namespace Rekey.Win32.Keyboard {
     private ModifierState _held;
     private bool _capsLockOn;
     private bool _capsLockDown;
+    private long _sampledBefore;
 
     public RawInputTranslator(bool capsLockOn) {
       _capsLockOn = capsLockOn;
@@ -71,7 +72,14 @@ namespace Rekey.Win32.Keyboard {
     /// Takes the held modifiers and Caps Lock from the system, for when the hook may have missed
     /// key-ups: on the secure desktop, in elevated windows, or while Windows had removed it.
     /// </summary>
-    public void Resync(Func<VIRTUAL_KEY, bool> isDown, bool capsLockOn) {
+    /// <param name="isDown">Tells whether a key is down now.</param>
+    /// <param name="capsLockOn">Whether Caps Lock is on now.</param>
+    /// <param name="writtenBefore">
+    /// The number of inputs written before the sample was taken; those inputs already show in it,
+    /// so they no longer change the held keys when they are read.
+    /// </param>
+    public void Resync(Func<VIRTUAL_KEY, bool> isDown, bool capsLockOn, long writtenBefore) {
+      _sampledBefore = writtenBefore;
       _held = ModifierState.None;
       foreach (VIRTUAL_KEY key in _modifierKeys.Where(isDown)) {
         _held |= ModifierOf(key);
@@ -91,10 +99,16 @@ namespace Rekey.Win32.Keyboard {
         case RawInputKind.MouseDown:
           return new MouseClick(timestamp);
         case RawInputKind.KeyUp:
-          Release(key);
+          if (input.Sequence >= _sampledBefore) {
+            Release(key);
+          }
+
           return null;
         default:
-          Press(key);
+          if (input.Sequence >= _sampledBefore) {
+            Press(key);
+          }
+
           return KeyDownOf(input, key, timestamp);
       }
     }

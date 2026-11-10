@@ -10,6 +10,14 @@ namespace Rekey.Win32.Keyboard {
   /// numeric keypad; otherwise, <see langword="false" />.
   /// </param>
   /// <param name="Tick">The milliseconds since system start when the hook saw the input.</param>
+  /// <param name="Sequence">
+  /// The input's position in the order the hook wrote it; <see cref="InputRing" /> sets it.
+  /// </param>
   internal readonly record struct RawInput(
-      RawInputKind Kind, ushort VirtualKey, ushort ScanCode, bool Extended, long Tick);
+      RawInputKind Kind,
+      ushort VirtualKey,
+      ushort ScanCode,
+      bool Extended,
+      long Tick,
+      long Sequence = 0);
 }

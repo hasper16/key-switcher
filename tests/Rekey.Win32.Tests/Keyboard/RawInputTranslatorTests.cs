@@ -115,7 +115,7 @@ namespace Rekey.Win32.Tests.Keyboard {
       var translator = NewTranslator();
       translator.Translate(Down(0x5B, 0x5B, extended: true));
 
-      translator.Resync(_ => false, capsLockOn: false);
+      translator.Resync(_ => false, capsLockOn: false, writtenBefore: _tick + 1);
 
       Assert.Equal(Character(1002, 0x22), translator.Translate(Down(0x47, 0x22)));
     }
@@ -124,7 +124,8 @@ namespace Rekey.Win32.Tests.Keyboard {
     public void ResyncKeepsModifiersStillHeld() {
       var translator = NewTranslator();
 
-      translator.Resync(key => (ushort)key == _vkShiftLeft, capsLockOn: false);
+      translator.Resync(
+          key => (ushort)key == _vkShiftLeft, capsLockOn: false, writtenBefore: _tick + 1);
 
       KeyDown keyDown = Assert.IsType<KeyDown>(translator.Translate(Down(0x47, 0x22)));
       Assert.Equal(KeyModifiers.Shift, keyDown.Modifiers);
@@ -134,9 +135,45 @@ namespace Rekey.Win32.Tests.Keyboard {
     public void ResyncTakesCapsLockFromTheSystem() {
       var translator = NewTranslator();
 
-      translator.Resync(_ => false, capsLockOn: true);
+      translator.Resync(_ => false, capsLockOn: true, writtenBefore: _tick + 1);
 
       Assert.Equal(Character(1001, 0x22, capsLock: true), translator.Translate(Down(0x47, 0x22)));
+    }
+
+    [Fact]
+    public void ModifierQueuedBeforeTheSampleDoesNotOverrideIt() {
+      // Win went down and its key-up was missed; the sample saw it released.
+      var translator = NewTranslator();
+      RawInput queuedWin = Down(0x5B, 0x5B, extended: true);
+      translator.Resync(_ => false, capsLockOn: false, writtenBefore: queuedWin.Sequence + 1);
+
+      translator.Translate(queuedWin);
+
+      KeyDown letter = Assert.IsType<KeyDown>(translator.Translate(Down(0x47, 0x22)));
+      Assert.Equal(KeyModifiers.None, letter.Modifiers);
+    }
+
+    [Fact]
+    public void CapsLockQueuedBeforeTheSampleDoesNotToggleItAgain() {
+      var translator = NewTranslator();
+      RawInput queuedCaps = Down(_vkCapsLock, 0x3A);
+      translator.Resync(_ => false, capsLockOn: true, writtenBefore: queuedCaps.Sequence + 1);
+
+      translator.Translate(queuedCaps);
+
+      KeyDown letter = Assert.IsType<KeyDown>(translator.Translate(Down(0x47, 0x22)));
+      Assert.True(letter.Keystroke.CapsLock);
+    }
+
+    [Fact]
+    public void InputAfterTheSampleStillChangesModifiers() {
+      var translator = NewTranslator();
+      translator.Resync(_ => false, capsLockOn: false, writtenBefore: _tick + 1);
+
+      translator.Translate(Down(_vkShiftLeft, 0x2A));
+
+      KeyDown letter = Assert.IsType<KeyDown>(translator.Translate(Down(0x47, 0x22)));
+      Assert.Equal(KeyModifiers.Shift, letter.Modifiers);
     }
 
     [Fact]
@@ -174,11 +211,13 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     private RawInput Down(ushort virtualKey, ushort scanCode, bool extended = false) {
-      return new RawInput(RawInputKind.KeyDown, virtualKey, scanCode, extended, ++_tick);
+      ++_tick;
+      return new RawInput(RawInputKind.KeyDown, virtualKey, scanCode, extended, _tick, _tick);
     }
 
     private RawInput Up(ushort virtualKey, ushort scanCode) {
-      return new RawInput(RawInputKind.KeyUp, virtualKey, scanCode, false, ++_tick);
+      ++_tick;
+      return new RawInput(RawInputKind.KeyUp, virtualKey, scanCode, false, _tick, _tick);
     }
   }
 }
