@@ -55,6 +55,7 @@ namespace Rekey.Win32 {
     private long _heartbeat;
     private long _lastLayoutPoll;
     private bool _quitting;
+    private FocusTracker? _focus;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InputWorker" /> class.
@@ -183,6 +184,7 @@ namespace Rekey.Win32 {
       _started.Set();
       RefreshLayouts();
       using var focus = new FocusTracker(OnFocusChanged);
+      _focus = focus;
       focus.Start();
       HANDLE[] handles = [(HANDLE)_signal.SafeWaitHandle.DangerousGetHandle()];
       do {
@@ -218,6 +220,12 @@ namespace Rekey.Win32 {
       // a focus change, such as into a Password Field, before the keys typed after it.
       while (PumpOrQuit() && _ring.TryRead(out RawInput raw)) {
         any = true;
+
+        // WinEvents arrive asynchronously: a key typed into a new window can come first.
+        if (raw.Kind == RawInputKind.KeyDown) {
+          _focus?.CatchUp(TimeSpan.FromMilliseconds(raw.Tick));
+        }
+
         if (_translator.Translate(raw) is { } inputEvent) {
           Send(inputEvent);
         }
