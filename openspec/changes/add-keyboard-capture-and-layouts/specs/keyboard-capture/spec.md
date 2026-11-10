@@ -48,11 +48,14 @@ A pause of more than 2 seconds between Keystrokes SHALL end the current Word and
 - **THEN** the current Word is "dtn" and no Deferred Word remains
 
 ### Requirement: Password Fields are never recorded
-Rekey MUST NOT record Keystrokes, keep a Word, or make any Correction while the focused control is a Password Field. This SHALL also hold when focus moves into a Password Field inside the same window (Tab, Shift+Tab, a click, the page itself) before Windows reports the move: Rekey SHALL keep a Keystroke only after confirming that the focused control is not a Password Field while nothing typed or clicked after that Keystroke is waiting to be processed (design decision). When it cannot confirm this, as when it falls behind fast typing, it SHALL keep nothing more of that Word, which then gets no Correction.
+Rekey MUST NOT record Keystrokes, keep a Word, or make any Correction while the focused control is a Password Field.
 
 #### Scenario: Typing a password
 - **WHEN** the user types in a password box
 - **THEN** Rekey keeps no Keystrokes from that typing and makes no Correction
+
+### Requirement: Each Keystroke is confirmed outside a Password Field
+Rekey SHALL keep a Keystroke only after confirming that the focused control is not a Password Field while nothing typed or clicked after that Keystroke is waiting to be processed (design decision), so a focus move inside one window (Tab, Shift+Tab, a click, the page itself) is covered before Windows reports it. When Rekey cannot confirm this, it SHALL keep nothing more of that Word, which then gets no Correction.
 
 #### Scenario: Focus moves to a password box inside the same window
 - **WHEN** the user presses Tab from a user-name box into a password box on the same web page and types at once
