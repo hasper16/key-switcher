@@ -21,8 +21,8 @@ Stop it with Ctrl+C in its window. Use invented text when typing.
   Expected: Notepad gives `FocusChanged { AppId = C:\Windows\…\notepad.exe, IsPassword = False, IsElevated = False }`; the elevated console gives `IsElevated = True`; back in Notepad `IsElevated = False`. No `INCIDENT` line appears while typing in the elevated console.
 - [ ] **Browser password field (3.2).** Open any login page in Edge or Chrome, click the user-name box, then the password box.
   Expected: user name gives `IsPassword = False`, password gives `IsPassword = True`.
-- [ ] **Password field in the same window, typed at once (3.2).** On a browser login page click the user-name box, then press Tab and immediately type a few letters into the password box. Repeat ten times, also with Shift+Tab back and forth.
-  Expected: every `KeyDown` line typed in the password box ends with `Word keys = 0`, both before and after the `FocusChanged … IsPassword = True` line appears. A line with `Word keys` above 0 while the password box has focus means a key was kept before the focus notice arrived: report it, as it breaks the Password Field guarantee.
+- [ ] **Password field in the same window, typed at once (3.3).** On a browser login page click the user-name box, then press Tab and immediately type a few letters into the password box. Repeat ten times, also with Shift+Tab back and forth and by clicking from one box into the other.
+  Expected: every `KeyDown` line typed in the password box ends with `Word keys = 0`, both before and after the `FocusChanged … IsPassword = True` line appears. Typing in the user-name box builds a Word as usual (`Word keys` counts up).
 - [ ] **Win32 password dialog (3.2).** Open a classic dialog with a masked box (for example Control Panel → User Accounts → Credential Manager → Add a Windows credential), click the password box.
   Expected: `IsPassword = True`; the other boxes give `IsPassword = False`.
 

@@ -108,8 +108,9 @@ namespace Rekey.Core {
 
       // A key stamped at or before the latest focus change may belong to the previous control,
       // perhaps a Password Field: the worker can read queued keys after focus moved on, and the
-      // timestamps share one clock tick of about 15 ms.
-      if (keyDown.Timestamp <= _focusSince) {
+      // timestamps share one clock tick of about 15 ms. A key the host could not confirm outside
+      // a Password Field is dropped the same way.
+      if (keyDown.Timestamp <= _focusSince || !keyDown.FocusConfirmed) {
         _word.Drop(keyDown);
         return;
       }

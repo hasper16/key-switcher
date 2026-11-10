@@ -47,6 +47,7 @@ namespace Rekey.Win32 {
     private readonly ForegroundLayout _foregroundLayout;
     private readonly HookWatchdog _hookWatchdog;
     private readonly ModifierSync _modifierSync;
+    private readonly KeyConfirmer _keyConfirmer;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
     private Engine _engine = new();
@@ -79,6 +80,8 @@ namespace Rekey.Win32 {
           () => _ring.Written,
           IsKeyDown,
           IsCapsLockOn);
+      _keyConfirmer = new KeyConfirmer(
+          () => _focus?.IsPasswordFocused() ?? true, () => _ring.Written);
       _foregroundLayout = new ForegroundLayout(_layouts);
       _switcher = new LayoutSwitcher(_foregroundLayout, time);
       _hookWatchdog = new HookWatchdog(new SessionInputActivity(_hook), time) {
@@ -248,7 +251,13 @@ namespace Rekey.Win32 {
           _focus?.CatchUp(TimeSpan.FromMilliseconds(raw.Tick));
         }
 
-        if (_translator.Translate(raw) is { } inputEvent) {
+        InputEvent? inputEvent = _translator.Translate(raw);
+        if (inputEvent is KeyDown { Kind: KeyKind.Character } keyDown) {
+          // Focus may have moved inside the window before its WinEvent arrived.
+          inputEvent = keyDown with { FocusConfirmed = _keyConfirmer.Confirm(raw) };
+        }
+
+        if (inputEvent is not null) {
           Send(inputEvent);
         }
       }

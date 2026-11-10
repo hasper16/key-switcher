@@ -14,8 +14,17 @@ namespace Rekey.Core {
   /// A bitwise combination of the enumeration values that specifies the modifier keys held down.
   /// AltGr is reported in <paramref name="Keystroke" />, not as Ctrl and Alt.
   /// </param>
+  /// <param name="FocusConfirmed">
+  /// <see langword="true" /> if the host confirmed that the key went to a control that is not a
+  /// Password Field; otherwise, <see langword="false" />. The default is
+  /// <see langword="true" />.
+  /// </param>
   public sealed record KeyDown(
-      TimeSpan Timestamp, Keystroke Keystroke, KeyKind Kind, KeyModifiers Modifiers)
+      TimeSpan Timestamp,
+      Keystroke Keystroke,
+      KeyKind Kind,
+      KeyModifiers Modifiers,
+      bool FocusConfirmed = true)
       : InputEvent(Timestamp) {
     /// <summary>
     /// Appends the members to the text form without the Keystroke, so typed text cannot reach
@@ -25,7 +34,8 @@ namespace Rekey.Core {
     /// <returns><see langword="true" /> because members were appended.</returns>
     protected override bool PrintMembers(StringBuilder builder) {
       base.PrintMembers(builder);
-      builder.Append(", Kind = ").Append(Kind).Append(", Modifiers = ").Append(Modifiers);
+      builder.Append(", Kind = ").Append(Kind).Append(", Modifiers = ").Append(Modifiers)
+          .Append(", FocusConfirmed = ").Append(FocusConfirmed);
       return true;
     }
   }

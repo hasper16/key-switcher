@@ -49,6 +49,17 @@ namespace Rekey.Win32.Focus {
     }
 
     /// <summary>
+    /// Returns whether the focused control is a Password Field now, asking UI Automation again.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true" /> if it is one, or if the tracker cannot tell; otherwise,
+    /// <see langword="false" />.
+    /// </returns>
+    public bool IsPasswordFocused() {
+      return _blind || FocusTarget.Read() is not { } target || _passwords.IsPassword(target.Window);
+    }
+
+    /// <summary>
     /// Reports the focus at once when the focused window is not the one last reported, as when a
     /// key arrives before the WinEvent of a window change.
     /// </summary>

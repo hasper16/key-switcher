@@ -143,6 +143,31 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void UnconfirmedKeyIsNotKeptNorTheRestOfItsWord() {
+      // Spec: "Each Keystroke is confirmed outside a Password Field".
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Letter(Seconds(11)));
+
+      engine.Handle(Letter(Seconds(11)) with { FocusConfirmed = false });
+      engine.Handle(Letter(Seconds(12)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void WordAfterAnUnconfirmedKeyIsKeptAgain() {
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Letter(Seconds(11)) with { FocusConfirmed = false });
+
+      engine.Handle(new KeyDown(Seconds(12), new Keystroke(0x39, false, false), KeyKind.Space, 0));
+      engine.Handle(Letter(Seconds(13)));
+
+      Assert.Single(engine.Word);
+    }
+
+    [Fact]
     public void EngineReportsTheFocusedControl() {
       Typist typist = new Typist().Focus(isPassword: true);
 
