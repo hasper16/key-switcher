@@ -129,7 +129,16 @@ namespace Rekey.Win32.Keyboard {
       }
 
       _mouseHook = PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_MOUSE_LL, _mouseProc, module, 0);
-      return _mouseHook.IsInvalid ? Marshal.GetLastPInvokeError() : 0;
+      if (_mouseHook.IsInvalid) {
+        int error = Marshal.GetLastPInvokeError();
+
+        // Half a pair would keep the watchdog content while clicks go unseen; drop both so it
+        // retries.
+        _keyboardHook.Dispose();
+        return error;
+      }
+
+      return 0;
     }
 
     private void Uninstall() {
