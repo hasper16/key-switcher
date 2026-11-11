@@ -18,8 +18,9 @@ namespace Rekey.Win32.Replacement {
     /// Returns whether the control the latest <see cref="Read" /> read still has focus.
     /// </summary>
     /// <returns>
-    /// <see langword="true" /> if it does, or if nothing was read; <see langword="false" /> if
-    /// focus moved or the app cannot tell in time.
+    /// <see langword="true" /> if it does, or if UI Automation is unavailable;
+    /// <see langword="false" /> if focus moved, or if the control read cannot be confirmed in
+    /// time.
     /// </returns>
     bool FocusUnchanged();
 

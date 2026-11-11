@@ -121,11 +121,16 @@ namespace Rekey.Win32.Replacement {
 
     /// <inheritdoc />
     public bool FocusUnchanged() {
-      if (_automation is null || _element is null) {
+      if (_automation is null) {
         return true;
       }
 
-      // Bounded by the same 50 ms timeouts; an app that cannot answer counts as moved.
+      // Read could not learn which control it looked at, so no control can be confirmed;
+      // bounded by the same 50 ms timeouts, an app that cannot answer counts as moved.
+      if (_element is null) {
+        return false;
+      }
+
       try {
         return _automation.CompareElements(_automation.GetFocusedElement(), _element);
       } catch (COMException) {
