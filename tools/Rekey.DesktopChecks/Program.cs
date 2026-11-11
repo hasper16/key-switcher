@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace Rekey.DesktopChecks {
   /// <summary>
   /// Runs the desktop checks of change add-keyboard-capture-and-layouts on this machine.
@@ -13,8 +15,26 @@ namespace Rekey.DesktopChecks {
         return HostWindow.Run(args[1]);
       }
 
+      if (args is ["restore-languages"]) {
+        return RestoreLanguages();
+      }
+
       using var checks = new Checks();
       return checks.Run();
+    }
+
+    // Puts back the language list saved by a run that stopped before it could restore it.
+    private static int RestoreLanguages() {
+      if (!File.Exists(SystemState.LanguageSnapshot)) {
+        Console.WriteLine("No saved language list; nothing to restore.");
+        return 0;
+      }
+
+      string saved = File.ReadAllText(SystemState.LanguageSnapshot);
+      SystemState.WriteLanguages(LanguageList.Parse(saved));
+      File.Delete(SystemState.LanguageSnapshot);
+      Console.WriteLine("The language list is restored.");
+      return 0;
     }
   }
 }

@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
-using System.Text;
 using Windows.Win32;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -23,14 +22,13 @@ namespace Rekey.DesktopChecks {
     public static string DataFolder { get; } = Path.Join(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Rekey");
 
-    // Each line: a language tag, '|', its input method tips joined by ','.
-    public static IReadOnlyList<string> ReadLanguages() {
-      string output = PowerShell(
-          "Get-WinUserLanguageList | ForEach-Object { $_.LanguageTag + '|' + "
-          + "($_.InputMethodTips -join ',') }");
-      const StringSplitOptions lines =
-          StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries;
-      return [.. output.Split('\n', lines)];
+    // Where the language list is saved before the checks change it, so a crashed run can still
+    // be undone with the restore-languages command.
+    public static string LanguageSnapshot { get; } =
+        Path.Join(Path.GetTempPath(), "rekey-desktop-checks-languages.txt");
+
+    public static LanguageList ReadLanguages() {
+      return LanguageList.Parse(PowerShell(LanguageList.ReadScript));
     }
 
     public static void AddLanguage(string tag) {
@@ -38,21 +36,17 @@ namespace Rekey.DesktopChecks {
           $"$l = Get-WinUserLanguageList; $l.Add({Quote(tag)}); Set-WinUserLanguageList $l -Force");
     }
 
-    public static void WriteLanguages(IReadOnlyList<string> languages) {
-      var script = new StringBuilder();
-      for (int i = 0; i < languages.Count; i++) {
-        string[] parts = languages[i].Split('|');
-        string tag = Quote(parts[0]);
-        script.Append(i == 0 ? $"$l = New-WinUserLanguageList {tag}; " : $"$l.Add({tag}); ");
-        script.Append(CultureInfo.InvariantCulture, $"$l[{i}].InputMethodTips.Clear(); ");
-        foreach (string tip in parts[1].Split(',', StringSplitOptions.RemoveEmptyEntries)) {
-          script.Append(
-              CultureInfo.InvariantCulture, $"$l[{i}].InputMethodTips.Add({Quote(tip)}); ");
+    // Writes the list back and reads it again; one retry, then a clear failure.
+    public static void WriteLanguages(LanguageList languages) {
+      for (int attempt = 0; attempt < 2; attempt++) {
+        PowerShell(languages.WriteScript());
+        if (ReadLanguages().SameAs(languages)) {
+          return;
         }
       }
 
-      script.Append("Set-WinUserLanguageList $l -Force");
-      PowerShell(script.ToString());
+      throw new InvalidOperationException(
+          "The language list differs after restoring it; run the restore-languages command.");
     }
 
     public static unsafe bool PerWindowInput() {

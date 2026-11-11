@@ -8,6 +8,7 @@
     <Project Path="tests/Rekey.Accuracy.Tests/Rekey.Accuracy.Tests.csproj" />
     <Project Path="tests/Rekey.Core.Tests/Rekey.Core.Tests.csproj" />
     <Project Path="tests/Rekey.ProfileBuilder.Tests/Rekey.ProfileBuilder.Tests.csproj" />
+    <Project Path="tests/Rekey.DesktopChecks.Tests/Rekey.DesktopChecks.Tests.csproj" />
     <Project Path="tests/Rekey.Win32.Tests/Rekey.Win32.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

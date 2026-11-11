@@ -13,17 +13,62 @@ namespace Rekey.DesktopChecks {
     private const string _pageTitle = "Rekey desktop check";
     private const int _rounds = 10;
 
-    private static Point? FindBox(HWND window, string id) {
-      AutomationElement? box = AutomationElement.FromHandle(window).FindFirst(
-          TreeScope.Descendants,
-          new PropertyCondition(AutomationElement.AutomationIdProperty, id));
-      if (box is null) {
-        return null;
+    // Finds a page box by its HTML id or its label, retrying while the browser builds its
+    // accessibility tree (Firefox starts it on the first UI Automation request).
+    private static Point? FindBox(HWND window, string id, string label) {
+      var condition = new OrCondition(
+          new PropertyCondition(AutomationElement.AutomationIdProperty, id),
+          new PropertyCondition(AutomationElement.NameProperty, label));
+      Point? found = null;
+      EventLog.WaitFor(
+          () => {
+            AutomationElement? box = AutomationElement.FromHandle(window)
+                .FindFirst(TreeScope.Descendants, condition);
+            System.Windows.Rect? bounds = box?.Current.BoundingRectangle;
+            if (bounds is { IsEmpty: false, Width: > 0 } rect) {
+              found = new Point(
+                  (int)(rect.Left + (rect.Width / 2)), (int)(rect.Top + (rect.Height / 2)));
+            }
+
+            return found is not null;
+          },
+          TimeSpan.FromSeconds(10));
+      return found;
+    }
+
+    // Opens the test page in the default browser, or in Edge when the default browser does not
+    // show the page's boxes to UI Automation; returns the window and both boxes.
+    private (Point User, Point Secret)? OpenTestPage() {
+      string page = Path.Join(AppContext.BaseDirectory, "check-page.html");
+      string[] browsers = [page, "microsoft-edge:" + new Uri(page).AbsoluteUri];
+      foreach (string target in browsers) {
+        Process.Start(new ProcessStartInfo(target) { UseShellExecute = true })?.Dispose();
+        HWND? window = Desktop.FindWindow(_pageTitle, TimeSpan.FromSeconds(20));
+        if (window is null) {
+          continue;
+        }
+
+        Point? user = FindBox(window.Value, "check-user", "Nickname");
+        Point? secret = FindBox(window.Value, "check-pass", "Secret");
+        if (user is not null && secret is not null) {
+          _report.Add(
+              "3.3 test page boxes found",
+              true,
+              target == page ? "in the default browser" : "in Edge");
+          _restorer.Defer("test page tab", () => {
+            Input.Click(user.Value);
+            Input.CloseTab();
+          });
+          return (user.Value, secret.Value);
+        }
+
+        // Close this browser's test tab before trying the next one.
+        Input.Click(Desktop.Center(window.Value));
+        Input.CloseTab();
+        Thread.Sleep(_settle);
       }
 
-      System.Windows.Rect bounds = box.Current.BoundingRectangle;
-      return new Point(
-          (int)(bounds.Left + (bounds.Width / 2)), (int)(bounds.Top + (bounds.Height / 2)));
+      return null;
     }
 
     private void CheckHooks(EventLog.Position start) {
@@ -83,34 +128,22 @@ namespace Rekey.DesktopChecks {
     }
 
     private void CheckBrowser() {
-      string page = Path.Join(AppContext.BaseDirectory, "check-page.html");
-      Process.Start(new ProcessStartInfo(page) { UseShellExecute = true })?.Dispose();
-      HWND? window = Desktop.FindWindow(_pageTitle, TimeSpan.FromSeconds(20));
-      if (window is null) {
-        Expect("3.3 test page opens", false, "no browser window with the test page");
-        return;
-      }
-
-      Thread.Sleep(TimeSpan.FromSeconds(2));
-      Point? user = FindBox(window.Value, "check-user");
-      Point? secret = FindBox(window.Value, "check-pass");
-      if (user is null || secret is null) {
-        Expect("3.3 test page boxes found", false, "UI Automation did not find the boxes");
+      if (OpenTestPage() is not var (user, secret)) {
+        Expect(
+            "3.3 test page boxes found",
+            false,
+            "neither the default browser nor Edge showed the boxes to UI Automation");
         return;
       }
 
       _browserBox = user;
-      _restorer.Defer("test page tab", () => {
-        Input.Click(user.Value);
-        Input.CloseTab();
-      });
 
       var userWords = new List<int>();
       var secretKeys = new List<int>();
       for (int round = 0; round < _rounds; round++) {
-        Input.Click(user.Value);
+        Input.Click(user);
         userWords.Add(TypeTwoWords("qwe", "rty"));
-        Input.Click(secret.Value);
+        Input.Click(secret);
         secretKeys.Add(TypeTwoWords("asd", "fgh"));
       }
 
@@ -118,7 +151,7 @@ namespace Rekey.DesktopChecks {
 
       userWords.Clear();
       secretKeys.Clear();
-      Input.Click(user.Value);
+      Input.Click(user);
       for (int round = 0; round < _rounds; round++) {
         Input.Tab();
         secretKeys.Add(TypeTwoWords("asd", "fgh"));

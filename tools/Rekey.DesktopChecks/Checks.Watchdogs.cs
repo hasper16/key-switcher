@@ -29,6 +29,21 @@ namespace Rekey.DesktopChecks {
 #endif
 
 #if DEBUG
+    // Keeps typing, as a user would after the hook drops, until the condition holds. The
+    // watchdog acts only on input newer than the last the hook saw, and the stalled callback
+    // stamps its time when it finally returns.
+    private static bool TypeUntil(Func<bool> condition) {
+      var clock = Stopwatch.StartNew();
+      while (clock.Elapsed < TimeSpan.FromSeconds(6)) {
+        Input.Type("w");
+        if (EventLog.WaitFor(condition, TimeSpan.FromMilliseconds(300))) {
+          return true;
+        }
+      }
+
+      return condition();
+    }
+
     private void CheckHookWatchdog() {
       TimeSpan stall = TimeSpan.FromMilliseconds(HookTimeoutMilliseconds() + 1500);
       Focus(First().Ordinary);
@@ -39,9 +54,9 @@ namespace Rekey.DesktopChecks {
       _worker.StallHookForCheck(stall);
       Input.Type("q");
       Input.Key(VIRTUAL_KEY.VK_LSHIFT, 0x2A, up: true);
-      Input.Type("wer");
-      bool reattached = WaitForIncident(first, IncidentType.HookReinstalled, _watchdogWait);
-      Expect("5.3 a dropped hook is reinstalled", reattached, $"HookReinstalled {reattached}");
+      bool reattached = TypeUntil(() => _log.IncidentsSince(first)
+          .Contains(IncidentType.HookReinstalled));
+      Expect("5.3 a dropped hook is reinstalled", reattached, IncidentsText(first));
       Thread.Sleep(_settle);
       EventLog.Position afterFirst = _log.Mark();
       Input.Type("t");
@@ -56,10 +71,12 @@ namespace Rekey.DesktopChecks {
       _worker.StallHookForCheck(stall);
       Input.Type("q");
       Input.ToggleCapsLock();
-      Input.Type("wer");
-      bool paused = WaitForIncident(second, IncidentType.SelfPaused, _watchdogWait)
-          && _log.SelfPausesSince(second).Exists(until => until is not null);
-      Expect("5.3 a second drop pauses Rekey itself", paused, $"SelfPaused {paused}");
+      bool paused = TypeUntil(() => _log.IncidentsSince(second)
+          .Contains(IncidentType.SelfPaused))
+          && EventLog.WaitFor(
+              () => _log.SelfPausesSince(second).Exists(until => until is not null),
+              _watchdogWait);
+      Expect("5.3 a second drop pauses Rekey itself", paused, IncidentsText(second));
       Thread.Sleep(_settle);
       EventLog.Position afterSecond = _log.Mark();
       Input.Type("y");
@@ -76,6 +93,11 @@ namespace Rekey.DesktopChecks {
       bool resumed = EventLog.WaitFor(
           () => _log.SelfPausesSince(resume).Contains(null), _watchdogWait);
       Expect("5.3 Resume ends the self-pause", resumed, $"resumed {resumed}");
+    }
+
+    private string IncidentsText(EventLog.Position mark) {
+      List<IncidentType> seen = _log.IncidentsSince(mark);
+      return seen.Count == 0 ? "no Incident" : "Incidents " + string.Join(", ", seen);
     }
 
     private void CheckFreezeWatchdog() {

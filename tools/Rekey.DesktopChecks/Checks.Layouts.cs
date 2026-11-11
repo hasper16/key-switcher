@@ -70,16 +70,22 @@ namespace Rekey.DesktopChecks {
     }
 
     private void CheckLayoutList() {
-      IReadOnlyList<string> original = SystemState.ReadLanguages();
-      (string tag, uint klid) = _extraLanguages.FirstOrDefault(
-          extra => !original.Any(
-              line => line.StartsWith(extra.Tag + "|", StringComparison.Ordinal)));
+      // Read and saved before any change; an unreadable list stops the check here.
+      LanguageList original = SystemState.ReadLanguages();
+      File.WriteAllText(SystemState.LanguageSnapshot, original.ToText());
+      (string tag, uint klid) = _extraLanguages.FirstOrDefault(extra => !original.Has(extra.Tag));
       if (tag is null) {
         Expect("4.1 Layout added", false, "every spare language is already installed");
         return;
       }
 
-      _restorer.Defer("language list", () => SystemState.WriteLanguages(original));
+      _restorer.Defer("language list", () => {
+        if (!SystemState.ReadLanguages().SameAs(original)) {
+          SystemState.WriteLanguages(original);
+        }
+
+        File.Delete(SystemState.LanguageSnapshot);
+      });
       var added = new LayoutId(klid);
       EventLog.Position mark = _log.Mark();
       var clock = Stopwatch.StartNew();
@@ -95,9 +101,8 @@ namespace Rekey.DesktopChecks {
       EventLog.Position removed = _log.Mark();
       SystemState.WriteLanguages(original);
       bool gone = EventLog.WaitFor(() => ListedSince(removed, added) == false, _layoutListWait);
-      bool restored = SystemState.ReadLanguages().SequenceEqual(original);
       Expect("4.1 a removed Layout disappears", gone, $"gone {gone}");
-      Expect("4.1 the language list is restored", restored, $"same as before {restored}");
+      Expect("4.1 the language list is restored", true, "read back the same as before");
     }
 
     // Whether the latest Layout list since the mark includes the Layout; null when none came.
