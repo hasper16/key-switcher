@@ -46,12 +46,13 @@ namespace Rekey.Win32.Keyboard {
     public DateTimeOffset? SelfPausedUntil { get; private set; }
 
     /// <summary>Checks whether the hooks still receive input.</summary>
-    /// <param name="foregroundElevated">
-    /// <see langword="true" /> if the foreground window is more privileged than Rekey, so Windows
-    /// hides its input from the hooks; otherwise, <see langword="false" />.
+    /// <param name="inputHidden">
+    /// <see langword="true" /> if Windows hides the input from the hooks: the foreground window is
+    /// more privileged than Rekey, or input goes to the secure desktop; otherwise,
+    /// <see langword="false" />.
     /// </param>
     /// <returns>What the worker must do.</returns>
-    public WatchdogOutcome Check(bool foregroundElevated) {
+    public WatchdogOutcome Check(bool inputHidden) {
       DateTimeOffset now = _time.GetUtcNow();
       if (SelfPausedUntil is { } until) {
         if (now < until) {
@@ -62,7 +63,7 @@ namespace Rekey.Win32.Keyboard {
         return Reattach([]);
       }
 
-      if (!Enabled || foregroundElevated || AwaitsReinstall()) {
+      if (!Enabled || inputHidden || AwaitsReinstall()) {
         _accountedTick = _activity.SystemLastInputTick;
         return WatchdogOutcome.None;
       }

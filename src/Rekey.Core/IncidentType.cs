@@ -14,7 +14,9 @@ namespace Rekey.Core {
 
     /// <summary>
     /// A keyboard or mouse hook callback took longer than 1 ms at least once since the last such
-    /// Incident; Windows removes a hook that is too slow. No details.
+    /// Incident; Windows removes a hook that is too slow. The time includes any wait for the CPU,
+    /// as while the system captures the screen, because Windows counts that time too. No
+    /// details.
     /// </summary>
     SlowHookCallback,
 

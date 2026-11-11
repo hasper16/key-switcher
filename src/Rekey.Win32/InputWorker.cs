@@ -302,7 +302,10 @@ namespace Rekey.Win32 {
       FollowForegroundLayout();
 
       DateTimeOffset? pausedBefore = _hookWatchdog.SelfPausedUntil;
-      Apply(_hookWatchdog.Check(_engine.Focus?.IsElevated ?? false), pausedBefore);
+
+      // Windows hides input aimed at an elevated window or the secure desktop from the hooks.
+      bool inputHidden = (_engine.Focus?.IsElevated ?? false) || InputDesktop.HidesInputNow();
+      Apply(_hookWatchdog.Check(inputHidden), pausedBefore);
     }
 
     private void Apply(WatchdogOutcome outcome, DateTimeOffset? pausedBefore) {

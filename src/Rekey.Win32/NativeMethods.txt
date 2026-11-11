@@ -1,5 +1,6 @@
 CUIAutomation
 CallNextHookEx
+CloseDesktop
 CreateMutex
 DispatchMessage
 ES_PASSWORD
@@ -18,6 +19,7 @@ GetLastInputInfo
 GetMessage
 GetModuleHandle
 GetTokenInformation
+GetUserObjectInformation
 GetWindowLong
 GetWindowThreadProcessId
 HC_ACTION
@@ -28,6 +30,7 @@ LoadKeyboardLayout
 MSLLHOOKSTRUCT
 MapVirtualKeyEx
 MsgWaitForMultipleObjectsEx
+OpenInputDesktop
 OpenProcess
 OpenProcessToken
 PeekMessage

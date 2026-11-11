@@ -18,7 +18,7 @@ namespace Rekey.Win32.Tests.Keyboard {
     public void HookSilentWhileTheUserTypesIsReinstalled() {
       _activity.UserTypesUnseen(TimeSpan.FromMilliseconds(1600));
 
-      WatchdogOutcome outcome = _watchdog.Check(foregroundElevated: false);
+      WatchdogOutcome outcome = _watchdog.Check(inputHidden: false);
 
       Assert.True(outcome.Reinstall);
       Assert.Equal([IncidentType.HookReinstalled], Types(outcome));
@@ -31,31 +31,31 @@ namespace Rekey.Win32.Tests.Keyboard {
       activity.UserTypesUnseen(TimeSpan.FromSeconds(5));
       var watchdog = new HookWatchdog(activity, _time);
 
-      Assert.Equal(WatchdogOutcome.None, watchdog.Check(foregroundElevated: false));
+      Assert.Equal(WatchdogOutcome.None, watchdog.Check(inputHidden: false));
     }
 
     [Fact]
     public void ShortGapIsNotADrop() {
       _activity.UserTypesUnseen(TimeSpan.FromMilliseconds(1500));
 
-      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(foregroundElevated: false));
+      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(inputHidden: false));
     }
 
     [Fact]
     public void ElevatedForegroundIsNotADrop() {
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(5));
 
-      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(foregroundElevated: true));
+      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(inputHidden: true));
     }
 
     [Fact]
     public void TypingInAnElevatedWindowIsNotADropAfterLeavingIt() {
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(5));
-      _watchdog.Check(foregroundElevated: true);
+      _watchdog.Check(inputHidden: true);
 
       _activity.UserTypesUnseen(TimeSpan.FromMilliseconds(250));
 
-      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(foregroundElevated: false));
+      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(inputHidden: false));
     }
 
     [Fact]
@@ -63,17 +63,17 @@ namespace Rekey.Win32.Tests.Keyboard {
       _watchdog.Enabled = false;
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(5));
 
-      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(foregroundElevated: false));
+      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(inputHidden: false));
     }
 
     [Fact]
     public void ReinstalledHookGetsAFreshStart() {
       _activity.UserTypesUnseen(TimeSpan.FromMilliseconds(1600));
-      _watchdog.Check(foregroundElevated: false);
+      _watchdog.Check(inputHidden: false);
 
       _activity.UserTypesUnseen(TimeSpan.FromMilliseconds(500));
 
-      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(foregroundElevated: false));
+      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(inputHidden: false));
     }
 
     [Fact]
@@ -93,10 +93,10 @@ namespace Rekey.Win32.Tests.Keyboard {
       // Windows drops a hook whose callback is stuck, so the hook thread reinstalls only once
       // that callback returns; the user keeps typing meanwhile.
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
-      _watchdog.Check(foregroundElevated: false);
+      _watchdog.Check(inputHidden: false);
 
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
-      WatchdogOutcome stillWaiting = _watchdog.Check(foregroundElevated: false);
+      WatchdogOutcome stillWaiting = _watchdog.Check(inputHidden: false);
 
       Assert.Equal(WatchdogOutcome.None, stillWaiting);
       Assert.Null(_watchdog.SelfPausedUntil);
@@ -105,24 +105,24 @@ namespace Rekey.Win32.Tests.Keyboard {
     [Fact]
     public void InputMissedBeforeTheReinstallFinishedIsAccountedFor() {
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
-      _watchdog.Check(foregroundElevated: false);
+      _watchdog.Check(inputHidden: false);
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
-      _watchdog.Check(foregroundElevated: false);
+      _watchdog.Check(inputHidden: false);
 
       _activity.HooksBack();
 
-      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(foregroundElevated: false));
+      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(inputHidden: false));
     }
 
     [Fact]
     public void ReinstallThatNeverFinishesIsJudgedAgainAfterFiveSeconds() {
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
-      _watchdog.Check(foregroundElevated: false);
+      _watchdog.Check(inputHidden: false);
       _time.Advance(TimeSpan.FromSeconds(5));
 
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
 
-      Assert.True(_watchdog.Check(foregroundElevated: false).Reinstall);
+      Assert.True(_watchdog.Check(inputHidden: false).Reinstall);
     }
 
     [Fact]
@@ -140,7 +140,7 @@ namespace Rekey.Win32.Tests.Keyboard {
       Fail();
       _time.Advance(TimeSpan.FromMinutes(10));
 
-      WatchdogOutcome outcome = _watchdog.Check(foregroundElevated: false);
+      WatchdogOutcome outcome = _watchdog.Check(inputHidden: false);
 
       Assert.True(outcome.Reinstall);
       Assert.Null(_watchdog.SelfPausedUntil);
@@ -152,7 +152,7 @@ namespace Rekey.Win32.Tests.Keyboard {
       Fail();
       _time.Advance(TimeSpan.FromMinutes(9));
 
-      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(foregroundElevated: false));
+      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(inputHidden: false));
       Assert.NotNull(_watchdog.SelfPausedUntil);
     }
 
@@ -186,9 +186,9 @@ namespace Rekey.Win32.Tests.Keyboard {
     // worker's next loop (every 250 ms) notices before the user types on.
     private WatchdogOutcome Fail() {
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
-      WatchdogOutcome outcome = _watchdog.Check(foregroundElevated: false);
+      WatchdogOutcome outcome = _watchdog.Check(inputHidden: false);
       _activity.HooksBack();
-      _watchdog.Check(foregroundElevated: false);
+      _watchdog.Check(inputHidden: false);
       return outcome;
     }
 
