@@ -60,7 +60,10 @@ namespace Rekey.Win32.Replacement {
             TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start,
             TextUnit.TextUnit_Character,
             -length);
-        string text = TextOf(range, length);
+
+        // One character more than asked: a provider that moves by a larger unit gives a longer
+        // range, which must not match, as selecting it would replace more than the Word.
+        string text = TextOf(range, length + 1);
         if (OverBudget()) {
           return null;
         }

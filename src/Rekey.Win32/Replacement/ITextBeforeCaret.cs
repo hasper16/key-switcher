@@ -38,8 +38,9 @@ namespace Rekey.Win32.Replacement {
     /// </summary>
     /// <param name="length">The number of characters to read.</param>
     /// <returns>
-    /// Up to <paramref name="length" /> characters, or <see langword="null" /> when the control
-    /// does not expose them in time.
+    /// The text of the range ending at the caret, which is longer than
+    /// <paramref name="length" /> when the control moves by a larger unit than a character, or
+    /// <see langword="null" /> when the control does not expose it in time.
     /// </returns>
     string? Read(int length);
 

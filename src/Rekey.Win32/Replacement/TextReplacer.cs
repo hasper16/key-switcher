@@ -104,6 +104,11 @@ namespace Rekey.Win32.Replacement {
       bool retype = method == ReplacementMethod.Retype;
       int erase = retype ? new StringInfo(replace.Expected).LengthInTextElements : 0;
       if (!_send(InputBuilder.Replacement(erase, replace.Replacement, _heldModifiers()))) {
+        // Windows refuses input to this window, so only UI Automation can clear the selection.
+        if (!retype) {
+          _reader.Deselect(Deselection.IfStillSelected);
+        }
+
         return ReplacementResult.Blocked;
       }
 

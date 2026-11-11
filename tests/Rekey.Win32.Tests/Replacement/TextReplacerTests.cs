@@ -177,6 +177,17 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void RefusedInputAfterSelectingCollapsesTheSelection() {
+      var control = new FakeControl("ghbdtn");
+      var replacer = new TextReplacer(control, true, () => [], _ => false);
+
+      ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.Blocked, result);
+      Assert.Equal(Deselection.IfStillSelected, control.Deselected);
+    }
+
+    [Fact]
     public void InputThatWindowsRefusesIsReportedAsBlocked() {
       var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], _ => false);
 
