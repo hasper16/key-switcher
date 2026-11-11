@@ -17,35 +17,48 @@ The original swaps the word in place through the macOS Accessibility API where i
 ## Decisions
 
 ### D1. Holding keys without shared state
-- The hook thread keeps its own `lastWasLetter` flag. When a Trigger Key arrives and `lastWasLetter` is true, the hook swallows it (returns 1), increments its own `holdGeneration`, and enqueues it.
-- While `holdGeneration > releasedGeneration`, the hook swallows *every* key and enqueues it. `releasedGeneration` is written only by the worker; `holdGeneration` only by the hook. One writer per variable (`Volatile.Read/Write`).
-- The worker evaluates the Word; it then either applies the Correction or not, re-injects all held keys in order via `SendInput` (virtual-key events, Rekey tag), and publishes `releasedGeneration`.
-- Safety valve: if the worker does not release within 150 ms, the hook releases on its own and re-injects held keys (Incident `hold-timeout`). Typing is never blocked longer than that.
-- Which keys are Trigger Keys is a settings value the hook reads from an immutable snapshot swapped atomically by the worker.
+- The hook thread owns a `HoldGate` with hook-only fields: `lastWasCharacter` (the last key-down was a character key with no Ctrl, Alt or Windows key held), the held modifiers, `lastHeld` (ring sequence of the last key it held) and `lastKeyDown` (ring sequence of the last non-modifier key-down).
+- When a Trigger Key goes down after a character key and the Hook Policy allows holding, the hook writes it to the ring marked as held and swallows it (returns 1). While `lastHeld > released`, the hook holds *every* key event, downs and ups alike, so a held modifier can never be released out of order.
+- `released` is written only by the worker: the ring sequence of the last held key it finished. The worker handles each held key in ring order: it feeds the engine, executes the actions, re-injects the key, then publishes `released`. Because the hook keeps holding until every key it held has been re-injected, a key it lets through can never overtake a held one. One writer per variable (`Volatile.Read/Write`).
+- A key is held only when the ring has room for it; a key the ring cannot take passes through.
+- Safety valve: when a key arrives more than 150 ms after the hold began, the hook stops holding until the worker catches up and counts a hold timeout (Incident `HoldTimeout`, recorded by the worker). Typing is never blocked longer than that. Keys held before the valve are still re-injected, late but not lost. To keep a late Correction from erasing keys the valve let through, the worker applies a Correction or Undo only while its key is less than 100 ms old (design decision: 50 ms of margin below the valve).
+- The Hook Policy (whether to hold, the Trigger Keys, the character scan codes of the active Layouts) is an immutable snapshot the worker swaps atomically. In this change the host holds Space and Enter only when a Word Evaluator is installed (D6); `add-auto-correction` derives the policy from its gate and settings.
 
 ### D2. Injection
-- One `SendInput` call per Correction: `n × VK_BACK`, then the Rendering as `KEYEVENTF_UNICODE` down/up pairs, then held keys as normal VK events. All with `dwExtraInfo = 0x52454B59`.
-- `n` = number of characters the replaced Words produce on screen in the current Layout (= Keystroke count, since en/ru/uk produce one character per key; dead keys are excluded by the scorer).
-- Layout Switch (from `add-keyboard-capture-and-layouts`) happens after the text injection, before held keys are released, so the next typed key is already in the new Layout.
+- Every injected input carries `dwExtraInfo = 0x52454B59`, so the hook ignores it.
+- A replacement is one `SendInput` call: a key-up for each Ctrl, Alt or Windows key still down (Ctrl+Backspace would delete a whole word, and the user's Ctrl is still down during Undo), `n × VK_BACK`, then the Rendering as `KEYEVENTF_UNICODE` down/up pairs.
+- `n` = the number of characters the replaced Words show on screen in the current Layout, which equals their Keystroke count, since en/ru/uk produce one character per key and the Word Evaluator gets no Word with a dead key.
+- The Layout Switch (from `add-keyboard-capture-and-layouts`) is requested after the text and before held keys are re-injected, so the next typed key lands in the new Layout. Held keys are re-injected by scan code (`KEYEVENTF_SCANCODE`, plus the extended and key-up flags as seen), so Windows maps them through the Layout active when they arrive.
 
 ### D3. Verified replacement via UI Automation
-- On the worker (UIA STA helper thread): get the focused element's `TextPattern`; take the caret range from `GetSelection()` (must be degenerate); clone it, `MoveEndpointByUnit(Start, Character, -len)`; compare `GetText` with the expected current Rendering (including spaces between Words of a deferred run).
-- Match → `Select()` that range, then inject only the Rendering (typing over the selection) — no Backspaces.
-- Mismatch → cancel (no injection except releasing held keys), record `correction-cancelled`.
-- No TextPattern, or any UIA call exceeds 50 ms → retype as in D2. Per-app memory: an app that timed out twice is marked "slow" for the session and goes straight to D2 (the original also remembers slow apps).
+- On the worker thread, with its own `IUIAutomation` whose connection and transaction timeouts are 50 ms (design decision), as the Password Field probe already does: get the focused element's `TextPattern`; take the caret range from `GetSelection()` (one degenerate range); clone it, `MoveEndpointByUnit(Start, Character, -len)`; compare `GetText` with the text Rekey expects before the caret (the Rendering of the Words in the current Layout, spaces included for a Deferred run).
+- Match → `Select()` that range, then type only the replacement over it, no Backspaces.
+- Mismatch → cancel: inject nothing, record Incident `CorrectionCancelled`, and still re-inject held keys.
+- No TextPattern, no single degenerate caret range, a failed call, or more than 50 ms spent in total → retype as in D2. An app that ran out of time twice is "slow" for the session and goes straight to D2 (the original also remembers slow apps); apps are told apart by `Context.AppId`.
+- The decision (`VerifiedReplacement.Prepare`) takes the reader as an interface, so it is unit-tested with a fake reader; only the UIA reader itself needs a desktop.
+- `Settings.VerifiedReplacement = false` skips the reader and always retypes.
 
 ### D4. Undo
-- After a Correction the worker writes `lastCorrection` (immutable record: original text, Rendering, trigger text, source/target Layouts, time, `undoable = trigger != Enter`) and bumps `correctionGeneration`.
-- Hook-side: on Ctrl+Z, if `correctionGeneration` changed since the last key the hook saw (hook-local counter), the record is `undoable`, and `now - time < 5 s` → swallow and enqueue `UndoRequested`. Any other key between makes the hook's counter advance, so Ctrl+Z passes through.
-- Worker: Backspace over Rendering + trigger text, type the original text + trigger text, switch back to the source Layout, emit `UndoPerformed(word, rendering)` for learning and statistics.
+- When a Correction's replacement is applied, the engine keeps `LastCorrection` (typed text, Rendering, trigger text, source and target Layouts, time; `Undoable` unless the trigger was Enter) and the worker publishes the trigger's ring sequence as `undoArmed`.
+- Hook side: on Ctrl+Z (no Alt or Windows key), if `lastKeyDown == undoArmed` — nothing but modifiers came after the Trigger Key — the hook holds the key as an Undo request. It checks nothing else; the engine decides.
+- Engine: an `UndoRequested` within the Undo Window of an undoable `LastCorrection`, with no other key, click or focus change since, yields `ReplaceText(Rendering + trigger text, typed text + trigger text)`; once applied, `SwitchLayout(source)` and `UndoPerformed(typed, Rendering)` for learning and statistics. Otherwise the request ends the Word like any shortcut.
+- Worker: a held Undo request whose replacement was applied is consumed; any other is re-injected, so the application gets its Ctrl+Z.
 
 ### D5. ISO key in Key Maps
 - `KeyMapReader` (worker thread, `MapVirtualKeyEx` + `ToUnicodeEx`) adds scan code 0x56 to its printable keys, giving 48 entries per Layout. Without it a Word containing that key has no Rendering, so it can neither be detected nor replaced. Both Ukrainian Layouts put "ґ" on that key, so without it "ґ" could not be typed or rendered at all.
 - On Layouts where 0x56 repeats another key's characters (English (US) gives "\" on both 0x2B and 0x56), typing a text still picks the lower scan code; Rendering reads whichever key was pressed.
 
+### D6. Word Evaluator seam
+- Deciding what to correct belongs to `add-auto-correction`. Until then the engine takes an optional `WordEvaluator` (Keystrokes and Layout of a Word → `Decision`) and calls it for a Word ended by a held, unmodified Trigger Key; the Decision goes through the engine's `DeferredRun`. With no evaluator nothing is held or corrected, so the app behaves as before this change.
+- The engine remembers the on-screen text of the Words in the current run (each rendered in the Layout it was typed in, separated by single spaces). A Word ended by anything but an evaluated Space, a click, a focus change, a typing gap or lost input ends the run and resets `DeferredRun`, so a run on screen is always the Words joined by single spaces.
+- Replacing text is a round trip, as ADR 0002 requires: the engine returns `ReplaceText(expected, replacement)`; the worker verifies and injects, then reports `ReplacementFinished(applied)`; only then does the engine return the Layout Switch (and, for Undo, `UndoPerformed`). A cancelled replacement switches nothing and arms no Undo.
+- The engine renders Words with the Key Maps it receives in `LayoutsInstalledChanged`.
+
 ## Risks / Trade-offs
 
-- [Holding Space adds latency to every word end] → bounded by decision time (< 5 ms target) and the 150 ms valve; measured in the latency benchmark.
+- [Holding Space adds latency to every word end] → bounded by decision time (< 5 ms target) and the 150 ms valve; nothing is held while no Word Evaluator is installed.
+- [The 100 ms freshness check and the 150 ms valve race when the worker is preempted for 50 ms between the check and `SendInput`] → accepted: the window is a few microseconds wide and needs a 100 ms stall first.
+- [A mouse click during a hold reaches the app before held keys] → accepted: clicks are not held; the click ends the Word, so nothing is corrected after it.
 - [Apps that react to Backspace specially (autocomplete popups, IDE snippets)] → verified replacement avoids most Backspaces; users can add such apps to Excluded Apps.
 - [Some apps ignore `KEYEVENTF_UNICODE`] (rare: some games, remote-desktop clients) → listed as known limitation; suggest Excluded App.
 - [Typing over a UIA selection can trigger app-specific "replace selection" behavior (e.g. auto-pairing quotes)] → only letters are typed over selections; held keys come after.

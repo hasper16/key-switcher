@@ -6,26 +6,30 @@
 
 ## 2. Correction and Undo model in Core
 
-- [ ] 2.1 Define `ReplaceWord`, `ReleaseHeld`, `LastCorrection`, `UndoPerformed` actions/records; verify the project builds
-- [ ] 2.2 Write failing engine tests: a Correction yields `ReplaceWord(erase n, text)` + `SwitchLayout` + `ReleaseHeld` in that order; a deferred run erases the whole run incl. spaces; implement; verify they pass
-- [ ] 2.3 Write failing engine tests for Undo: within 5 s → restore actions + `UndoPerformed`; after 5 s, after another key, or after an Enter-triggered Correction → no Undo; implement; verify they pass
+- [ ] 2.1 Define the data shapes: `KeyDown.Held`, `UndoRequested`, `ReplacementFinished`, Key Maps in `LayoutsInstalledChanged`, `ReplaceText` and `UndoPerformed` actions (text hidden from their text form), `WordEvaluator`, Incident types `CorrectionCancelled` and `HoldTimeout`; verify the solution builds and a test shows the actions print no text
+- [ ] 2.2 Write failing engine tests with a stub Word Evaluator: a held Trigger Key ending a Word to correct yields `ReplaceText(typed, Rendering)`; `ReplacementFinished(applied)` then yields `SwitchLayout(target)`, a cancelled one nothing; a Deferred run replaces the whole run incl. spaces; an unheld or Ctrl-modified trigger, a click or a Backspace past the Word start evaluates or replaces nothing across it; implement; verify they pass
+- [ ] 2.3 Write failing engine tests for Undo: within 5 s → `ReplaceText(Rendering + " ", typed + " ")`, then `SwitchLayout(source)` + `UndoPerformed`; after 5 s, after another key, after a click, after an Enter-triggered Correction or after a cancelled replacement → no Undo; implement; verify they pass
 
 ## 3. Key holding on the hook thread
 
-- [ ] 3.1 Write failing tests for the hold state machine (hook-local `lastWasLetter`, `holdGeneration`/`releasedGeneration`, 150 ms valve) with a fake clock; implement; verify they pass
-- [ ] 3.2 Wire the hold logic into the hook callback with the Trigger Key snapshot; verify manually that "ghbdtn" + Space in Notepad shows "привет " with the space after the word
+- [ ] 3.1 Write failing tests for `HoldGate` with a fake clock: a Trigger Key after a character key is held, after a non-character or with Ctrl it is not; every key event is held until the worker releases the last held sequence; a key after 150 ms opens the valve and counts a timeout; a full ring never holds; no policy, no hold; implement; verify they pass
+- [ ] 3.2 Wire `HoldGate` into the hook callback and the worker (Hook Policy snapshot, held flag in the ring, re-injection after the engine's actions, release, freshness check, `HoldTimeout` Incident); verify with the desktop checks that "ghbdtn" + Space in a test window shows "привет " with the space after the word, and that keys typed during the Correction follow it in order
 
 ## 4. Injection
 
-- [ ] 4.1 Implement the `SendInput` injector (Backspaces, Unicode text, held VK keys, Rekey tag) in a single call; verify manually in Notepad, Chrome, VS Code and Windows Terminal
-- [ ] 4.2 Verify manually that Enter as Trigger Key in a chat box (e.g. Telegram Desktop) sends the corrected text, and that the clipboard is unchanged after Corrections and Undos
+- [ ] 4.1 Write failing tests for the input builder: key-ups for held Ctrl, Alt and Windows keys, n Backspaces, Unicode down/up pairs, the Rekey tag on every input, a held key re-injected by scan code with its extended and key-up flags; implement the `SendInput` injector; verify the tests pass and the desktop checks in Notepad, a browser text box and a console
+- [ ] 4.2 Verify with the desktop checks that Enter as Trigger Key in the test page's chat box sends the corrected text, and that the clipboard sequence number is unchanged after Corrections and Undos; verify by hand in VS Code and Telegram Desktop (`docs/manual-tests/add-text-replacement.md`)
 
 ## 5. Verified replacement
 
-- [ ] 5.1 Implement the UIA reader on an STA helper thread (caret range, text before caret, 50 ms timeout, slow-app memory); verify a manual check in Notepad and Chrome logs the expected text before caret
-- [ ] 5.2 Write failing tests for the verification decision with a fake text reader (match → select-and-type; mismatch → cancel + Incident; no text exposed or timeout → retype); implement select-and-type and cancel-on-mismatch; verify the tests pass and manually with an editor whose autocomplete alters the word (no change made)
-- [ ] 5.3 Add the `VerifiedReplacement` setting (default on) to `Settings`; verify a test that off forces retype path
+- [ ] 5.1 Write failing tests for slow-app memory (two timeouts in one app mark it slow, other apps unaffected); implement the UIA reader on the worker (caret range, text before caret, select, 50 ms budget); verify the tests pass and the desktop checks report the verified path in Notepad and the browser text box
+- [ ] 5.2 Write failing tests for `VerifiedReplacement.Prepare` with a fake reader (match → select-and-type; mismatch → cancel; nothing exposed or out of time → retype); implement select-and-type and cancel-on-mismatch with the `CorrectionCancelled` Incident; verify the tests pass and the desktop check where the text before the caret differs from the Word (keys the hook ignores) changes nothing; verify by hand with an editor whose autocomplete alters the Word
+- [ ] 5.3 Add the `VerifiedReplacement` setting (default on) to `Settings` and pass it to the worker; verify a test that off forces the retype path
 
 ## 6. Undo end to end
 
-- [ ] 6.1 Write failing tests for the hook-side Ctrl+Z state machine with a fake clock (`correctionGeneration` unchanged, other key in between, Enter-triggered, older than 5 s → pass through; otherwise swallow); implement; verify the tests pass and manually: Correction then Ctrl+Z within 5 s restores "ghbdtn " and English (US); after 6 s Ctrl+Z reaches the app
+- [ ] 6.1 Write failing `HoldGate` tests for Ctrl+Z (held as an Undo request only right after the armed Trigger Key; after another key, with Alt, or with nothing armed it passes); implement the hook and worker sides (arm on applied Correction, consume an applied Undo, re-inject a refused one); verify the tests pass and the desktop checks: Correction then Ctrl+Z within 5 s restores "ghbdtn " and English (US); after 6 s, after a letter, or after an Enter-triggered Correction Ctrl+Z reaches the app
+
+## 7. Desktop checks
+
+- [ ] 7.1 Add a `text-replacement` run to `tools/Rekey.DesktopChecks` covering 3.2, 4.1, 4.2, 5.1, 5.2 and 6.1, restoring every setting and closing every window it opens; document it in `docs/manual-tests/add-text-replacement.md` with the checks that need a person; verify the run passes on the owner's desktop
