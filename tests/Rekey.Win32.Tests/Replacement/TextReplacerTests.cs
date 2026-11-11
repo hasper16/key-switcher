@@ -86,6 +86,19 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void FocusThatMovedDuringTheCheckGetsNoCleanupKey() {
+      // Right would land in the newly focused control, and the held Space goes there too, so
+      // the selected Word is left as it is.
+      TextReplacer replacer = Replacer(new FakeControl("ghbdtn"), verify: true);
+
+      ReplacementResult result = replacer.Replace(
+          new ReplaceText("ghbdtn", "привет"), _editor, () => ReplacementResult.Interrupted);
+
+      Assert.Equal(ReplacementResult.Interrupted, result);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
     public void InputThatWindowsRefusesIsReportedAsBlocked() {
       var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], _ => false);
 

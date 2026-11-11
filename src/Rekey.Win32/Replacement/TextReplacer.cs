@@ -74,7 +74,7 @@ namespace Rekey.Win32.Replacement {
           return ReplacementResult.Mismatch;
         case ReplacementMethod.Abandon:
           // The app handles the pending selection before this input, so it ends collapsed.
-          _send(InputBuilder.CollapseSelection(_heldModifiers()));
+          CollapseUnlessMoved(recheck());
           return ReplacementResult.TimedOut;
         default:
           break;
@@ -82,7 +82,7 @@ namespace Rekey.Win32.Replacement {
 
       if (recheck() is { } stale) {
         if (method == ReplacementMethod.SelectAndType) {
-          _send(InputBuilder.CollapseSelection(_heldModifiers()));
+          CollapseUnlessMoved(stale);
         }
 
         return stale;
@@ -96,6 +96,15 @@ namespace Rekey.Win32.Replacement {
       }
 
       return retype ? ReplacementResult.Retyped : ReplacementResult.Verified;
+    }
+
+    // Collapses a selection so a re-injected Space cannot type over the Word. After a click or
+    // a focus move it would land elsewhere; then the click already collapsed the selection, or
+    // the held keys go to the other control and leave the Word alone.
+    private void CollapseUnlessMoved(ReplacementResult? stale) {
+      if (stale != ReplacementResult.Interrupted) {
+        _send(InputBuilder.CollapseSelection(_heldModifiers()));
+      }
     }
   }
 }
