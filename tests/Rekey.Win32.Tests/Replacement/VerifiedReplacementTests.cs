@@ -60,10 +60,32 @@ namespace Rekey.Win32.Tests.Replacement {
     public void RequestThatTurnedStaleBeforeSelectingSelectsNothing() {
       var control = new FakeControl("ghbdtn");
 
-      ReplacementMethod method = VerifiedReplacement.Prepare(control, "ghbdtn", () => false);
+      ReplacementMethod method =
+          VerifiedReplacement.Prepare(control, "ghbdtn", () => false, canSelect: true);
 
       Assert.Equal(ReplacementMethod.Stale, method);
       Assert.False(control.Selected);
+    }
+
+    [Fact]
+    public void MatchingTextInAControlWhoseSelectionTypingIgnoresIsRetyped() {
+      var control = new FakeControl("ghbdtn");
+
+      ReplacementMethod method =
+          VerifiedReplacement.Prepare(control, "ghbdtn", () => true, canSelect: false);
+
+      Assert.Equal(ReplacementMethod.Retype, method);
+      Assert.False(control.Selected);
+    }
+
+    [Fact]
+    public void TextThatDiffersInSuchAControlStillCancels() {
+      var control = new FakeControl("dtnxyz");
+
+      ReplacementMethod method =
+          VerifiedReplacement.Prepare(control, "ghbdtn", () => true, canSelect: false);
+
+      Assert.Equal(ReplacementMethod.Cancel, method);
     }
 
     [Fact]

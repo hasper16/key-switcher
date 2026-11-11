@@ -305,7 +305,11 @@ namespace Rekey.Win32 {
 
       _started.Set();
       _replacer = new TextReplacer(
-          new UiaTextBeforeCaret(), _verifiedReplacement, HeldModifiers, SendKeys);
+          new UiaTextBeforeCaret(),
+          _verifiedReplacement,
+          HeldModifiers,
+          SendKeys,
+          () => !ConsoleWindows.ForegroundIsConsole());
       RefreshLayouts();
       using var focus = new FocusTracker(OnFocusChanged);
       _focus = focus;

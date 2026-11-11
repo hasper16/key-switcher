@@ -15,6 +15,7 @@ namespace Rekey.Win32.Replacement {
     private readonly bool _verify;
     private readonly Func<IReadOnlyList<VIRTUAL_KEY>> _heldModifiers;
     private readonly Func<INPUT[], bool> _send;
+    private readonly Func<bool> _canSelect;
     private readonly SlowApps _slowApps = new();
 
     /// <summary>
@@ -33,11 +34,37 @@ namespace Rekey.Win32.Replacement {
         ITextBeforeCaret reader,
         bool verify,
         Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
-        Func<INPUT[], bool> send) {
+        Func<INPUT[], bool> send)
+        : this(reader, verify, heldModifiers, send, () => true) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TextReplacer" /> class.
+    /// </summary>
+    /// <param name="reader">The focused control's text.</param>
+    /// <param name="verify">
+    /// <see langword="true" /> to check the text before replacing it (setting Verified
+    /// Replacement); otherwise, <see langword="false" />.
+    /// </param>
+    /// <param name="heldModifiers">Returns the modifier keys down now.</param>
+    /// <param name="send">
+    /// Sends inputs to Windows; returns <see langword="false" /> unless Windows took them all.
+    /// </param>
+    /// <param name="canSelect">
+    /// Returns whether typing in the focused window replaces a UI Automation selection; not in
+    /// a console.
+    /// </param>
+    public TextReplacer(
+        ITextBeforeCaret reader,
+        bool verify,
+        Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
+        Func<INPUT[], bool> send,
+        Func<bool> canSelect) {
       _reader = reader;
       _verify = verify;
       _heldModifiers = heldModifiers;
       _send = send;
+      _canSelect = canSelect;
     }
 
     /// <summary>
@@ -65,10 +92,12 @@ namespace Rekey.Win32.Replacement {
         ReplaceText replace, string appId, Func<ReplacementResult?> recheck) {
       ITextBeforeCaret? reader = _verify && !_slowApps.IsSlow(appId) ? _reader : null;
       ReplacementResult? staleBeforeSelect = null;
-      ReplacementMethod method = VerifiedReplacement.Prepare(reader, replace.Expected, () => {
+      Func<bool> stillValid = () => {
         staleBeforeSelect = recheck();
         return staleBeforeSelect is null;
-      });
+      };
+      ReplacementMethod method = VerifiedReplacement.Prepare(
+          reader, replace.Expected, stillValid, reader is not null && _canSelect());
       if (reader is { TimedOut: true }) {
         _slowApps.RecordTimeout(appId);
       }

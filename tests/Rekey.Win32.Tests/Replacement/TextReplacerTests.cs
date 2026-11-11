@@ -188,12 +188,30 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void ConsoleIsCheckedButRetypedNeverClaimedVerified() {
+      var control = new FakeControl("ghbdtn");
+      var replacer = new TextReplacer(control, true, () => [], Send, () => false);
+
+      ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.Retyped, result);
+      Assert.Equal(6, control.AskedLength);
+      Assert.False(control.Selected);
+      Assert.Equal(24, Assert.Single(_sent).Length);
+    }
+
+    [Fact]
     public void InputThatWindowsRefusesIsReportedAsBlocked() {
       var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], _ => false);
 
       ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
 
       Assert.Equal(ReplacementResult.Blocked, result);
+    }
+
+    private bool Send(INPUT[] inputs) {
+      _sent.Add(inputs);
+      return true;
     }
 
     private TextReplacer Replacer(ITextBeforeCaret control, bool verify) {
