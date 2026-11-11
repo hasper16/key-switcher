@@ -84,6 +84,10 @@ While the keyboard watchdog is on (default, as in the original), when Windows st
 - **THEN** Rekey reattaches within 2 seconds of detecting missing input
 - **AND** an Incident records the drop and the recovery
 
+#### Scenario: Secure desktop
+- **WHEN** a UAC prompt, the lock screen or the Ctrl+Alt+Del screen takes the input and the user types or clicks there
+- **THEN** Rekey does not treat that input as a dropped hook and records no Incident
+
 #### Scenario: Watchdog turned off
 - **WHEN** the keyboard watchdog is off and Windows stops delivering Keystrokes to Rekey
 - **THEN** Rekey does not reattach on its own and records no Incident
