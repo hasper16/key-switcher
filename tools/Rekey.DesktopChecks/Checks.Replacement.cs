@@ -86,18 +86,25 @@ namespace Rekey.DesktopChecks {
       return ids;
     }
 
-    private static void CloseNotepadsStartedSince(int[] before) {
-      foreach (Process process in Process.GetProcessesByName("Notepad")) {
-        using (process) {
-          if (before.Contains(process.Id) || process.HasExited) {
-            continue;
-          }
+    // Closes the Notepad that showed the test file, but only when this run started it: a
+    // Notepad that was already running, or that showed something else, keeps running.
+    private static void CloseNotepadIfStartedHere(uint ownerId, int[] before) {
+      if (before.Contains((int)ownerId)) {
+        return;
+      }
 
-          process.CloseMainWindow();
-          if (!process.WaitForExit(TimeSpan.FromSeconds(3))) {
-            process.Kill();
-          }
+      try {
+        using Process process = Process.GetProcessById((int)ownerId);
+        if (process.HasExited || process.ProcessName != "Notepad") {
+          return;
         }
+
+        process.CloseMainWindow();
+        if (!process.WaitForExit(TimeSpan.FromSeconds(3))) {
+          process.Kill();
+        }
+      } catch (ArgumentException) {
+        // Already gone after its tab closed.
       }
     }
 
@@ -233,18 +240,19 @@ namespace Rekey.DesktopChecks {
 
       // Below the always-on-top test windows, so clicks meant for Notepad reach it.
       PInvoke.MoveWindow(notepad, 80, 320, 640, 360, true);
+      _ = PInvoke.GetWindowThreadProcessId(notepad, out uint ownerId);
       Thread.Sleep(_settle);
       Point editor = Desktop.Center(notepad);
       _restorer.Defer("Notepad", () => {
         // Saved empty first, so closing asks nothing and the session keeps no draft; a
-        // Notepad the user had open keeps running, one this run started is closed.
+        // Notepad the user had open keeps running; the one this run started is closed.
         Focus(editor);
         Input.ClearBox();
         Input.Control('s');
         Thread.Sleep(_settle);
         Input.CloseTab();
         Thread.Sleep(_settle);
-        CloseNotepadsStartedSince(before);
+        CloseNotepadIfStartedHere(ownerId, before);
       });
       ExpectCorrected("4.1 Notepad", editor);
     }

@@ -6,6 +6,7 @@ GetKeyState
 GetWindowRect
 GetWindowText
 GetWindowTextLength
+GetWindowThreadProcessId
 INPUT
 IsWindowVisible
 MoveWindow
