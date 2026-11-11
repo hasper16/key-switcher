@@ -51,9 +51,12 @@ namespace Rekey.Win32 {
     private static readonly ushort[] _triggerKeys = [
         (ushort)VIRTUAL_KEY.VK_SPACE, (ushort)VIRTUAL_KEY.VK_RETURN];
 
-    private static readonly VIRTUAL_KEY[] _shortcutModifiers = [
-        VIRTUAL_KEY.VK_LCONTROL, VIRTUAL_KEY.VK_RCONTROL, VIRTUAL_KEY.VK_LMENU,
-        VIRTUAL_KEY.VK_RMENU, VIRTUAL_KEY.VK_LWIN, VIRTUAL_KEY.VK_RWIN];
+    // Released around injected keys, which they would otherwise change: Ctrl+Backspace deletes
+    // a word, Shift+Right extends a selection.
+    private static readonly VIRTUAL_KEY[] _modifierKeys = [
+        VIRTUAL_KEY.VK_LSHIFT, VIRTUAL_KEY.VK_RSHIFT, VIRTUAL_KEY.VK_LCONTROL,
+        VIRTUAL_KEY.VK_RCONTROL, VIRTUAL_KEY.VK_LMENU, VIRTUAL_KEY.VK_RMENU,
+        VIRTUAL_KEY.VK_LWIN, VIRTUAL_KEY.VK_RWIN];
 
     private readonly InputRing _ring = new(_ringCapacity);
     private readonly HoldGate _gate = new();
@@ -274,8 +277,8 @@ namespace Rekey.Win32 {
       return layout.Value >> 28 == 0xE;
     }
 
-    private static IReadOnlyList<VIRTUAL_KEY> HeldShortcutModifiers() {
-      return [.. _shortcutModifiers.Where(IsKeyDown)];
+    private static IReadOnlyList<VIRTUAL_KEY> HeldModifiers() {
+      return [.. _modifierKeys.Where(IsKeyDown)];
     }
 
     // Returns whether Windows took every input; it refuses input to a window of higher
@@ -302,7 +305,7 @@ namespace Rekey.Win32 {
 
       _started.Set();
       _replacer = new TextReplacer(
-          new UiaTextBeforeCaret(), _verifiedReplacement, HeldShortcutModifiers, SendKeys);
+          new UiaTextBeforeCaret(), _verifiedReplacement, HeldModifiers, SendKeys);
       RefreshLayouts();
       using var focus = new FocusTracker(OnFocusChanged);
       _focus = focus;

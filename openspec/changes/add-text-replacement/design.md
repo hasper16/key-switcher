@@ -26,7 +26,7 @@ The original swaps the word in place through the macOS Accessibility API where i
 
 ### D2. Injection
 - Every injected input carries `dwExtraInfo = 0x52454B59`, so the hook ignores it.
-- A replacement is one `SendInput` call: a key-up for each Ctrl, Alt or Windows key still down (Ctrl+Backspace would delete a whole word, and the user's Ctrl is still down during Undo), `n × VK_BACK`, then the Rendering as `KEYEVENTF_UNICODE` down/up pairs.
+- A replacement is one `SendInput` call: a key-up for each Shift, Ctrl, Alt or Windows key still down (Ctrl+Backspace would delete a whole word, and the user's Ctrl is still down during Undo), pressed again after the text; the Right that collapses a selection (D3) is wrapped the same way, as Shift+Right would extend it, `n × VK_BACK`, then the Rendering as `KEYEVENTF_UNICODE` down/up pairs.
 - `n` = the number of characters the replaced Words show on screen in the current Layout, which equals their Keystroke count, since en/ru/uk produce one character per key and the Word Evaluator gets no Word with a dead key.
 - The Layout Switch (from `add-keyboard-capture-and-layouts`) is requested after the text and before held keys are re-injected, so the next typed key lands in the new Layout. Held keys are re-injected by scan code (`KEYEVENTF_SCANCODE`, plus the extended and key-up flags as seen), so Windows maps them through the Layout active when they arrive.
 

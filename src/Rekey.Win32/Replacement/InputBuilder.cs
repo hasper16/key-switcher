@@ -13,7 +13,7 @@ namespace Rekey.Win32.Replacement {
     /// <param name="erase">The number of characters to erase with Backspace.</param>
     /// <param name="text">The text to type.</param>
     /// <param name="heldModifiers">
-    /// The Ctrl, Alt and Windows keys down now; they are released first, so Backspace does not
+    /// The modifier keys down now; they are released first, so Backspace does not
     /// become Ctrl+Backspace, which deletes a whole word, and pressed again after the text, as
     /// the user still holds them.
     /// </param>
@@ -40,15 +40,21 @@ namespace Rekey.Win32.Replacement {
     /// <summary>
     /// Returns the inputs that collapse a selection to its end, where the caret was before it.
     /// </summary>
+    /// <param name="heldModifiers">
+    /// The modifier keys down now; they are released around Right, which would otherwise extend
+    /// the selection (Shift) or jump a word (Ctrl).
+    /// </param>
     /// <returns>The inputs, in order.</returns>
-    public static INPUT[] CollapseSelection() {
+    public static INPUT[] CollapseSelection(IReadOnlyList<VIRTUAL_KEY> heldModifiers) {
       // Right is an extended key; without the flag it would be the keypad's 6.
       return [
+          .. heldModifiers.Select(key => Key(key, 0, KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP)),
           Key(VIRTUAL_KEY.VK_RIGHT, 0, KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY),
           Key(
               VIRTUAL_KEY.VK_RIGHT,
               0,
               KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY | KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP),
+          .. heldModifiers.Select(key => Key(key, 0, 0)),
       ];
     }
 

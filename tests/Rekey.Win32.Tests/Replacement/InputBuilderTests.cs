@@ -35,6 +35,19 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void CollapseReleasesHeldModifiersAroundRight() {
+      INPUT[] inputs = InputBuilder.CollapseSelection([VIRTUAL_KEY.VK_LSHIFT]);
+
+      Assert.Equal(
+          [
+            Key(VIRTUAL_KEY.VK_LSHIFT, up: true),
+            Key(VIRTUAL_KEY.VK_RIGHT, up: false), Key(VIRTUAL_KEY.VK_RIGHT, up: true),
+            Key(VIRTUAL_KEY.VK_LSHIFT, up: false),
+          ],
+          inputs.Select(Describe));
+    }
+
+    [Fact]
     public void EveryInputCarriesTheRekeyTag() {
       INPUT[] inputs = InputBuilder.Replacement(1, "a", [VIRTUAL_KEY.VK_LWIN]);
 

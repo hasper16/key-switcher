@@ -25,7 +25,7 @@ namespace Rekey.Win32.Replacement {
     /// <see langword="true" /> to check the text before replacing it (setting Verified
     /// Replacement); otherwise, <see langword="false" />.
     /// </param>
-    /// <param name="heldModifiers">Returns the Ctrl, Alt and Windows keys down now.</param>
+    /// <param name="heldModifiers">Returns the modifier keys down now.</param>
     /// <param name="send">
     /// Sends inputs to Windows; returns <see langword="false" /> unless Windows took them all.
     /// </param>
@@ -74,7 +74,7 @@ namespace Rekey.Win32.Replacement {
           return ReplacementResult.Mismatch;
         case ReplacementMethod.Abandon:
           // The app handles the pending selection before this input, so it ends collapsed.
-          _send(InputBuilder.CollapseSelection());
+          _send(InputBuilder.CollapseSelection(_heldModifiers()));
           return ReplacementResult.TimedOut;
         default:
           break;
@@ -82,7 +82,7 @@ namespace Rekey.Win32.Replacement {
 
       if (recheck() is { } stale) {
         if (method == ReplacementMethod.SelectAndType) {
-          _send(InputBuilder.CollapseSelection());
+          _send(InputBuilder.CollapseSelection(_heldModifiers()));
         }
 
         return stale;
