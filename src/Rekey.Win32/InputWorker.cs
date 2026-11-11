@@ -271,6 +271,9 @@ namespace Rekey.Win32 {
         if (inputEvent is not null) {
           Send(inputEvent);
         }
+
+        // Progress per input, so a pass that stays busy is not taken for a freeze.
+        Volatile.Write(ref _heartbeat, _heartbeat + 1);
       }
 
       // The user may have switched Layout with the keys just read.

@@ -19,6 +19,7 @@ namespace Rekey.App {
 #if DEBUG
     private const string _checkFreeze = "--check-freeze";
     private const string _checkSelfPause = "--check-self-pause";
+    private const string _checkAutoResume = "--check-auto-resume";
 #endif
     private const string _toolTip = "Rekey";
     private const string _selfPausedToolTip =
@@ -37,6 +38,10 @@ namespace Rekey.App {
     private Settings? _settings;
     private TaskbarIcon? _trayIcon;
     private MenuItem? _resumeItem;
+#if DEBUG
+    private bool _checkingTray;
+    private bool _autoResume;
+#endif
     private InputWorker? _worker;
     private FreezeGuard? _freezeGuard;
 
@@ -55,7 +60,10 @@ namespace Rekey.App {
       _settings = _settingsStore.Load();
 
       _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
-      AddMenuItems(_trayIcon);
+      CreateResumeItem();
+#if DEBUG
+      AddDebugMenuItems(_trayIcon);
+#endif
 
       // Efficiency Mode throttles the process; the keyboard hook must stay fast.
       _trayIcon.ForceCreate(enablesEfficiencyMode: false);
@@ -66,6 +74,8 @@ namespace Rekey.App {
       }
 
       if (e.Args.Contains(_checkSelfPause)) {
+        _checkingTray = true;
+        _autoResume = e.Args.Contains(_checkAutoResume);
         DropHookTwiceForCheck();
       }
 #endif
@@ -173,25 +183,43 @@ namespace Rekey.App {
 
     // For the manual tray check: the next key after 3 s and after 10 s stalls the hook past
     // Windows' limit, so Windows drops it twice and the app pauses itself while the user types.
+    // The first key typed after start stalls the hook past Windows' limit, and the first key
+    // typed 8 s later does again: two drops, so the app pauses itself while the user keeps
+    // typing.
     private void DropHookTwiceForCheck() {
+      _worker?.StallHookForCheck(TimeSpan.FromSeconds(3));
       _ = Task.Run(async () => {
-        await Task.Delay(TimeSpan.FromSeconds(3));
-        _worker?.StallHookForCheck(TimeSpan.FromSeconds(3));
-        await Task.Delay(TimeSpan.FromSeconds(7));
+        await Task.Delay(TimeSpan.FromSeconds(8));
         _worker?.StallHookForCheck(TimeSpan.FromSeconds(3));
       });
+      WriteTrayState();
+    }
+
+    // For tools/Rekey.DesktopChecks: what the tray shows, written after every change.
+    private void WriteTrayState() {
+      if (!_checkingTray || _trayIcon is null || _resumeItem is null) {
+        return;
+      }
+
+      bool paused = _trayIcon.ToolTipText == _selfPausedToolTip;
+      bool resume = _trayIcon.ContextMenu.Items.Contains(_resumeItem);
+      Directory.CreateDirectory(_dataFolder);
+      File.WriteAllText(
+          Path.Join(_dataFolder, "check-tray.txt"),
+          $"tooltip-self-paused={paused} resume-item={resume}");
+    }
+
+    private void AddDebugMenuItems(TaskbarIcon trayIcon) {
+      var freeze = new MenuItem { Header = "Debug: freeze input for 7 s" };
+      freeze.Click += (_, _) => _worker?.FreezeForCheck(TimeSpan.FromSeconds(7));
+      trayIcon.ContextMenu.Items.Insert(0, freeze);
     }
 
 #endif
-    private void AddMenuItems(TaskbarIcon trayIcon) {
-      _resumeItem = new MenuItem { Header = "Resume", Visibility = Visibility.Collapsed };
+    private void CreateResumeItem() {
+      // Added to the menu only while Rekey paused itself.
+      _resumeItem = new MenuItem { Header = "Resume" };
       _resumeItem.Click += (_, _) => _worker?.ResumeSelfPause();
-      trayIcon.ContextMenu.Items.Insert(0, _resumeItem);
-#if DEBUG
-      var freeze = new MenuItem { Header = "Debug: freeze input for 7 s" };
-      freeze.Click += (_, _) => _worker?.FreezeForCheck(TimeSpan.FromSeconds(7));
-      trayIcon.ContextMenu.Items.Insert(1, freeze);
-#endif
     }
 
     private void ShowSelfPause(DateTimeOffset? until) {
@@ -200,7 +228,23 @@ namespace Rekey.App {
       }
 
       _trayIcon.ToolTipText = until is null ? _toolTip : _selfPausedToolTip;
-      _resumeItem.Visibility = until is null ? Visibility.Collapsed : Visibility.Visible;
+      ItemCollection items = _trayIcon.ContextMenu.Items;
+      if (until is null) {
+        items.Remove(_resumeItem);
+      } else if (!items.Contains(_resumeItem)) {
+        items.Insert(0, _resumeItem);
+      }
+#if DEBUG
+      WriteTrayState();
+      if (until is not null && _autoResume) {
+        // For the desktop checks: choose Resume as a person would, 2 s later.
+        MenuItem resume = _resumeItem;
+        _ = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(
+            _ => Dispatcher.BeginInvoke(
+                () => resume.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent))),
+            TaskScheduler.Default);
+      }
+#endif
     }
 
     private void FlushSettings() {
