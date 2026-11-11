@@ -40,9 +40,20 @@ namespace Rekey.Win32.Tests.Replacement {
     [Fact]
     public void SelectionThatTimedOutIsAbandoned() {
       // The app may still apply the selection, and Backspaces would then erase too much.
-      var control = new FakeControl("ghbdtn") { CanSelect = false, TimedOut = true };
+      var control = new FakeControl("ghbdtn") {
+        CanSelect = false,
+        TimedOut = true,
+        SelectionPending = true,
+      };
 
       Assert.Equal(ReplacementMethod.Abandon, VerifiedReplacement.Prepare(control, "ghbdtn"));
+    }
+
+    [Fact]
+    public void TimeRunningOutBeforeSelectingMeansRetype() {
+      var control = new FakeControl("ghbdtn") { CanSelect = false, TimedOut = true };
+
+      Assert.Equal(ReplacementMethod.Retype, VerifiedReplacement.Prepare(control, "ghbdtn"));
     }
 
     [Fact]
@@ -73,6 +84,14 @@ namespace Rekey.Win32.Tests.Replacement {
       public int AskedLength { get; set; }
 
       public bool TimedOut { get; init; }
+
+      public bool SelectionPending { get; init; }
+
+      public bool FocusMoved { get; init; }
+
+      public bool FocusUnchanged() {
+        return !FocusMoved;
+      }
 
       public string? Read(int length) {
         AskedLength = length;

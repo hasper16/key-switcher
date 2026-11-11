@@ -23,6 +23,9 @@ namespace Rekey.Win32.Replacement {
     private readonly IUIAutomation? _automation = CreateAutomation();
     private IUIAutomationTextRange? _read;
 
+    // The control the latest Read looked at.
+    private IUIAutomationElement? _element;
+
     // When the latest Read began; Read and SelectRead share one budget.
     private long _started;
 
@@ -30,16 +33,22 @@ namespace Rekey.Win32.Replacement {
     public bool TimedOut { get; private set; }
 
     /// <inheritdoc />
+    public bool SelectionPending { get; private set; }
+
+    /// <inheritdoc />
     public string? Read(int length) {
       _read = null;
+      _element = null;
       TimedOut = false;
+      SelectionPending = false;
       if (_automation is null) {
         return null;
       }
 
       _started = Stopwatch.GetTimestamp();
       try {
-        IUIAutomationTextRange? caret = Caret(_automation);
+        _element = _automation.GetFocusedElement();
+        IUIAutomationTextRange? caret = Caret(_element);
         if (caret is null || OverBudget()) {
           return null;
         }
@@ -75,6 +84,21 @@ namespace Rekey.Win32.Replacement {
         return true;
       } catch (COMException e) {
         TimedOut = e.HResult == _timeoutResult;
+        SelectionPending = TimedOut;
+        return false;
+      }
+    }
+
+    /// <inheritdoc />
+    public bool FocusUnchanged() {
+      if (_automation is null || _element is null) {
+        return true;
+      }
+
+      // Bounded by the same 50 ms timeouts; an app that cannot answer counts as moved.
+      try {
+        return _automation.CompareElements(_automation.GetFocusedElement(), _element);
+      } catch (COMException) {
         return false;
       }
     }
@@ -95,9 +119,8 @@ namespace Rekey.Win32.Replacement {
     }
 
     // The caret as an empty range; a control with a selection or several carets is retyped.
-    private static IUIAutomationTextRange? Caret(IUIAutomation automation) {
-      object? pattern = automation.GetFocusedElement()
-          .GetCurrentPattern(UIA_PATTERN_ID.UIA_TextPatternId);
+    private static IUIAutomationTextRange? Caret(IUIAutomationElement element) {
+      object? pattern = element.GetCurrentPattern(UIA_PATTERN_ID.UIA_TextPatternId);
       if (pattern is not IUIAutomationTextPattern text
           || text.GetSelection() is not { Length: 1 } selection) {
         return null;

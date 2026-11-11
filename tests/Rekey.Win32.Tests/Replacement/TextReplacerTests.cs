@@ -57,7 +57,11 @@ namespace Rekey.Win32.Tests.Replacement {
 
     [Fact]
     public void SelectionThatTimedOutIsCollapsedAndNothingTyped() {
-      var control = new FakeControl("ghbdtn") { CanSelect = false, TimedOut = true };
+      var control = new FakeControl("ghbdtn") {
+        CanSelect = false,
+        TimedOut = true,
+        SelectionPending = true,
+      };
       TextReplacer replacer = Replacer(control, verify: true);
 
       ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
@@ -93,6 +97,16 @@ namespace Rekey.Win32.Tests.Replacement {
 
       ReplacementResult result = replacer.Replace(
           new ReplaceText("ghbdtn", "привет"), _editor, () => ReplacementResult.Interrupted);
+
+      Assert.Equal(ReplacementResult.Interrupted, result);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void FocusMovedInsideTheWindowDuringTheCheckSendsNothing() {
+      TextReplacer replacer = Replacer(new FakeControl("ghbdtn") { FocusMoved = true }, true);
+
+      ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
 
       Assert.Equal(ReplacementResult.Interrupted, result);
       Assert.Empty(_sent);

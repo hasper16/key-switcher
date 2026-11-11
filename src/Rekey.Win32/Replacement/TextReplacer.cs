@@ -80,6 +80,12 @@ namespace Rekey.Win32.Replacement {
           break;
       }
 
+      // Focus can move inside the window while the text is checked; Backspaces would then
+      // erase in another control.
+      if (reader is not null && !reader.FocusUnchanged()) {
+        return ReplacementResult.Interrupted;
+      }
+
       if (recheck() is { } stale) {
         if (method == ReplacementMethod.SelectAndType) {
           CollapseUnlessMoved(stale);
