@@ -23,6 +23,8 @@ Do not touch the mouse or keyboard for about 5 minutes. The tool opens its own t
 | 5.3 | A hook stalled past Windows' limit is dropped and reinstalled; Shift released and Caps Lock toggled while it was gone are resynced; a second drop pauses Rekey; Resume ends the pause |
 | 5.5 | Two freezes record `InputFrozen`, then `FreezeRestart`; the Debug app started with `--check-freeze` restarts itself and saves the restart time |
 
+Last run: 30 of 30 checks passed at commit a11ca63 (owner's desktop, Firefox as default browser); the language list was restored. Tasks 2.1, 3.2, 3.3, 4.1, 4.3, 4.4, 5.5 and 6.2 are ticked on that run; 3.1 and 5.3 also need the checks by hand below.
+
 If the browser does not expose the page's boxes to UI Automation, the 3.3 lines fail with that reason; make Edge or Chrome the default browser and run again.
 
 ## By hand
