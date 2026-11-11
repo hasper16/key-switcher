@@ -25,8 +25,8 @@ Once Rekey decides a Word is wrong, it must change the text on screen safely: in
 
 ## Impact
 
-- New code: `Rekey.Win32/Input` (SendInput injector with Rekey tag, trigger holding), `Rekey.Win32/Automation` (UI Automation text reader/selector).
-- Engine actions: `ReplaceWord`, `HoldKeys`/`ReleaseKeys`, `Undo` handling in Core.
+- New code: `Rekey.Win32/Keyboard/HoldGate` (trigger holding on the hook thread), `Rekey.Win32/Replacement` (SendInput injector with the Rekey tag, UI Automation text reader and selector).
+- Engine: `ReplaceText` and `UndoPerformed` actions, `UndoRequested` and `ReplacementFinished` events, a `WordEvaluator` seam that `add-auto-correction` fills.
 - Settings: `VerifiedReplacement` (on).
 - `Rekey.Win32/KeyMapReader` reads scan code 0x56; key-map test fixtures are regenerated with `tools/Rekey.KeyMapCapture`.
 - Depends on `add-keyboard-capture-and-layouts`.
