@@ -64,7 +64,17 @@ namespace Rekey.Win32.Focus {
     /// Reports the focus at once when the focused window or control is not the one last reported,
     /// as when a key arrives before the WinEvent of a focus move.
     /// </summary>
-    /// <param name="keyTime">The time of the key about to be processed.</param>
+    /// <summary>
+    /// Returns whether keyboard focus is now in another window than the one last reported.
+    /// </summary>
+    /// <remarks>
+    /// Reads only the focused window, which is cheap; <see cref="CatchUp" /> also compares the
+    /// control inside it.
+    /// </remarks>
+    public bool WindowChanged() {
+      return FocusTarget.Read()?.Window != _reportedWindow;
+    }
+
     public void CatchUp(TimeSpan keyTime) {
       // A different window, or a different control inside the same window (Tab, a click, the
       // page's own script), means focus moved without a WinEvent yet.

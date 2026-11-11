@@ -19,8 +19,8 @@ namespace Rekey.Win32.Replacement {
     TooLate,
 
     /// <summary>
-    /// A mouse click came after the key that asked for it, so the caret may have moved; nothing
-    /// was changed.
+    /// A mouse click came after the key that asked for it, or focus moved to another window,
+    /// so the caret may be elsewhere; nothing was changed.
     /// </summary>
     Interrupted,
 
