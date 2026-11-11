@@ -48,7 +48,7 @@ namespace Rekey.DesktopChecks {
       }
 
       if (!ReadLanguages().SameAs(snapshot.List)) {
-        throw new InvalidOperationException(
+        throw new RecoveryException(
             $"The language list still differs from the one saved in {LanguageSnapshot}; "
             + "compare them in Settings > Time & language > Language & region, fix the list "
             + "there, then delete the saved file.");

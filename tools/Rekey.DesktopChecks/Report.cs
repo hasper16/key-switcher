@@ -5,10 +5,10 @@ namespace Rekey.DesktopChecks {
 
     public bool Failed => _results.Exists(result => !result.Passed);
 
-    // The tool's own failures carry recovery steps in their message; other exceptions show only
-    // their type, as their messages could quote system or typed text.
+    // Only the tool's own recovery steps are shown in full; other exceptions show only their
+    // type, as their messages could quote system or typed text.
     public static string Describe(Exception e) {
-      return e is InvalidOperationException ? e.Message : e.GetType().Name;
+      return e is RecoveryException ? e.Message : e.GetType().Name;
     }
 
     public void Add(string item, bool passed, string detail) {
