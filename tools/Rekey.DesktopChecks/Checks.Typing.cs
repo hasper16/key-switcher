@@ -170,8 +170,15 @@ namespace Rekey.DesktopChecks {
       Input.Type(first);
       Input.Space();
       Input.Type(second);
+
+      // Only the typed characters and Space count: a Tab or Shift the worker reads late belongs
+      // to the focus move before.
       int expected = first.Length + second.Length + 1;
-      if (WaitForKeys(mark, expected).Count < expected) {
+      Func<int> typed = () => _log.KeyDownsSince(mark)
+          .Count(key => key.Kind is KeyKind.Character or KeyKind.Space);
+      EventLog.WaitFor(() => typed() >= expected, _eventWait);
+      Thread.Sleep(TimeSpan.FromMilliseconds(200));
+      if (typed() < expected) {
         return -1;
       }
 
