@@ -37,6 +37,7 @@ The worker thread turns raw events into `InputEvent`: decides letter vs boundary
 ### D4. Hook watchdog
 - Every 250 ms the watchdog compares `GetLastInputInfo().dwTime` (system-wide last input) with the timestamp of the last event our hook received.
 - If system input is newer by > 1,500 ms, no keyboard/mouse event reached us, and the foreground window is not elevated → assume the hook was removed: unhook, reinstall on the hook thread, record Incident `hook-reinstalled`. The elevation check matters because UIPI hides input aimed at an elevated window from a non-elevated process's LL hook, while `GetLastInputInfo` still advances; without it every administrator console would look like a dropped hook.
+- After asking for a reinstall, the watchdog judges input again only once the hook thread reports the hooks are back, or after 5 s (design decision): Windows drops a hook whose callback is stuck, and the hook thread can reinstall only after that callback returns, so input typed meanwhile belongs to the same drop and is not a second failure.
 - Two reinstalls within 10 minutes → emit `SelfPause(until = now + 10 min)` to the engine and tray; after the period, resume automatically. Manual Resume clears the state.
 - Mouse movement also updates `GetLastInputInfo`, so the comparison uses our mouse hook too (moves are counted but not enqueued).
 
