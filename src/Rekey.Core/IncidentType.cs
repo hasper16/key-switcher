@@ -49,5 +49,17 @@ namespace Rekey.Core {
     /// No details.
     /// </summary>
     FreezeRestart,
+
+    /// <summary>
+    /// The text before the caret differed from the Word Rekey was about to replace, so the
+    /// Correction or Undo was cancelled and the text left as it was. No details.
+    /// </summary>
+    CorrectionCancelled,
+
+    /// <summary>
+    /// Rekey held typed keys back for more than 150 ms while applying a Correction, so the hook
+    /// stopped holding them. No details.
+    /// </summary>
+    HoldTimeout,
   }
 }

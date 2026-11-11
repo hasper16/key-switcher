@@ -6,9 +6,9 @@
 
 ## 2. Correction and Undo model in Core
 
-- [ ] 2.1 Define the data shapes: `KeyDown.Held`, `UndoRequested`, `ReplacementFinished`, Key Maps in `LayoutsInstalledChanged`, `ReplaceText` and `UndoPerformed` actions (text hidden from their text form), `WordEvaluator`, Incident types `CorrectionCancelled` and `HoldTimeout`; verify the solution builds and a test shows the actions print no text
-- [ ] 2.2 Write failing engine tests with a stub Word Evaluator: a held Trigger Key ending a Word to correct yields `ReplaceText(typed, Rendering)`; `ReplacementFinished(applied)` then yields `SwitchLayout(target)`, a cancelled one nothing; a Deferred run replaces the whole run incl. spaces; an unheld or Ctrl-modified trigger, a click or a Backspace past the Word start evaluates or replaces nothing across it; implement; verify they pass
-- [ ] 2.3 Write failing engine tests for Undo: within 5 s → `ReplaceText(Rendering + " ", typed + " ")`, then `SwitchLayout(source)` + `UndoPerformed`; after 5 s, after another key, after a click, after an Enter-triggered Correction or after a cancelled replacement → no Undo; implement; verify they pass
+- [x] 2.1 Define the data shapes: `KeyDown.Held`, `UndoRequested`, `ReplacementFinished`, Key Maps in `LayoutsInstalledChanged`, `ReplaceText` and `UndoPerformed` actions (text hidden from their text form), `WordEvaluator`, Incident types `CorrectionCancelled` and `HoldTimeout`; verify the solution builds and a test shows the actions print no text
+- [x] 2.2 Write failing engine tests with a stub Word Evaluator: a held Trigger Key ending a Word to correct yields `ReplaceText(typed, Rendering)`; `ReplacementFinished(applied)` then yields `SwitchLayout(target)`, a cancelled one nothing; a Deferred run replaces the whole run incl. spaces; an unheld or Ctrl-modified trigger, a click or a Backspace past the Word start evaluates or replaces nothing across it; implement; verify they pass
+- [x] 2.3 Write failing engine tests for Undo: within 5 s → `ReplaceText(Rendering + " ", typed + " ")`, then `SwitchLayout(source)` + `UndoPerformed`; after 5 s, after another key, after a click, after an Enter-triggered Correction or after a cancelled replacement → no Undo; implement; verify they pass
 
 ## 3. Key holding on the hook thread
 

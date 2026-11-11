@@ -339,8 +339,9 @@ namespace Rekey.Win32 {
         return;
       }
 
-      _translator.UseKeyMaps(_layouts.Layouts.Select(KeyMapOf).OfType<KeyMap>());
-      Send(new LayoutsInstalledChanged(Now(), _layouts.Layouts));
+      List<KeyMap> keyMaps = [.. _layouts.Layouts.Select(KeyMapOf).OfType<KeyMap>()];
+      _translator.UseKeyMaps(keyMaps);
+      Send(new LayoutsInstalledChanged(Now(), _layouts.Layouts, keyMaps));
       FollowForegroundLayout();
     }
 

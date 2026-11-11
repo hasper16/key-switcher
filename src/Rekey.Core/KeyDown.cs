@@ -19,12 +19,17 @@ namespace Rekey.Core {
   /// Password Field; otherwise, <see langword="false" />. The default is
   /// <see langword="true" />.
   /// </param>
+  /// <param name="Held">
+  /// <see langword="true" /> if the hook held the key back, so it has not reached the application
+  /// yet; otherwise, <see langword="false" />. The default is <see langword="false" />.
+  /// </param>
   public sealed record KeyDown(
       TimeSpan Timestamp,
       Keystroke Keystroke,
       KeyKind Kind,
       KeyModifiers Modifiers,
-      bool FocusConfirmed = true)
+      bool FocusConfirmed = true,
+      bool Held = false)
       : InputEvent(Timestamp) {
     /// <summary>
     /// Appends the members to the text form without the Keystroke, so typed text cannot reach
@@ -35,7 +40,7 @@ namespace Rekey.Core {
     protected override bool PrintMembers(StringBuilder builder) {
       base.PrintMembers(builder);
       builder.Append(", Kind = ").Append(Kind).Append(", Modifiers = ").Append(Modifiers)
-          .Append(", FocusConfirmed = ").Append(FocusConfirmed);
+          .Append(", FocusConfirmed = ").Append(FocusConfirmed).Append(", Held = ").Append(Held);
       return true;
     }
   }

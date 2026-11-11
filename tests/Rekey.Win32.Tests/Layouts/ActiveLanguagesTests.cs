@@ -37,7 +37,7 @@ namespace Rekey.Win32.Tests.Layouts {
 
     private void Publish(LayoutList list) {
       if (list.Refresh()) {
-        _engine.Handle(new LayoutsInstalledChanged(TimeSpan.Zero, list.Layouts));
+        _engine.Handle(new LayoutsInstalledChanged(TimeSpan.Zero, list.Layouts, []));
       }
     }
 

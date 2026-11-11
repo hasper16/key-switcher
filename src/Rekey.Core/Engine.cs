@@ -9,11 +9,37 @@ namespace Rekey.Core {
   /// Not thread-safe: the worker thread owns the engine and feeds it every input in order.
   /// </remarks>
   public sealed class Engine {
+    // A Correction as typed and as replaced, kept for its Undo.
+    private sealed record CorrectionRecord(
+        string Typed,
+        string Rendering,
+        string TriggerText,
+        LayoutId Source,
+        LayoutId Target,
+        TimeSpan Time,
+        bool Undoable);
+
+    private sealed record PendingReplacement(CorrectionRecord Correction, bool IsUndo);
+
+    // DeferredRun keeps at most three Words, so the run on screen never needs more.
+    private const int _maxRunWords = 3;
+
     // Spec keyboard-capture: a pause of more than 2 seconds ends the Word, as in the original.
     private static readonly TimeSpan _typingGap = TimeSpan.FromSeconds(2);
 
+    // Spec text-replacement: the Undo Window, as in the original.
+    private static readonly TimeSpan _undoWindow = TimeSpan.FromSeconds(5);
+
     private readonly WordTracker _word = new();
     private readonly LanguageSet _languages;
+    private readonly WordEvaluator? _evaluate;
+
+    // The on-screen text of the Deferred Words, oldest first; the run on screen is these Words
+    // joined by single spaces, so a Correction can find it.
+    private readonly List<string> _run = [];
+    private Dictionary<LayoutId, KeyMap> _keyMaps = [];
+    private PendingReplacement? _pending;
+    private CorrectionRecord? _lastCorrection;
     private TimeSpan? _lastKeyDown;
     private TimeSpan _focusSince = TimeSpan.MinValue;
 
@@ -28,8 +54,21 @@ namespace Rekey.Core {
     /// Initializes a new instance of the <see cref="Engine" /> class.
     /// </summary>
     /// <param name="languages">The loaded Language Profiles.</param>
-    public Engine(LanguageSet languages) {
+    public Engine(LanguageSet languages)
+        : this(languages, null) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Engine" /> class that corrects Words.
+    /// </summary>
+    /// <param name="languages">The loaded Language Profiles.</param>
+    /// <param name="evaluate">
+    /// The evaluator of Words ended by a held Trigger Key, or <see langword="null" /> to correct
+    /// nothing.
+    /// </param>
+    public Engine(LanguageSet languages, WordEvaluator? evaluate) {
       _languages = languages;
+      _evaluate = evaluate;
     }
 
     /// <summary>
@@ -67,29 +106,35 @@ namespace Rekey.Core {
     public IReadOnlyList<EngineAction> Handle(InputEvent inputEvent) {
       switch (inputEvent) {
         case KeyDown keyDown:
-          OnKeyDown(keyDown);
-          break;
+          return OnKeyDown(keyDown);
+        case UndoRequested undo:
+          return OnUndoRequested(undo);
+        case ReplacementFinished finished:
+          return OnReplacementFinished(finished);
         case MouseClick:
           _word.Clear();
+          Interrupt();
           break;
         case FocusChanged focus:
           OnFocusChanged(focus);
           break;
         case InputLost:
           _word.Spoil();
-          DeferredWords.Reset();
+          Interrupt();
           break;
         case FocusLost lost:
           _focusSince = TimeSpan.FromTicks(Math.Max(_focusSince.Ticks, lost.Timestamp.Ticks));
           Focus = null;
           _word.Clear();
-          DeferredWords.Reset();
+          Interrupt();
           break;
         case LayoutChanged layout:
           CurrentLayout = layout.Layout;
           break;
         case LayoutsInstalledChanged installed:
           ActiveProfiles = _languages.Activate(installed.Layouts);
+          _keyMaps = installed.KeyMaps.DistinctBy(map => map.Layout)
+              .ToDictionary(map => map.Layout);
           break;
         default:
           break;
@@ -98,13 +143,26 @@ namespace Rekey.Core {
       return [];
     }
 
-    private void OnKeyDown(KeyDown keyDown) {
+    private static string TypedBy(KeyKind trigger) {
+      return trigger switch {
+        KeyKind.Space => " ",
+        KeyKind.Tab => "\t",
+        _ => string.Empty,
+      };
+    }
+
+    private IReadOnlyList<EngineAction> OnKeyDown(KeyDown keyDown) {
       if (keyDown.Timestamp - _lastKeyDown > _typingGap) {
         _word.Clear();
-        DeferredWords.Reset();
+        EndRun();
       }
 
       _lastKeyDown = keyDown.Timestamp;
+
+      // Modifiers are pressed on the way to Ctrl+Z, so they keep the Correction undoable.
+      if (keyDown.Kind != KeyKind.Modifier) {
+        _lastCorrection = null;
+      }
 
       // A key stamped at or before the latest focus change may belong to the previous control,
       // perhaps a Password Field: the worker can read queued keys after focus moved on, and the
@@ -112,20 +170,138 @@ namespace Rekey.Core {
       // a Password Field is dropped the same way.
       if (keyDown.Timestamp <= _focusSince || !keyDown.FocusConfirmed) {
         _word.Drop(keyDown);
-        return;
+        EndRun();
+        return [];
       }
 
       // An unknown focus may be a Password Field, so nothing is kept until it is known.
-      if (Focus is { IsPasswordField: false, IsElevated: false }) {
-        _word.Add(keyDown);
+      if (Focus is not { IsPasswordField: false, IsElevated: false }) {
+        EndRun();
+        return [];
       }
+
+      if (IsTrigger(keyDown)) {
+        return Evaluate(keyDown);
+      }
+
+      if (WordTracker.EndsWord(keyDown)
+          || (keyDown.Kind == KeyKind.Backspace && _word.Keystrokes.Count == 0)) {
+        EndRun();
+      }
+
+      _word.Add(keyDown);
+      return [];
+    }
+
+    // Only a held key has not reached the application yet, so only then can the Word before it
+    // be replaced; a shortcut such as Ctrl+Space is not a Trigger Key.
+    private bool IsTrigger(KeyDown keyDown) {
+      const KeyModifiers shortcut = KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Windows;
+      return _evaluate is not null
+          && keyDown.Held
+          && keyDown.Kind is KeyKind.Space or KeyKind.Enter or KeyKind.Tab
+          && (keyDown.Modifiers & shortcut) == 0;
+    }
+
+    private IReadOnlyList<EngineAction> Evaluate(KeyDown trigger) {
+      IReadOnlyList<Keystroke> word = [.. _word.Keystrokes];
+      _word.Add(trigger);
+      if (CurrentLayout is not { } layout
+          || !_keyMaps.TryGetValue(layout, out KeyMap? map)
+          || word.Count == 0
+          || map.Render(word) is not { } typed) {
+        EndRun();
+        return [];
+      }
+
+      Decision decision = _evaluate!(word, layout);
+      Correction? correction = DeferredWords.Add(decision);
+      if (correction is null) {
+        ContinueOrEndRun(decision, trigger, typed);
+        return [];
+      }
+
+      string[] typedWords = [.. _run.TakeLast(correction.Texts.Count - 1), typed];
+      EndRun();
+      if (typedWords.Length != correction.Texts.Count) {
+        return [];
+      }
+
+      var record = new CorrectionRecord(
+          string.Join(' ', typedWords),
+          string.Join(' ', correction.Texts),
+          TypedBy(trigger.Kind),
+          layout,
+          correction.Target,
+          trigger.Timestamp,
+          Undoable: trigger.Kind != KeyKind.Enter);
+      _pending = new PendingReplacement(record, IsUndo: false);
+      return [new ReplaceText(record.Typed, record.Rendering)];
+    }
+
+    // Only Words separated by single spaces stay a run on screen.
+    private void ContinueOrEndRun(Decision decision, KeyDown trigger, string typed) {
+      if (decision.Kind != DecisionKind.Defer || trigger.Kind != KeyKind.Space) {
+        EndRun();
+        return;
+      }
+
+      _run.Add(typed);
+      if (_run.Count > _maxRunWords) {
+        _run.RemoveAt(0);
+      }
+    }
+
+    private IReadOnlyList<EngineAction> OnUndoRequested(UndoRequested undo) {
+      CorrectionRecord? last = _lastCorrection;
+      _lastCorrection = null;
+      _word.Clear();
+      EndRun();
+
+      // Spec: after Enter the line may already have been submitted.
+      if (last is not { Undoable: true } || undo.Timestamp - last.Time >= _undoWindow) {
+        return [];
+      }
+
+      _pending = new PendingReplacement(last, IsUndo: true);
+      return [
+          new ReplaceText(last.Rendering + last.TriggerText, last.Typed + last.TriggerText)];
+    }
+
+    private IReadOnlyList<EngineAction> OnReplacementFinished(ReplacementFinished finished) {
+      PendingReplacement? pending = _pending;
+      _pending = null;
+      if (pending is null || !finished.Applied) {
+        return [];
+      }
+
+      CorrectionRecord record = pending.Correction;
+      if (pending.IsUndo) {
+        return [
+            new SwitchLayout(record.Source), new UndoPerformed(record.Typed, record.Rendering)];
+      }
+
+      _lastCorrection = record;
+      return [new SwitchLayout(record.Target)];
     }
 
     private void OnFocusChanged(FocusChanged focus) {
       _focusSince = TimeSpan.FromTicks(Math.Max(_focusSince.Ticks, focus.Timestamp.Ticks));
       Focus = new Context(focus.AppId, focus.IsPassword, focus.IsElevated);
       _word.Clear();
+      Interrupt();
+    }
+
+    // The text on screen no longer continues the run, so the Deferred Words stay as typed.
+    private void EndRun() {
+      _run.Clear();
       DeferredWords.Reset();
+    }
+
+    // The caret may have moved away from the corrected text.
+    private void Interrupt() {
+      EndRun();
+      _lastCorrection = null;
     }
   }
 }

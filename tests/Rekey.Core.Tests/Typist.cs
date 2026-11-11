@@ -1,4 +1,5 @@
 using Rekey.Core.Detection;
+using Rekey.Core.Languages;
 using Rekey.Core.Tests.Detection;
 
 namespace Rekey.Core.Tests {
@@ -10,11 +11,27 @@ namespace Rekey.Core.Tests {
     private TimeSpan _now = TimeSpan.FromSeconds(10);
 
     // The worker reports the focused control as it starts; a plain editor here.
-    public Typist() {
+    public Typist()
+        : this(new Engine()) {
+    }
+
+    // An engine that asks the evaluator about Words, with English (US) and Russian installed
+    // and English (US) current, as the worker reports them at start.
+    public Typist(WordEvaluator evaluate)
+        : this(new Engine(new LanguageSet([]), evaluate)) {
+      Send(new LayoutsInstalledChanged(
+          Next(),
+          [KeyMapFixtures.EnglishUs.Layout, KeyMapFixtures.Russian.Layout],
+          [KeyMapFixtures.EnglishUs, KeyMapFixtures.Russian]));
+      Send(new LayoutChanged(Next(), KeyMapFixtures.EnglishUs.Layout));
+    }
+
+    private Typist(Engine engine) {
+      Engine = engine;
       Focus();
     }
 
-    public Engine Engine { get; } = new();
+    public Engine Engine { get; }
 
     // The current Word as it reads in English (US).
     public string Word => KeyMapFixtures.EnglishUs.Render(Engine.Word)
@@ -35,6 +52,24 @@ namespace Rekey.Core.Tests {
 
     public Typist Press(KeyKind kind, KeyModifiers modifiers = KeyModifiers.None) {
       Send(new KeyDown(Next(), new Keystroke(0x01, false, false), kind, modifiers));
+      return this;
+    }
+
+    // A Trigger Key the hook held back, as it does after a character key.
+    public Typist Hold(KeyKind kind, KeyModifiers modifiers = KeyModifiers.None) {
+      Send(new KeyDown(Next(), new Keystroke(0x39, false, false), kind, modifiers, Held: true));
+      return this;
+    }
+
+    // The host's report on the latest ReplaceText.
+    public Typist Finish(bool applied = true) {
+      Send(new ReplacementFinished(Next(), applied));
+      return this;
+    }
+
+    // A Ctrl+Z the hook held back as a possible Undo.
+    public Typist RequestUndo() {
+      Send(new UndoRequested(Next()));
       return this;
     }
 
