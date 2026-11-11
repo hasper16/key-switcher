@@ -18,8 +18,7 @@ namespace Rekey.DesktopChecks {
       const StringSplitOptions lines =
           StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries;
       var languages = new List<Language>();
-      foreach (string line in output.Split('\n', lines)) {
-        string[] parts = line.Split('|');
+      foreach (string[] parts in output.Split('\n', lines).Select(line => line.Split('|'))) {
         if (parts.Length != 2 || parts[0].Length == 0) {
           throw new FormatException($"Unexpected language list line {languages.Count + 1}.");
         }
