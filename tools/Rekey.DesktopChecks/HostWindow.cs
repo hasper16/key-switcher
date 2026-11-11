@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
+using Windows.Win32.Foundation;
 
 namespace Rekey.DesktopChecks {
   // A test window in its own process, so each has its own input thread and Layout: an ordinary
@@ -9,13 +10,19 @@ namespace Rekey.DesktopChecks {
   internal sealed class HostWindow : IDisposable {
     private const string _command = "host";
 
+    // The window counts the Ctrl+Z presses that reach it in its title: "<title> z<count>".
+    private const string _undoMark = " z";
+
     private readonly Process _process;
 
-    private HostWindow(Process process, Point ordinary, Point masked) {
+    private HostWindow(Process process, string title, Point ordinary, Point masked) {
       _process = process;
+      Title = title;
       Ordinary = ordinary;
       Masked = masked;
     }
+
+    public string Title { get; }
 
     public Point Ordinary { get; }
 
@@ -42,7 +49,7 @@ namespace Rekey.DesktopChecks {
         }
 
         string[] points = line.Result.Split(' ');
-        var window = new HostWindow(process, Parse(points, 0), Parse(points, 2));
+        var window = new HostWindow(process, title, Parse(points, 0), Parse(points, 2));
         process = null;
         return window;
       } finally {
@@ -69,6 +76,15 @@ namespace Rekey.DesktopChecks {
             int.Parse(parts[2], CultureInfo.InvariantCulture)),
         Size = new Size(420, 200),
         TopMost = true,
+        KeyPreview = true,
+      };
+      int undos = 0;
+      form.KeyDown += (_, key) => {
+        if (key.Control && key.KeyCode == Keys.Z) {
+          undos++;
+          form.Text = string.Create(
+              CultureInfo.InvariantCulture, $"{parts[0]}{_undoMark}{undos}");
+        }
       };
       var ordinary = new TextBox { Location = new Point(20, 20), Width = 360 };
       var masked = new TextBox {
@@ -87,6 +103,16 @@ namespace Rekey.DesktopChecks {
       };
       Application.Run(form);
       return 0;
+    }
+
+    // The number of Ctrl+Z presses that reached the window.
+    public int UndoKeysSeen() {
+      HWND? window = Desktop.FindWindow(Title, TimeSpan.FromSeconds(1));
+      string title = window is { } found ? Desktop.TitleOf(found) : Title;
+      int mark = title.LastIndexOf(_undoMark, StringComparison.Ordinal);
+      return mark < Title.Length
+          ? 0
+          : int.Parse(title[(mark + _undoMark.Length)..], CultureInfo.InvariantCulture);
     }
 
     public void Dispose() {

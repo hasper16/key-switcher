@@ -5,6 +5,7 @@ using Rekey.Core;
 using Rekey.Core.Languages;
 using Rekey.Win32;
 using Windows.Win32;
+using Windows.Win32.Foundation;
 
 namespace Rekey.DesktopChecks {
   // Runs every desktop check against the real hooks, windows and settings of this session.
@@ -20,35 +21,27 @@ namespace Rekey.DesktopChecks {
     private HostWindow? _first;
     private HostWindow? _second;
     private Point? _browserBox;
+    private Point? _chatBox;
+    private HWND? _page;
     private Point? _console;
 
-    public Checks() {
+    public Checks()
+        : this(null) {
+    }
+
+    // With an evaluator, the worker holds Trigger Keys and corrects what it is told to.
+    public Checks(WordEvaluator? evaluate) {
       _restorer = new Restorer(_report);
-      _worker = new InputWorker(new Settings(), _log.AddIncident, TimeProvider.System);
+      _worker = new InputWorker(
+          new Settings(), _log.AddIncident, TimeProvider.System, evaluate);
       _worker.Observed += inputEvent => _log.Add(inputEvent, _worker.WordLength);
       _worker.SelfPauseChanged += _log.AddSelfPause;
+      _worker.Replaced += _log.AddReplacement;
+      _worker.Undone += _ => _log.AddUndo();
     }
 
     public int Run() {
-      Console.WriteLine("Rekey desktop checks. Do not touch the mouse or keyboard for about");
-      Console.WriteLine("5 minutes. Every changed setting is restored at the end.");
-      Console.WriteLine("Starting in 5 s.");
-      Thread.Sleep(TimeSpan.FromSeconds(5));
-      Point cursor = SystemState.Cursor();
-      _restorer.Defer("mouse position", () => PInvoke.SetCursorPos(cursor.X, cursor.Y));
-      bool capsLock = SystemState.CapsLockOn();
-      _restorer.Defer("Caps Lock", () => {
-        if (SystemState.CapsLockOn() != capsLock) {
-          Input.ToggleCapsLock();
-        }
-      });
-
-      EventLog.Position start = _log.Mark();
-      _worker.Start();
-      Thread.Sleep(TimeSpan.FromSeconds(2));
-      _first = HostWindow.Start("Rekey check A", new Point(80, 80));
-      _second = HostWindow.Start("Rekey check B", new Point(560, 80));
-      Thread.Sleep(_settle);
+      EventLog.Position start = Begin(minutes: 5);
 
       Step("2.1 hooks", () => CheckHooks(start));
       Step("3.2 Win32 masked edit", CheckMaskedEdit);
@@ -60,10 +53,7 @@ namespace Rekey.DesktopChecks {
       Step("5.5 freeze watchdog", CheckFreezeWatchdog);
       Step("5.3 the app's tray", CheckAppTray);
       Step("5.5 restart after a freeze", CheckRestart);
-
-      Dispose();
-      _report.PrintSummary();
-      return _report.Failed ? 1 : 0;
+      return End();
     }
 
     public void Dispose() {
@@ -94,6 +84,36 @@ namespace Rekey.DesktopChecks {
       if (!process.HasExited) {
         process.Kill();
       }
+    }
+
+    // Saves what the checks change, starts the worker and opens the test windows.
+    private EventLog.Position Begin(int minutes) {
+      Console.WriteLine("Rekey desktop checks. Do not touch the mouse or keyboard for about");
+      Console.WriteLine($"{minutes} minutes. Every changed setting is restored at the end.");
+      Console.WriteLine("Starting in 5 s.");
+      Thread.Sleep(TimeSpan.FromSeconds(5));
+      Point cursor = SystemState.Cursor();
+      _restorer.Defer("mouse position", () => PInvoke.SetCursorPos(cursor.X, cursor.Y));
+      bool capsLock = SystemState.CapsLockOn();
+      _restorer.Defer("Caps Lock", () => {
+        if (SystemState.CapsLockOn() != capsLock) {
+          Input.ToggleCapsLock();
+        }
+      });
+
+      EventLog.Position start = _log.Mark();
+      _worker.Start();
+      Thread.Sleep(TimeSpan.FromSeconds(2));
+      _first = HostWindow.Start("Rekey check A", new Point(80, 80));
+      _second = HostWindow.Start("Rekey check B", new Point(560, 80));
+      Thread.Sleep(_settle);
+      return start;
+    }
+
+    private int End() {
+      Dispose();
+      _report.PrintSummary();
+      return _report.Failed ? 1 : 0;
     }
 
     private HostWindow First() {

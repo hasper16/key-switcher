@@ -1,4 +1,5 @@
 EnumWindows
+GetClipboardSequenceNumber
 GetCursorPos
 GetForegroundWindow
 GetKeyState

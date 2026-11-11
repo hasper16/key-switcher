@@ -12,8 +12,21 @@
 <body>
 <!-- Invented fields for tools/Rekey.DesktopChecks; nothing here is submitted anywhere. -->
 <form onsubmit="return false">
-  <label>Nickname <input id="check-user" type="text" autocomplete="off"></label>
+  <label>Nickname <input id="check-user" type="text" autocomplete="off" spellcheck="false"></label>
   <label>Secret <input id="check-pass" type="password" autocomplete="off"></label>
 </form>
+<!-- A chat box: Enter sends the message, which then shows in "Sent". -->
+<label>Chat <input id="check-chat" type="text" autocomplete="off" spellcheck="false"></label>
+<label>Sent <input id="check-sent" type="text" readonly></label>
+<script>
+  const chat = document.getElementById("check-chat");
+  chat.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      document.getElementById("check-sent").value = chat.value;
+      chat.value = "";
+    }
+  });
+</script>
 </body>
 </html>

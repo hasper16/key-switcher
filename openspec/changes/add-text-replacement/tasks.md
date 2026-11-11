@@ -18,12 +18,12 @@
 ## 4. Injection
 
 - [ ] 4.1 Write failing tests for the input builder: key-ups for held Ctrl, Alt and Windows keys, n Backspaces, Unicode down/up pairs, the Rekey tag on every input, a held key re-injected by scan code with its extended and key-up flags; implement the `SendInput` injector; verify the tests pass and the desktop checks in Notepad, a browser text box and a console
-- [ ] 4.2 Verify with the desktop checks that Enter as Trigger Key in the test page's chat box sends the corrected text, and that the clipboard sequence number is unchanged after Corrections and Undos; verify by hand in VS Code and Telegram Desktop (`docs/manual-tests/add-text-replacement.md`)
+- [ ] 4.2 Verify with the desktop checks that Enter as Trigger Key in the test page's chat box sends the corrected text, and that the clipboard sequence number is unchanged after Corrections and Undos; verify by hand in VS Code and Telegram Desktop with `tools/Rekey.DesktopChecks try-corrections` (`docs/manual-tests/add-text-replacement.md`)
 
 ## 5. Verified replacement
 
 - [ ] 5.1 Write failing tests for slow-app memory (two timeouts in one app mark it slow, other apps unaffected); implement the UIA reader on the worker (caret range, text before caret, select, 50 ms budget); verify the tests pass and the desktop checks report the verified path in Notepad and the browser text box
-- [ ] 5.2 Write failing tests for `VerifiedReplacement.Prepare` with a fake reader (match → select-and-type; mismatch → cancel; nothing exposed or out of time → retype); implement select-and-type and cancel-on-mismatch with the `CorrectionCancelled` Incident; verify the tests pass and the desktop check where the text before the caret differs from the Word (keys the hook ignores) changes nothing; verify by hand with an editor whose autocomplete alters the Word
+- [ ] 5.2 Write failing tests for `VerifiedReplacement.Prepare` with a fake reader (match → select-and-type; mismatch → cancel; nothing exposed or out of time → retype); implement select-and-type and cancel-on-mismatch with the `CorrectionCancelled` Incident; verify the tests pass and the desktop check where the text before the caret differs from the Word (letters the hook ignores, as an autocomplete would add them) changes nothing
 - [x] 5.3 Add the `VerifiedReplacement` setting (default on) to `Settings` and pass it to the worker; verify a test that off forces the retype path
 
 ## 6. Undo end to end

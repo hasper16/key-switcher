@@ -1,4 +1,5 @@
 using Rekey.Core;
+using Rekey.Win32.Replacement;
 
 namespace Rekey.DesktopChecks {
   // What the worker saw, recorded from its thread and read from the checks' thread.
@@ -9,6 +10,8 @@ namespace Rekey.DesktopChecks {
     private readonly List<Seen> _events = [];
     private readonly List<IncidentType> _incidents = [];
     private readonly List<DateTimeOffset?> _selfPauses = [];
+    private readonly List<ReplacementResult> _replacements = [];
+    private int _undos;
 
     // Returns whether the condition held before the timeout.
     public static bool WaitFor(Func<bool> condition, TimeSpan timeout) {
@@ -26,7 +29,8 @@ namespace Rekey.DesktopChecks {
 
     public Position Mark() {
       lock (_gate) {
-        return new Position(_events.Count, _incidents.Count, _selfPauses.Count);
+        return new Position(
+            _events.Count, _incidents.Count, _selfPauses.Count, _replacements.Count, _undos);
       }
     }
 
@@ -39,6 +43,19 @@ namespace Rekey.DesktopChecks {
     public void AddIncident(Incident incident) {
       lock (_gate) {
         _incidents.Add(incident.Type);
+      }
+    }
+
+    public void AddReplacement(ReplacementResult result) {
+      lock (_gate) {
+        _replacements.Add(result);
+      }
+    }
+
+    // Counts an Undo; the texts it carries are never kept.
+    public void AddUndo() {
+      lock (_gate) {
+        _undos++;
       }
     }
 
@@ -66,11 +83,24 @@ namespace Rekey.DesktopChecks {
       }
     }
 
+    public List<ReplacementResult> ReplacementsSince(Position mark) {
+      lock (_gate) {
+        return _replacements[mark.Replacements..];
+      }
+    }
+
+    public int UndosSince(Position mark) {
+      lock (_gate) {
+        return _undos - mark.Undos;
+      }
+    }
+
     public List<KeyDown> KeyDownsSince(Position mark) {
       return [.. EventsSince(mark).Select(seen => seen.Event).OfType<KeyDown>()];
     }
 
-    internal readonly record struct Position(int Events, int Incidents, int SelfPauses);
+    internal readonly record struct Position(
+        int Events, int Incidents, int SelfPauses, int Replacements, int Undos);
 
     internal sealed record Seen(InputEvent Event, int WordKeys);
   }
