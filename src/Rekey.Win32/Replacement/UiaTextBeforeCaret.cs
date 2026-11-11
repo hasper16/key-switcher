@@ -84,6 +84,9 @@ namespace Rekey.Win32.Replacement {
       _selected = range;
       try {
         range.Select();
+
+        // Selected, but late: the app counts towards "slow" while the Word stays selected.
+        OverBudget();
         return true;
       } catch (COMException e) {
         TimedOut = e.HResult == _timeoutResult;

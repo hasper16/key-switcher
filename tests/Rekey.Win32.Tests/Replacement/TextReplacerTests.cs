@@ -163,6 +163,20 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void SelectionThatLandedLateStillTypesAndCountsTowardsSlow() {
+      var control = new FakeControl("ghbdtn") { TimedOut = true };
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      ReplacementResult first = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      control.AskedLength = 0;
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.Verified, first);
+      Assert.Equal(0, control.AskedLength);
+    }
+
+    [Fact]
     public void InputThatWindowsRefusesIsReportedAsBlocked() {
       var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], _ => false);
 
