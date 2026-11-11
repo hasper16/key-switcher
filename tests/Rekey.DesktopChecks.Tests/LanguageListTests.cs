@@ -50,19 +50,6 @@ namespace Rekey.DesktopChecks.Tests {
     }
 
     [Fact]
-    public void WriteScriptRebuildsEveryLanguageAndSetting() {
-      string script = LanguageList.Parse("uk|0422:00020422,0422:00000419|True|False").WriteScript();
-
-      Assert.Equal(
-          "$l = New-WinUserLanguageList 'uk'; $l[0].InputMethodTips.Clear(); "
-              + "$l[0].InputMethodTips.Add('0422:00020422'); "
-              + "$l[0].InputMethodTips.Add('0422:00000419'); "
-              + "$l[0].Spellchecking = $True; $l[0].Handwriting = $False; "
-              + "Set-WinUserLanguageList $l -Force",
-          script);
-    }
-
-    [Fact]
     public void SnapshotTextParsesBackToTheSameList() {
       LanguageList list = LanguageList.Parse(_output);
 

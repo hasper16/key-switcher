@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 
 namespace Rekey.DesktopChecks {
   // The user's Windows language list with each language's settable properties, as PowerShell's
@@ -55,31 +54,6 @@ namespace Rekey.DesktopChecks {
     // The languages of the current list that this list lacks.
     public IReadOnlyList<string> ExtraIn(LanguageList current) {
       return [.. current.Languages.Select(language => language.Tag).Where(tag => !Has(tag))];
-    }
-
-    // A script that rebuilds the user's list as exactly this one; the fallback when removing
-    // the added languages did not restore it.
-    public string WriteScript() {
-      var script = new StringBuilder();
-      for (int i = 0; i < Languages.Count; i++) {
-        Language language = Languages[i];
-        string tag = Quote(language.Tag);
-        script.Append(i == 0 ? $"$l = New-WinUserLanguageList {tag}; " : $"$l.Add({tag}); ");
-        script.Append(CultureInfo.InvariantCulture, $"$l[{i}].InputMethodTips.Clear(); ");
-        foreach (string tip in language.Tips) {
-          script.Append(
-              CultureInfo.InvariantCulture, $"$l[{i}].InputMethodTips.Add({Quote(tip)}); ");
-        }
-
-        script.Append(
-            CultureInfo.InvariantCulture,
-            $"$l[{i}].Spellchecking = ${language.Spellchecking}; ");
-        script.Append(
-            CultureInfo.InvariantCulture, $"$l[{i}].Handwriting = ${language.Handwriting}; ");
-      }
-
-      script.Append("Set-WinUserLanguageList $l -Force");
-      return script.ToString();
     }
 
     // The snapshot file's text: ReadScript's format, one language per line.

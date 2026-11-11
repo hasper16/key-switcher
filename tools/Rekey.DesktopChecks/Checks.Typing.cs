@@ -77,19 +77,27 @@ namespace Rekey.DesktopChecks {
 
       Focus(First().Ordinary);
 
-      // The untagged key after the tagged one is the sentinel: once the worker reported it, it
-      // has read the tagged key too, so exactly one KeyDown means the tagged one was ignored.
+      // A tagged A, then an untagged S as the sentinel: once the worker reported the S it has
+      // read the A too, so no A among the reported keys means the tagged key was ignored.
+      const ushort taggedKey = 0x1E;
+      const ushort sentinelKey = 0x1F;
       EventLog.Position tagged = _log.Mark();
-      Input.Press(VIRTUAL_KEY.VK_A, 0x1E, InjectedInput.Tag);
-      Input.Press(VIRTUAL_KEY.VK_A, 0x1E);
-      WaitForKeys(tagged, 1);
-      Thread.Sleep(_settle);
-      List<KeyDown> other = _log.KeyDownsSince(tagged);
-      Expect("2.1 Rekey's own keys are ignored", other.Count == 1, $"{other.Count} KeyDowns");
+      Input.Press(VIRTUAL_KEY.VK_A, taggedKey, InjectedInput.Tag);
+      Input.Press(VIRTUAL_KEY.VK_S, sentinelKey);
+      EventLog.WaitFor(
+          () => _log.KeyDownsSince(tagged).Exists(key => key.Keystroke.ScanCode == sentinelKey),
+          _eventWait);
+      List<KeyDown> reported = _log.KeyDownsSince(tagged);
+      KeyDown? sentinel = reported.Find(key => key.Keystroke.ScanCode == sentinelKey);
+      int taggedSeen = reported.Count(key => key.Keystroke.ScanCode == taggedKey);
+      Expect(
+          "2.1 Rekey's own keys are ignored",
+          sentinel is not null && taggedSeen == 0,
+          $"sentinel seen {sentinel is not null}, tagged keys seen {taggedSeen}");
       Expect(
           "2.1 other injected key is a Character",
-          other.Count >= 1 && other[^1].Kind == KeyKind.Character,
-          $"kind {other.LastOrDefault()?.Kind}");
+          sentinel?.Kind == KeyKind.Character,
+          $"kind {sentinel?.Kind}");
 
       EventLog.Position typed = _log.Mark();
       Input.Type("qwe");

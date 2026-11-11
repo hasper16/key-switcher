@@ -39,21 +39,18 @@ namespace Rekey.DesktopChecks {
     }
 
     // Removes what the checks added and leaves every other language object, with all its
-    // settings, as it is; only when that does not match the snapshot does it rebuild the list.
+    // settings, as it is. It never rebuilds the list: new language objects could reset settings
+    // PowerShell does not show, such as text prediction, so a remaining difference is reported.
     public static void RestoreLanguages(LanguageList snapshot) {
       IReadOnlyList<string> extra = snapshot.ExtraIn(ReadLanguages());
       if (extra.Count > 0) {
         PowerShell(LanguageList.RemoveScript(extra));
       }
 
-      if (ReadLanguages().SameAs(snapshot)) {
-        return;
-      }
-
-      PowerShell(snapshot.WriteScript());
       if (!ReadLanguages().SameAs(snapshot)) {
         throw new InvalidOperationException(
-            "The language list differs after restoring it; run the restore-languages command.");
+            $"The language list still differs from the one saved in {LanguageSnapshot}; "
+            + "compare them in Settings > Time & language > Language & region.");
       }
     }
 
