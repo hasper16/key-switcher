@@ -4,6 +4,9 @@ using Xunit;
 
 namespace Rekey.Core.Tests.Detection {
   public sealed class KeyMapRenderTests {
+    // The Brazilian ABNT C1 key: no Layout in the fixtures lists it.
+    private const ushort _noLayoutKey = 0x73;
+
     [Theory]
     [InlineData("ghbdtn", "привет")]
     [InlineData(",tp", "без")]
@@ -63,7 +66,7 @@ namespace Rekey.Core.Tests.Detection {
 
     [Fact]
     public void UnknownKeyIsNotRendered() {
-      Assert.Null(KeyMapFixtures.Russian.Render([new(0x56, false, false)]));
+      Assert.Null(KeyMapFixtures.Russian.Render([new(_noLayoutKey, false, false)]));
     }
 
     [Fact]

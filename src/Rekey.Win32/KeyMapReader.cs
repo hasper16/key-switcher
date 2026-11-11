@@ -19,12 +19,12 @@ namespace Rekey.Win32 {
     private const uint _keepKeyboardState = 0x4;
 
     /// <summary>
-    /// Gets the scan codes of the 47 printable keys of a standard keyboard, from the key left of
-    /// 1 through the slash key.
+    /// Gets the scan codes of the 48 printable keys: the 47 keys of an ANSI keyboard, from the key
+    /// left of 1 through the slash key, and the ISO key between Left Shift and Z.
     /// </summary>
     public static IReadOnlyList<ushort> PrintableScanCodes { get; } = [
         0x29, .. Range(0x02, 0x0D), .. Range(0x10, 0x1B), 0x2B, .. Range(0x1E, 0x28),
-        .. Range(0x2C, 0x35)];
+        .. Range(0x2C, 0x35), 0x56];
 
     /// <summary>
     /// Reads the printable keys of a Layout.

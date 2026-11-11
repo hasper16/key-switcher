@@ -8,6 +8,9 @@ using static Rekey.Core.Tests.Detection.DetectionWorld;
 namespace Rekey.Core.Tests.Detection {
   // Spec examples of wrong-layout-detection; real words come from the spec, not from users.
   public sealed class KeepRulesTests {
+    // The Brazilian ABNT C1 key: no Layout in the fixtures lists it.
+    private const ushort _noLayoutKey = 0x73;
+
     [Fact]
     public void CorrectlyTypedWordIsKept() {
       Assert.Equal(Decision.Keep, Decide(KeyMapFixtures.EnglishUs, "hello"));
@@ -57,7 +60,7 @@ namespace Rekey.Core.Tests.Detection {
     [Fact]
     public void WordWithAnUnrenderableKeyIsKept() {
       IReadOnlyList<Keystroke> word =
-          [.. Keys(KeyMapFixtures.EnglishUs, "ghbdtn"), new(0x56, false, false)];
+          [.. Keys(KeyMapFixtures.EnglishUs, "ghbdtn"), new(_noLayoutKey, false, false)];
 
       Assert.Equal(
           Decision.Keep, Detector.Decide(word, KeyMapFixtures.EnglishUs.Layout, default));

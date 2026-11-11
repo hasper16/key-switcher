@@ -2,7 +2,7 @@
 
 ## 1. ISO key in Key Maps
 
-- [ ] 1.1 Write failing tests: `KeyMapReader.Read` of the United Kingdom Layout (00000809) has 48 entries and the ISO key (0x56) gives "\" and "|"; every key-map fixture has 48 entries; move the "unknown key" tests to a scan code no Layout lists; add 0x56 to `KeyMapReader.PrintableScanCodes`, regenerate the fixtures with `tools/Rekey.KeyMapCapture` and add a United Kingdom fixture; verify the tests pass
+- [x] 1.1 Write failing tests: `KeyMapReader.Read` of the United Kingdom Layout (00000809) has 48 entries and the ISO key (0x56) gives "\" and "|"; every key-map fixture has 48 entries; move the "unknown key" tests to a scan code no Layout lists; add 0x56 to `KeyMapReader.PrintableScanCodes`, regenerate the fixtures with `tools/Rekey.KeyMapCapture` and add a United Kingdom fixture; verify the tests pass
 
 ## 2. Correction and Undo model in Core
 

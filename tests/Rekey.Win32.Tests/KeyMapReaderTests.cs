@@ -11,7 +11,7 @@ namespace Rekey.Win32.Tests {
       KeyMap map = KeyMapReader.Read(_englishUs);
 
       Assert.Equal(_englishUs, map.Layout);
-      Assert.Equal(47, map.Entries.Count);
+      Assert.Equal(48, map.Entries.Count);
     }
 
     [Fact]

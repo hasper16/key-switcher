@@ -40,7 +40,7 @@ The original swaps the word in place through the macOS Accessibility API where i
 - Worker: Backspace over Rendering + trigger text, type the original text + trigger text, switch back to the source Layout, emit `UndoPerformed(word, rendering)` for learning and statistics.
 
 ### D5. ISO key in Key Maps
-- `KeyMapReader` (worker thread, `MapVirtualKeyEx` + `ToUnicodeEx`) adds scan code 0x56 to its printable keys, giving 48 entries per Layout. Without it a Word containing that key has no Rendering, so it can neither be detected nor replaced.
+- `KeyMapReader` (worker thread, `MapVirtualKeyEx` + `ToUnicodeEx`) adds scan code 0x56 to its printable keys, giving 48 entries per Layout. Without it a Word containing that key has no Rendering, so it can neither be detected nor replaced. Both Ukrainian Layouts put "ґ" on that key, so without it "ґ" could not be typed or rendered at all.
 - On Layouts where 0x56 repeats another key's characters (English (US) gives "\" on both 0x2B and 0x56), typing a text still picks the lower scan code; Rendering reads whichever key was pressed.
 
 ## Risks / Trade-offs
