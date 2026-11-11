@@ -20,7 +20,7 @@ Do not touch the mouse or keyboard for about 5 minutes. The tool opens its own t
 | 4.1 | Adding a spare language (German, French or Italian) shows its Layout within 5 s; removing it drops it; the language list is back as before |
 | 4.3 | Per-window mode: two test windows and a console keep their own Layouts; global mode: the Layout follows to the next window |
 | 4.4 | A verified switch lands in a test window, a browser text box and a console, with no `SwitchNotLanded` |
-| 5.3 | A hook stalled past Windows' limit is dropped and reinstalled; Shift released and Caps Lock toggled while it was gone are resynced; a second drop pauses Rekey; Resume ends the pause; the Debug app, started with `--check-self-pause --check-auto-resume`, shows the self-pause in its tray with Resume, and Resume clears it |
+| 5.3 | A hook stalled past Windows' limit is dropped and reinstalled; Shift released and Caps Lock toggled while it was gone are resynced; a second drop pauses Rekey; Resume ends the pause; the Debug app, started with `--check-self-pause --check-auto-resume`, shows the self-pause in its tray with Resume, Resume clears it, and quitting ends the process |
 | 5.5 | Two freezes record `InputFrozen`, then `FreezeRestart`; the Debug app started with `--check-freeze` restarts itself and saves the restart time |
 
 Last run: 30 of 30 checks passed at commit a11ca63 (owner's desktop, Firefox as default browser); the language list was restored. Tasks 2.1, 3.2, 3.3, 4.1, 4.3, 4.4, 5.5 and 6.2 are ticked on that run; 3.1 and 5.3 also need the checks by hand below.

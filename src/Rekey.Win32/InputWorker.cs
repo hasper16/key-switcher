@@ -34,6 +34,9 @@ namespace Rekey.Win32 {
     // Design D5: Windows does not tell other processes about added Layouts, so poll.
     private static readonly TimeSpan _layoutPollPeriod = TimeSpan.FromSeconds(2);
 
+    // How long quitting waits for the worker thread; see Dispose.
+    private static readonly TimeSpan _stopWait = TimeSpan.FromSeconds(2);
+
     private readonly InputRing _ring = new(_ringCapacity);
     private readonly AutoResetEvent _signal = new(initialState: false);
     private readonly SlowCallbackMeter _meter;
@@ -172,14 +175,19 @@ namespace Rekey.Win32 {
 
     /// <inheritdoc />
     public void Dispose() {
+      // Bounded, so quitting Rekey always works: the thread is a background thread and ends with
+      // the process if it is stuck.
+      bool stopped = true;
       if (_thread.IsAlive) {
         PInvoke.PostThreadMessage(_threadId, PInvoke.WM_QUIT, default, default);
-        _thread.Join();
+        stopped = _thread.Join(_stopWait);
       }
 
       _hook.Dispose();
-      _signal.Dispose();
-      _started.Dispose();
+      if (stopped) {
+        _signal.Dispose();
+        _started.Dispose();
+      }
     }
 
     // Hook timestamps count the same milliseconds since system start.

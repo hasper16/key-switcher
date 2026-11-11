@@ -153,6 +153,7 @@ namespace Rekey.DesktopChecks {
       var start = new ProcessStartInfo(AppPath());
       start.ArgumentList.Add("--check-self-pause");
       start.ArgumentList.Add("--check-auto-resume");
+      start.ArgumentList.Add("--check-quit");
       using Process app = Process.Start(start)
           ?? throw new InvalidOperationException("The app did not start.");
       EventLog.WaitFor(() => ReadState(state) is not null, TimeSpan.FromSeconds(10));
@@ -172,6 +173,8 @@ namespace Rekey.DesktopChecks {
           "5.3 Resume in the app's tray ends the self-pause",
           resumed,
           $"tray state {ReadState(state) ?? "not written"}");
+      bool exited = app.WaitForExit(TimeSpan.FromSeconds(10));
+      Expect("5.3 Quit ends the app", exited, exited ? "the process exited" : "still running");
       StopTestApps();
     }
 

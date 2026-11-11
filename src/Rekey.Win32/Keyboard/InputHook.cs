@@ -98,9 +98,12 @@ namespace Rekey.Win32.Keyboard {
 
     /// <inheritdoc />
     public void Dispose() {
+      // Bounded, as a stalled callback can hold the thread; it is a background thread.
       if (_thread.IsAlive) {
         PInvoke.PostThreadMessage(_threadId, PInvoke.WM_QUIT, default, default);
-        _thread.Join();
+        if (!_thread.Join(TimeSpan.FromSeconds(2))) {
+          return;
+        }
       }
 
       _installed.Dispose();

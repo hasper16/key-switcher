@@ -20,6 +20,7 @@ namespace Rekey.App {
     private const string _checkFreeze = "--check-freeze";
     private const string _checkSelfPause = "--check-self-pause";
     private const string _checkAutoResume = "--check-auto-resume";
+    private const string _checkQuit = "--check-quit";
 #endif
     private const string _toolTip = "Rekey";
     private const string _selfPausedToolTip =
@@ -41,6 +42,7 @@ namespace Rekey.App {
 #if DEBUG
     private bool _checkingTray;
     private bool _autoResume;
+    private bool _autoQuit;
 #endif
     private InputWorker? _worker;
     private FreezeGuard? _freezeGuard;
@@ -76,6 +78,7 @@ namespace Rekey.App {
       if (e.Args.Contains(_checkSelfPause)) {
         _checkingTray = true;
         _autoResume = e.Args.Contains(_checkAutoResume);
+        _autoQuit = e.Args.Contains(_checkQuit);
         DropHookTwiceForCheck();
       }
 #endif
@@ -236,6 +239,12 @@ namespace Rekey.App {
       }
 #if DEBUG
       WriteTrayState();
+      if (until is null && _autoQuit) {
+        // For the desktop checks: quit the way the tray's Quit does, 1 s after resuming.
+        _ = Task.Delay(TimeSpan.FromSeconds(1)).ContinueWith(
+            _ => Dispatcher.BeginInvoke(() => Shutdown()), TaskScheduler.Default);
+      }
+
       if (until is not null && _autoResume) {
         // For the desktop checks: choose Resume as a person would, 2 s later.
         MenuItem resume = _resumeItem;

@@ -55,9 +55,10 @@ namespace Rekey.Win32 {
 
     /// <inheritdoc />
     public void Dispose() {
+      // Bounded, so quitting Rekey always works; the guard is a background thread.
       _stop.Set();
-      if (_thread.IsAlive) {
-        _thread.Join();
+      if (_thread.IsAlive && !_thread.Join(TimeSpan.FromSeconds(2))) {
+        return;
       }
 
       _stop.Dispose();
