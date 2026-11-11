@@ -79,8 +79,9 @@ namespace Rekey.Win32.Replacement {
         case ReplacementMethod.Stale:
           return staleBeforeSelect ?? ReplacementResult.TooLate;
         case ReplacementMethod.Abandon:
-          // The app handles the pending selection before this input, so it lands first.
-          Collapse(recheck() ?? ReplacementResult.TimedOut);
+          // The app handles this request after the pending selection, in the control that was
+          // read, so no key can reach another control.
+          _reader.Deselect(Deselection.Always);
           return ReplacementResult.TimedOut;
         default:
           break;
@@ -110,19 +111,14 @@ namespace Rekey.Win32.Replacement {
     }
 
     // Collapses a selection so neither a re-injected Space nor later typing replaces the Word.
-    // A click already placed the caret where the user wants it, so it is left alone. After a
-    // focus move, Right would land in the other control, so the read control is collapsed
-    // through UI Automation instead.
+    // After a click or a focus move, Right would land elsewhere, so the control that was read
+    // is collapsed through UI Automation, and only while its selection is still the Word: a
+    // caret the click placed stays where it is.
     private void Collapse(ReplacementResult why) {
-      switch (why) {
-        case ReplacementResult.Interrupted:
-          break;
-        case ReplacementResult.FocusMoved:
-          _reader.Deselect();
-          break;
-        default:
-          _send(InputBuilder.CollapseSelection(_heldModifiers()));
-          break;
+      if (why is ReplacementResult.Interrupted or ReplacementResult.FocusMoved) {
+        _reader.Deselect(Deselection.IfStillSelected);
+      } else {
+        _send(InputBuilder.CollapseSelection(_heldModifiers()));
       }
     }
   }

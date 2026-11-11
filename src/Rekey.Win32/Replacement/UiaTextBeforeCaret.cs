@@ -93,14 +93,18 @@ namespace Rekey.Win32.Replacement {
     }
 
     /// <inheritdoc />
-    public void Deselect() {
+    public void Deselect(Deselection when) {
       IUIAutomationTextRange? selected = _selected;
       _selected = null;
-      if (selected is null) {
+      if (selected is null || _element is null) {
         return;
       }
 
       try {
+        if (when == Deselection.IfStillSelected && !IsSelection(_element, selected)) {
+          return;
+        }
+
         IUIAutomationTextRange end = selected.Clone();
         end.MoveEndpointByRange(
             TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start,
@@ -139,6 +143,24 @@ namespace Rekey.Win32.Replacement {
       } catch (COMException) {
         return null;
       }
+    }
+
+    private static bool IsSelection(IUIAutomationElement element, IUIAutomationTextRange range) {
+      if (element.GetCurrentPattern(UIA_PATTERN_ID.UIA_TextPatternId)
+          is not IUIAutomationTextPattern text
+          || text.GetSelection() is not { Length: 1 } selection) {
+        return false;
+      }
+
+      IUIAutomationTextRange current = selection.GetElement(0);
+      return current.CompareEndpoints(
+              TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start,
+              range,
+              TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start) == 0
+          && current.CompareEndpoints(
+              TextPatternRangeEndpoint.TextPatternRangeEndpoint_End,
+              range,
+              TextPatternRangeEndpoint.TextPatternRangeEndpoint_End) == 0;
     }
 
     // The caret as an empty range; a control with a selection or several carets is retyped.

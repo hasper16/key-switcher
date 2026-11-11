@@ -24,10 +24,13 @@ namespace Rekey.Win32.Replacement {
     bool FocusUnchanged();
 
     /// <summary>
-    /// Collapses the selection made by <see cref="SelectRead" /> to its end, in the control
-    /// that was read, without sending input; failures are ignored.
+    /// Collapses the selection asked for by <see cref="SelectRead" /> to its end, in the
+    /// control that was read, without sending input; failures are ignored.
     /// </summary>
-    void Deselect();
+    /// <param name="when">
+    /// One of the enumeration values that specifies whether to check the selection first.
+    /// </param>
+    void Deselect(Deselection when);
 
     /// <summary>
     /// Reads the characters just before the caret.

@@ -56,7 +56,7 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
-    public void SelectionThatTimedOutIsCollapsedAndNothingTyped() {
+    public void SelectionThatTimedOutIsCollapsedThroughTheAppAndNothingSent() {
       var control = new FakeControl("ghbdtn") {
         CanSelect = false,
         TimedOut = true,
@@ -66,10 +66,11 @@ namespace Rekey.Win32.Tests.Replacement {
 
       ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
 
+      // The app handles this request after the pending selection, in the control that was
+      // read, whatever has focus now.
       Assert.Equal(ReplacementResult.TimedOut, result);
-      Assert.Equal(
-          [VIRTUAL_KEY.VK_RIGHT, VIRTUAL_KEY.VK_RIGHT],
-          Assert.Single(_sent).Select(input => input.Anonymous.ki.wVk));
+      Assert.Equal(Deselection.Always, control.Deselected);
+      Assert.Empty(_sent);
     }
 
     [Fact]
@@ -129,7 +130,25 @@ namespace Rekey.Win32.Tests.Replacement {
           () => ++checks == 1 ? null : ReplacementResult.FocusMoved);
 
       Assert.Equal(ReplacementResult.FocusMoved, result);
-      Assert.True(control.Deselected);
+      Assert.Equal(Deselection.IfStillSelected, control.Deselected);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void ClickAfterSelectingCollapsesOnlyASelectionThatIsStillTheWord() {
+      // A selection that landed after the click would let the held Space replace the Word; a
+      // caret the click placed elsewhere is left where it is.
+      var control = new FakeControl("ghbdtn");
+      TextReplacer replacer = Replacer(control, verify: true);
+      int checks = 0;
+
+      ReplacementResult result = replacer.Replace(
+          new ReplaceText("ghbdtn", "привет"),
+          _editor,
+          () => ++checks == 1 ? null : ReplacementResult.Interrupted);
+
+      Assert.Equal(ReplacementResult.Interrupted, result);
+      Assert.Equal(Deselection.IfStillSelected, control.Deselected);
       Assert.Empty(_sent);
     }
 

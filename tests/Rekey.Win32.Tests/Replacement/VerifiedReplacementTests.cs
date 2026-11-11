@@ -99,14 +99,14 @@ namespace Rekey.Win32.Tests.Replacement {
 
       public bool FocusMoved { get; init; }
 
-      public bool Deselected { get; private set; }
+      public Deselection? Deselected { get; private set; }
 
       public bool FocusUnchanged() {
         return !FocusMoved;
       }
 
-      public void Deselect() {
-        Deselected = true;
+      public void Deselect(Deselection when) {
+        Deselected = when;
       }
 
       public string? Read(int length) {
