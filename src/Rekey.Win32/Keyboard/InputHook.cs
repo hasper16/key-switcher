@@ -16,7 +16,8 @@ namespace Rekey.Win32.Keyboard {
   /// Windows removes a low-level hook whose callback is too slow, so the callbacks only copy the
   /// input, signal the worker and return: no allocation, no locks, no logging. The hook thread is
   /// the only writer of the ring's tail, of <see cref="LastInputTick" /> and of the slow-callback
-  /// count.
+  /// count. The keyboard callback may also hold a key back from the application, as
+  /// <see cref="HoldGate" /> decides; the worker sends it on.
   /// </remarks>
   [SuppressMessage(
       "Security",
@@ -26,6 +27,7 @@ namespace Rekey.Win32.Keyboard {
     private const uint _reinstallMessage = PInvoke.WM_APP + 1;
 
     private readonly InputRing _ring;
+    private readonly HoldGate _gate;
     private readonly EventWaitHandle _signal;
     private readonly SlowCallbackMeter _meter;
     private readonly TimeProvider _time;
@@ -48,8 +50,13 @@ namespace Rekey.Win32.Keyboard {
     private UnhookWindowsHookExSafeHandle? _mouseHook;
 
     public InputHook(
-        InputRing ring, EventWaitHandle signal, SlowCallbackMeter meter, TimeProvider time) {
+        InputRing ring,
+        HoldGate gate,
+        EventWaitHandle signal,
+        SlowCallbackMeter meter,
+        TimeProvider time) {
       _ring = ring;
+      _gate = gate;
       _signal = signal;
       _meter = meter;
       _time = time;
@@ -191,8 +198,17 @@ namespace Rekey.Win32.Keyboard {
               ? RawInputKind.KeyDown
               : RawInputKind.KeyUp;
           bool extended = (info->flags & KBDLLHOOKSTRUCT_FLAGS.LLKHF_EXTENDED) != 0;
-          Enqueue(new RawInput(
-              kind, (ushort)info->vkCode, (ushort)info->scanCode, extended, LastInputTick));
+          var vk = (ushort)info->vkCode;
+          var scanCode = (ushort)info->scanCode;
+          long tick = LastInputTick;
+          Holding holding = _gate.Judge(
+              kind, vk, scanCode, extended, _ring.Written, tick, _ring.HasRoom);
+          Enqueue(new RawInput(kind, vk, scanCode, extended, tick, Holding: holding));
+          if (holding != Holding.None) {
+            // Held back from the application; the worker re-injects it in order.
+            _meter.Record(started, _time.GetTimestamp());
+            return (LRESULT)1;
+          }
         }
       }
 

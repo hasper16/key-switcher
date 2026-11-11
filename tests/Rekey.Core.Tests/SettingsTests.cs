@@ -48,6 +48,19 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void VerifiedReplacementDefaultsToOn() {
+      Assert.True(new Settings().VerifiedReplacement);
+    }
+
+    [Fact]
+    public void FileWithoutVerifiedReplacementGetsItOn() {
+      Settings? restored = JsonSerializer.Deserialize(
+          "{ \"autoCorrectionEnabled\": true }", SettingsJsonContext.Default.Settings);
+
+      Assert.True(restored?.VerifiedReplacement);
+    }
+
+    [Fact]
     public void WatchdogsDefaultToOn() {
       var defaults = new Settings();
 

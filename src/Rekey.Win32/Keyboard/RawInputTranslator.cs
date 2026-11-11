@@ -57,15 +57,22 @@ namespace Rekey.Win32.Keyboard {
     }
 
     /// <summary>
-    /// Sets the Key Maps of the active Layouts; a key that types text in any of them is a
-    /// character key.
+    /// Returns the scan codes of the keys that type text in any of the Key Maps.
     /// </summary>
-    public void UseKeyMaps(IEnumerable<KeyMap> keyMaps) {
-      _characterScanCodes = keyMaps
+    public static FrozenSet<ushort> CharacterScanCodes(IEnumerable<KeyMap> keyMaps) {
+      return keyMaps
           .SelectMany(map => map.Entries)
           .Where(entry => entry.Normal.Length > 0 || entry.Shifted.Length > 0)
           .Select(entry => entry.ScanCode)
           .ToFrozenSet();
+    }
+
+    /// <summary>
+    /// Sets the Key Maps of the active Layouts; a key that types text in any of them is a
+    /// character key.
+    /// </summary>
+    public void UseKeyMaps(IEnumerable<KeyMap> keyMaps) {
+      _characterScanCodes = CharacterScanCodes(keyMaps);
     }
 
     /// <summary>
@@ -109,7 +116,9 @@ namespace Rekey.Win32.Keyboard {
             Press(key);
           }
 
-          return KeyDownOf(input, key, timestamp);
+          return input.Holding == Holding.UndoRequest
+              ? new UndoRequested(timestamp)
+              : KeyDownOf(input, key, timestamp);
       }
     }
 
@@ -174,7 +183,12 @@ namespace Rekey.Win32.Keyboard {
 
       var keystroke = new Keystroke(
           input.ScanCode, (modifiers & KeyModifiers.Shift) != 0, _capsLockOn, altGr);
-      return new KeyDown(timestamp, keystroke, KindOf(input, key), modifiers);
+      return new KeyDown(
+          timestamp,
+          keystroke,
+          KindOf(input, key),
+          modifiers,
+          Held: input.Holding == Holding.Held);
     }
 
     private KeyKind KindOf(in RawInput input, VIRTUAL_KEY key) {

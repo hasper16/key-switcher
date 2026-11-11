@@ -21,7 +21,7 @@ The original swaps the word in place through the macOS Accessibility API where i
 - When a Trigger Key goes down after a character key and the Hook Policy allows holding, the hook writes it to the ring marked as held and swallows it (returns 1). While `lastHeld > released`, the hook holds *every* key event, downs and ups alike, so a held modifier can never be released out of order.
 - `released` is written only by the worker: the ring sequence of the last held key it finished. The worker handles each held key in ring order: it feeds the engine, executes the actions, re-injects the key, then publishes `released`. Because the hook keeps holding until every key it held has been re-injected, a key it lets through can never overtake a held one. One writer per variable (`Volatile.Read/Write`).
 - A key is held only when the ring has room for it; a key the ring cannot take passes through.
-- Safety valve: when a key arrives more than 150 ms after the hold began, the hook stops holding until the worker catches up and counts a hold timeout (Incident `HoldTimeout`, recorded by the worker). Typing is never blocked longer than that. Keys held before the valve are still re-injected, late but not lost. To keep a late Correction from erasing keys the valve let through, the worker applies a Correction or Undo only while its key is less than 100 ms old (design decision: 50 ms of margin below the valve).
+- Safety valve: when a key arrives more than 150 ms after the hold began, the hook stops holding until the worker catches up and counts a hold timeout (Incident `HoldTimeout`, recorded by the worker). Typing is never blocked longer than that. Keys held before the valve are still re-injected, late but not lost. To keep a late Correction from erasing keys the valve let through, the worker starts a Correction or Undo only while its key is less than 50 ms old; with the 50 ms UI Automation budget (D3) it lands by about 100 ms, 50 ms below the valve (design decisions).
 - The Hook Policy (whether to hold, the Trigger Keys, the character scan codes of the active Layouts) is an immutable snapshot the worker swaps atomically. In this change the host holds Space and Enter only when a Word Evaluator is installed (D6); `add-auto-correction` derives the policy from its gate and settings.
 
 ### D2. Injection
@@ -57,7 +57,7 @@ The original swaps the word in place through the macOS Accessibility API where i
 ## Risks / Trade-offs
 
 - [Holding Space adds latency to every word end] → bounded by decision time (< 5 ms target) and the 150 ms valve; nothing is held while no Word Evaluator is installed.
-- [The 100 ms freshness check and the 150 ms valve race when the worker is preempted for 50 ms between the check and `SendInput`] → accepted: the window is a few microseconds wide and needs a 100 ms stall first.
+- [The freshness check and the 150 ms valve race when the worker is preempted for more than 50 ms between the check and `SendInput`] → accepted: it needs a long stall at exactly that point, and the result is a replacement at the wrong place, as without the check.
 - [A mouse click during a hold reaches the app before held keys] → accepted: clicks are not held; the click ends the Word, so nothing is corrected after it.
 - [Apps that react to Backspace specially (autocomplete popups, IDE snippets)] → verified replacement avoids most Backspaces; users can add such apps to Excluded Apps.
 - [Some apps ignore `KEYEVENTF_UNICODE`] (rare: some games, remote-desktop clients) → listed as known limitation; suggest Excluded App.

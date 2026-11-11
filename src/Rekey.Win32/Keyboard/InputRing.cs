@@ -41,6 +41,12 @@ namespace Rekey.Win32.Keyboard {
     /// <summary>Gets the number of inputs dropped because the ring was full.</summary>
     public long Dropped => Volatile.Read(ref _dropped);
 
+    /// <summary>
+    /// Gets a value indicating whether the next write succeeds; read only by the writer thread,
+    /// as the reader can only make more room.
+    /// </summary>
+    public bool HasRoom => _tail - Volatile.Read(ref _head) < _items.Length;
+
     /// <summary>Adds an input; called only by the writer thread.</summary>
     public bool TryWrite(in RawInput input) {
       long tail = _tail;

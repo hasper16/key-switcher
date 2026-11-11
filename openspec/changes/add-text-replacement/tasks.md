@@ -24,7 +24,7 @@
 
 - [ ] 5.1 Write failing tests for slow-app memory (two timeouts in one app mark it slow, other apps unaffected); implement the UIA reader on the worker (caret range, text before caret, select, 50 ms budget); verify the tests pass and the desktop checks report the verified path in Notepad and the browser text box
 - [ ] 5.2 Write failing tests for `VerifiedReplacement.Prepare` with a fake reader (match → select-and-type; mismatch → cancel; nothing exposed or out of time → retype); implement select-and-type and cancel-on-mismatch with the `CorrectionCancelled` Incident; verify the tests pass and the desktop check where the text before the caret differs from the Word (keys the hook ignores) changes nothing; verify by hand with an editor whose autocomplete alters the Word
-- [ ] 5.3 Add the `VerifiedReplacement` setting (default on) to `Settings` and pass it to the worker; verify a test that off forces the retype path
+- [x] 5.3 Add the `VerifiedReplacement` setting (default on) to `Settings` and pass it to the worker; verify a test that off forces the retype path
 
 ## 6. Undo end to end
 

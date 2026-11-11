@@ -1,11 +1,13 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using Rekey.Core;
 using Rekey.Core.Detection;
 using Rekey.Core.Languages;
 using Rekey.Win32.Focus;
 using Rekey.Win32.Keyboard;
 using Rekey.Win32.Layouts;
+using Rekey.Win32.Replacement;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
@@ -31,13 +33,27 @@ namespace Rekey.Win32 {
     // Design D6: a pending Layout Switch is checked every 25 ms.
     private const uint _switchWaitMilliseconds = 25;
 
+    // Design D1 of add-text-replacement: a replacement starts only while the key that asked for
+    // it is this fresh, so with UI Automation's 50 ms budget it lands before the hook's 150 ms
+    // valve could have let later keys through.
+    private const long _freshMilliseconds = 50;
+
     // Design D5: Windows does not tell other processes about added Layouts, so poll.
     private static readonly TimeSpan _layoutPollPeriod = TimeSpan.FromSeconds(2);
 
     // How long quitting waits for the worker thread; see Dispose.
     private static readonly TimeSpan _stopWait = TimeSpan.FromSeconds(2);
 
+    // Design D1 of add-text-replacement: the Trigger Keys held while a Word Evaluator is set.
+    private static readonly ushort[] _triggerKeys = [
+        (ushort)VIRTUAL_KEY.VK_SPACE, (ushort)VIRTUAL_KEY.VK_RETURN];
+
+    private static readonly VIRTUAL_KEY[] _shortcutModifiers = [
+        VIRTUAL_KEY.VK_LCONTROL, VIRTUAL_KEY.VK_RCONTROL, VIRTUAL_KEY.VK_LMENU,
+        VIRTUAL_KEY.VK_RMENU, VIRTUAL_KEY.VK_LWIN, VIRTUAL_KEY.VK_RWIN];
+
     private readonly InputRing _ring = new(_ringCapacity);
+    private readonly HoldGate _gate = new();
     private readonly AutoResetEvent _signal = new(initialState: false);
     private readonly SlowCallbackMeter _meter;
     private readonly InputHook _hook;
@@ -51,6 +67,8 @@ namespace Rekey.Win32 {
     private readonly HookWatchdog _hookWatchdog;
     private readonly ModifierSync _modifierSync;
     private readonly KeyConfirmer _keyConfirmer;
+    private readonly WordEvaluator? _evaluate;
+    private readonly bool _verifiedReplacement;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
     private Engine _engine = new();
@@ -60,6 +78,12 @@ namespace Rekey.Win32 {
     private long _lastLayoutPoll;
     private bool _quitting;
     private FocusTracker? _focus;
+    private TextReplacer? _replacer;
+    private long _seenHoldTimeouts;
+
+    // The held key the worker is handling, and whether a replacement it asked for was applied.
+    private RawInput? _held;
+    private bool _heldReplaced;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InputWorker" /> class.
@@ -69,11 +93,35 @@ namespace Rekey.Win32 {
     /// The sink that records Incidents; it is called on the worker thread.
     /// </param>
     /// <param name="time">The clock; <see cref="TimeProvider.System" /> outside tests.</param>
-    public InputWorker(Settings settings, Action<Incident> recordIncident, TimeProvider time) {
+    public InputWorker(Settings settings, Action<Incident> recordIncident, TimeProvider time)
+        : this(settings, recordIncident, time, null) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InputWorker" /> class that corrects Words.
+    /// </summary>
+    /// <param name="settings">
+    /// The settings that turn the keyboard watchdog and Verified Replacement on or off.
+    /// </param>
+    /// <param name="recordIncident">
+    /// The sink that records Incidents; it is called on the worker thread.
+    /// </param>
+    /// <param name="time">The clock; <see cref="TimeProvider.System" /> outside tests.</param>
+    /// <param name="evaluate">
+    /// The evaluator of Words a Trigger Key ends, called on the worker thread; with
+    /// <see langword="null" />, no key is held and nothing is corrected.
+    /// </param>
+    public InputWorker(
+        Settings settings,
+        Action<Incident> recordIncident,
+        TimeProvider time,
+        WordEvaluator? evaluate) {
       _recordIncident = recordIncident;
       _time = time;
+      _evaluate = evaluate;
+      _verifiedReplacement = settings.VerifiedReplacement;
       _meter = new SlowCallbackMeter(time);
-      _hook = new InputHook(_ring, _signal, _meter, time);
+      _hook = new InputHook(_ring, _gate, _signal, _meter, time);
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
       _translator = new RawInputTranslator(capsLockOn);
       _modifierSync = new ModifierSync(
@@ -106,6 +154,20 @@ namespace Rekey.Win32 {
     /// with the time the pause ends, and when the pause ends, with <see langword="null" />.
     /// </summary>
     public event Action<DateTimeOffset?>? SelfPauseChanged;
+
+    /// <summary>
+    /// Occurs on the worker thread after Rekey replaced text or cancelled a replacement, with
+    /// how it went; it carries no text.
+    /// </summary>
+    public event Action<ReplacementResult>? Replaced;
+
+    /// <summary>
+    /// Occurs on the worker thread after an Undo, for the features that learn from it.
+    /// </summary>
+    /// <remarks>
+    /// It carries typed text: never log it.
+    /// </remarks>
+    public event Action<UndoPerformed>? Undone;
 
     /// <summary>
     /// Gets the number of Keystrokes in the engine's current Word; read it only on the worker
@@ -209,6 +271,14 @@ namespace Rekey.Win32 {
       return layout.Value >> 28 == 0xE;
     }
 
+    private static IReadOnlyList<VIRTUAL_KEY> HeldShortcutModifiers() {
+      return [.. _shortcutModifiers.Where(IsKeyDown)];
+    }
+
+    private static void SendKeys(INPUT[] inputs) {
+      PInvoke.SendInput(inputs, Marshal.SizeOf<INPUT>());
+    }
+
     [SuppressMessage(
         "Reliability",
         "S3869:SafeHandle.DangerousGetHandle should not be called",
@@ -226,6 +296,8 @@ namespace Rekey.Win32 {
       }
 
       _started.Set();
+      _replacer = new TextReplacer(
+          new UiaTextBeforeCaret(), _verifiedReplacement, HeldShortcutModifiers, SendKeys);
       RefreshLayouts();
       using var focus = new FocusTracker(OnFocusChanged);
       _focus = focus;
@@ -249,7 +321,7 @@ namespace Rekey.Win32 {
         _recordIncident(incident);
       }
 
-      _engine = new Engine(load.Languages);
+      _engine = new Engine(load.Languages, _evaluate);
     }
 
     private void DrainInput() {
@@ -276,8 +348,14 @@ namespace Rekey.Win32 {
           inputEvent = keyDown with { FocusConfirmed = _keyConfirmer.Confirm(raw) };
         }
 
+        _held = raw.Holding == Holding.None ? null : raw;
+        _heldReplaced = false;
         if (inputEvent is not null) {
           Send(inputEvent);
+        }
+
+        if (raw.Holding != Holding.None) {
+          FinishHeld(raw);
         }
 
         // Progress per input, so a pass that stays busy is not taken for a freeze.
@@ -290,9 +368,31 @@ namespace Rekey.Win32 {
       }
     }
 
+    // Sends a held key on to the application once its replacement, if any, is done, and lets
+    // the hook stop holding once every held key has gone on. An applied Undo consumes its
+    // Ctrl+Z; an applied Correction makes a Ctrl+Z right after its Trigger Key an Undo.
+    private void FinishHeld(in RawInput raw) {
+      if (raw.Holding == Holding.Held && _heldReplaced) {
+        _gate.ArmUndo(raw.Sequence);
+      }
+
+      if (raw.Holding != Holding.UndoRequest || !_heldReplaced) {
+        SendKeys([InputBuilder.Reinject(raw)]);
+      }
+
+      _gate.Release(raw.Sequence);
+      _held = null;
+    }
+
     private void Poll() {
       if (_meter.TakeIncident() is { } slow) {
         _recordIncident(slow);
+      }
+
+      long holdTimeouts = _gate.Timeouts;
+      if (holdTimeouts != _seenHoldTimeouts) {
+        _seenHoldTimeouts = holdTimeouts;
+        _recordIncident(new Incident(_time.GetUtcNow(), IncidentType.HoldTimeout, []));
       }
 
       if (_switcher.Check() is { } result) {
@@ -341,6 +441,9 @@ namespace Rekey.Win32 {
 
       List<KeyMap> keyMaps = [.. _layouts.Layouts.Select(KeyMapOf).OfType<KeyMap>()];
       _translator.UseKeyMaps(keyMaps);
+      _gate.UsePolicy(_evaluate is null
+          ? HookPolicy.HoldNothing
+          : new HookPolicy(_triggerKeys, RawInputTranslator.CharacterScanCodes(keyMaps)));
       Send(new LayoutsInstalledChanged(Now(), _layouts.Layouts, keyMaps));
       FollowForegroundLayout();
     }
@@ -435,9 +538,32 @@ namespace Rekey.Win32 {
         case SwitchLayout switchLayout:
           _switcher.Switch(switchLayout.Target);
           break;
+        case ReplaceText replace:
+          Replace(replace);
+          break;
+        case UndoPerformed undone:
+          Undone?.Invoke(undone);
+          break;
         default:
           break;
       }
+    }
+
+    private void Replace(ReplaceText replace) {
+      string? app = _engine.Focus?.AppId;
+      bool fresh = _held is { } held && Environment.TickCount64 - held.Tick < _freshMilliseconds;
+      ReplacementResult result = ReplacementResult.TooLate;
+      if (fresh && app is not null && _replacer is not null) {
+        result = _replacer.Replace(replace, app);
+        _heldReplaced = result != ReplacementResult.Mismatch;
+        if (result == ReplacementResult.Mismatch) {
+          _recordIncident(
+              new Incident(_time.GetUtcNow(), IncidentType.CorrectionCancelled, []));
+        }
+      }
+
+      Replaced?.Invoke(result);
+      Send(new ReplacementFinished(Now(), _heldReplaced));
     }
   }
 }
