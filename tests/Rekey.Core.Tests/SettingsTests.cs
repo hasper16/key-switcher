@@ -48,6 +48,33 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void WatchdogsDefaultToOn() {
+      var defaults = new Settings();
+
+      Assert.True(defaults.KeyboardWatchdogEnabled);
+      Assert.True(defaults.RestartAfterFreezeEnabled);
+    }
+
+    [Fact]
+    public void TurnedOffWatchdogsRoundTripThroughJson() {
+      var settings = new Settings(KeyboardWatchdogEnabled: false, RestartAfterFreezeEnabled: false);
+
+      string json = JsonSerializer.Serialize(settings, SettingsJsonContext.Default.Settings);
+      Settings? restored = JsonSerializer.Deserialize(json, SettingsJsonContext.Default.Settings);
+
+      Assert.Equal(settings, restored);
+    }
+
+    [Fact]
+    public void FileWithoutWatchdogSettingsTurnsThemOn() {
+      Settings? restored = JsonSerializer.Deserialize(
+          "{ \"autoCorrectionEnabled\": false }", SettingsJsonContext.Default.Settings);
+
+      Assert.True(restored?.KeyboardWatchdogEnabled);
+      Assert.True(restored?.RestartAfterFreezeEnabled);
+    }
+
+    [Fact]
     public void JsonCarriesSchemaVersionOne() {
       string json = JsonSerializer.Serialize(new Settings(), SettingsJsonContext.Default.Settings);
 

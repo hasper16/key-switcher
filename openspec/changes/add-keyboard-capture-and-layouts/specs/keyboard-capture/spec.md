@@ -48,11 +48,26 @@ A pause of more than 2 seconds between Keystrokes SHALL end the current Word and
 - **THEN** the current Word is "dtn" and no Deferred Word remains
 
 ### Requirement: Password Fields are never recorded
-Rekey MUST NOT record Keystrokes, keep a Word, or make any Correction while the focused control is a Password Field.
+Rekey MUST NOT record Keystrokes, keep a Word, or make any Correction while the focused control is a Password Field, except for the known limit stated under "Each Keystroke is confirmed outside a Password Field" (a page script moving focus there and back within milliseconds).
 
 #### Scenario: Typing a password
 - **WHEN** the user types in a password box
 - **THEN** Rekey keeps no Keystrokes from that typing and makes no Correction
+
+### Requirement: Each Keystroke is confirmed outside a Password Field
+Rekey SHALL keep a Keystroke only after confirming that the focused control is not a Password Field while nothing typed or clicked after that Keystroke is waiting to be processed (design decision), so a focus move inside one window (Tab, Shift+Tab, a click, the page itself) is covered before Windows reports it. When Rekey cannot confirm this, it SHALL keep nothing more of that Word, which then gets no Correction.
+
+#### Scenario: Focus moves to a password box inside the same window
+- **WHEN** the user presses Tab from a user-name box into a password box on the same web page and types at once
+- **THEN** Rekey keeps none of the Keystrokes typed in the password box, even before Windows reports the focus change
+
+#### Scenario: Rekey falls behind the typing
+- **WHEN** more input is already waiting while Rekey processes a Keystroke
+- **THEN** Rekey keeps nothing more of that Word and makes no Correction of it
+
+#### Scenario: Known limit — a script moves focus there and back at once
+- **WHEN** a page script moves focus into a Password Field and back to the same control within milliseconds of a Keystroke, before Windows reports either move
+- **THEN** that Keystroke may reach the Word until the next focus notice clears it (accepted by the owner: Rekey sees focus only after the Keystroke)
 
 ### Requirement: Own input is ignored
 Input that Rekey injects itself SHALL NOT be recorded as user typing.
@@ -68,6 +83,10 @@ While the keyboard watchdog is on (default, as in the original), when Windows st
 - **WHEN** Windows stops delivering Keystrokes to Rekey and the user keeps typing
 - **THEN** Rekey reattaches within 2 seconds of detecting missing input
 - **AND** an Incident records the drop and the recovery
+
+#### Scenario: Secure desktop
+- **WHEN** a UAC prompt, the lock screen or the Ctrl+Alt+Del screen takes the input and the user types or clicks there
+- **THEN** Rekey does not treat that input as a dropped hook and records no Incident
 
 #### Scenario: Watchdog turned off
 - **WHEN** the keyboard watchdog is off and Windows stops delivering Keystrokes to Rekey

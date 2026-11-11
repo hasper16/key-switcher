@@ -1,0 +1,13 @@
+EnumWindows
+GetCursorPos
+GetForegroundWindow
+GetKeyState
+GetWindowRect
+GetWindowText
+GetWindowTextLength
+INPUT
+IsWindowVisible
+SendInput
+SetCursorPos
+SystemParametersInfo
+VIRTUAL_KEY

@@ -1,0 +1,196 @@
+using Rekey.Core.Detection;
+using Rekey.Core.Languages;
+using Rekey.Core.Tests.Detection;
+using Xunit;
+
+namespace Rekey.Core.Tests {
+  // Spec keyboard-capture: "Password Fields are never recorded" and "Elevated windows". A
+  // Correction is built from the current Word, so no Word kept means no Correction.
+  public sealed class ProtectedFocusTests {
+    private static readonly LayoutId _russian = KeyMapFixtures.Russian.Layout;
+
+    [Fact]
+    public void PasswordFieldKeepsNoKeystrokes() {
+      Typist typist = new Typist().Focus(isPassword: true).Type("ghbdtn");
+
+      Assert.Empty(typist.Engine.Word);
+      Assert.Empty(typist.Actions);
+    }
+
+    [Fact]
+    public void TypingResumesAfterLeavingThePasswordField() {
+      Typist typist = new Typist().Focus(isPassword: true).Type("qwe").Focus().Type("dtn");
+
+      Assert.Equal("dtn", typist.Word);
+    }
+
+    [Fact]
+    public void ElevatedWindowKeepsNoKeystrokes() {
+      Typist typist = new Typist().Focus(isElevated: true).Type("ghbdtn");
+
+      Assert.Empty(typist.Engine.Word);
+      Assert.Empty(typist.Actions);
+    }
+
+    [Fact]
+    public void NoKeystrokesAreKeptBeforeTheFirstFocusReport() {
+      var engine = new Engine();
+
+      engine.Handle(new KeyDown(
+          TimeSpan.FromSeconds(1), new Keystroke(0x22, false, false), KeyKind.Character, 0));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void LostFocusEndsTheWordAndKeepsNoKeystrokes() {
+      Typist typist = new Typist().Type("ghb");
+
+      typist.Send(new FocusLost(TimeSpan.FromSeconds(11))).Type("dtn");
+
+      Assert.Empty(typist.Engine.Word);
+      Assert.Null(typist.Engine.Focus);
+    }
+
+    [Fact]
+    public void LostFocusDropsDeferredWords() {
+      var typist = new Typist();
+      typist.Engine.DeferredWords.Add(Decision.Defer(_russian, "ыф"));
+
+      typist.Send(new FocusLost(TimeSpan.FromSeconds(11)));
+
+      Correction? next = typist.Engine.DeferredWords.Add(Decision.Correct(_russian, "вапро"));
+      Assert.Equal(["вапро"], next?.Texts);
+    }
+
+    [Fact]
+    public void KeysTypedBeforeTheLatestFocusChangeAreNotKept() {
+      // The worker fell behind: password keys reach the engine after focus left the field.
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: true, IsElevated: false));
+      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+
+      engine.Handle(Letter(Seconds(11)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void KeyStampedWithTheFocusChangeIsNotKept() {
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: true, IsElevated: false));
+      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+
+      engine.Handle(Letter(Seconds(12)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void RestOfAWordWithARejectedKeyIsNotKept() {
+      // A rejected key may be the Word's first; keeping the rest would leave a partial Word.
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Letter(Seconds(12)));
+
+      engine.Handle(Letter(Seconds(13)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void WordBoundaryAfterARejectedKeyStartsAFreshWord() {
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Letter(Seconds(12)));
+
+      engine.Handle(new KeyDown(Seconds(13), new Keystroke(0x39, false, false), KeyKind.Space, 0));
+      engine.Handle(Letter(Seconds(14)));
+
+      Assert.Single(engine.Word);
+    }
+
+    [Fact]
+    public void KeysTypedBeforeFocusWasLostAreNotKept() {
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(new FocusLost(Seconds(15)));
+      engine.Handle(new FocusChanged(Seconds(20), "app", IsPassword: false, IsElevated: false));
+
+      engine.Handle(Letter(Seconds(17)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void LostInputDropsTheRestOfTheWord() {
+      // Keystrokes of this Word may be among those lost; a Word missing one must not be kept.
+      Typist typist = new Typist().Type("ghb");
+
+      typist.Send(new InputLost(TimeSpan.FromSeconds(11))).Type("dtn");
+
+      Assert.Empty(typist.Engine.Word);
+    }
+
+    [Fact]
+    public void WordAfterLostInputIsKeptAgain() {
+      Typist typist = new Typist().Type("ghb");
+      typist.Send(new InputLost(TimeSpan.FromSeconds(11)));
+
+      typist.Press(KeyKind.Space).Type("dtn");
+
+      Assert.Equal("dtn", typist.Word);
+    }
+
+    [Fact]
+    public void UnconfirmedKeyIsNotKeptNorTheRestOfItsWord() {
+      // Spec: "Each Keystroke is confirmed outside a Password Field".
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Letter(Seconds(11)));
+
+      engine.Handle(Letter(Seconds(11)) with { FocusConfirmed = false });
+      engine.Handle(Letter(Seconds(12)));
+
+      Assert.Empty(engine.Word);
+    }
+
+    [Fact]
+    public void WordAfterAnUnconfirmedKeyIsKeptAgain() {
+      var engine = new Engine();
+      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Letter(Seconds(11)) with { FocusConfirmed = false });
+
+      engine.Handle(new KeyDown(Seconds(12), new Keystroke(0x39, false, false), KeyKind.Space, 0));
+      engine.Handle(Letter(Seconds(13)));
+
+      Assert.Single(engine.Word);
+    }
+
+    [Fact]
+    public void EngineReportsTheFocusedControl() {
+      Typist typist = new Typist().Focus(isPassword: true);
+
+      Assert.Equal(new Context(@"C:\Apps\Editor.exe", true, false), typist.Engine.Focus);
+    }
+
+    [Fact]
+    public void FocusChangeDropsDeferredWords() {
+      var typist = new Typist();
+      typist.Engine.DeferredWords.Add(Decision.Defer(_russian, "ыф"));
+
+      typist.Focus();
+
+      Correction? next = typist.Engine.DeferredWords.Add(Decision.Correct(_russian, "вапро"));
+      Assert.Equal(["вапро"], next?.Texts);
+    }
+
+    private static TimeSpan Seconds(int value) {
+      return TimeSpan.FromSeconds(value);
+    }
+
+    private static KeyDown Letter(TimeSpan at) {
+      return new KeyDown(at, new Keystroke(0x22, false, false), KeyKind.Character, 0);
+    }
+  }
+}
