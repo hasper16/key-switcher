@@ -33,17 +33,28 @@ namespace Rekey.DesktopChecks {
       start.ArgumentList.Add(_command);
       start.ArgumentList.Add(
           string.Create(CultureInfo.InvariantCulture, $"{title}|{location.X}|{location.Y}"));
-      Process process = Process.Start(start)
+      Process? process = Process.Start(start)
           ?? throw new InvalidOperationException("The test window did not start.");
-      Task<string?> line = process.StandardOutput.ReadLineAsync();
-      if (!line.Wait(TimeSpan.FromSeconds(15)) || line.Result is null) {
-        process.Kill();
-        process.Dispose();
-        throw new TimeoutException("The test window did not show within 15 s.");
-      }
+      try {
+        Task<string?> line = process.StandardOutput.ReadLineAsync();
+        if (!line.Wait(TimeSpan.FromSeconds(15)) || line.Result is null) {
+          throw new TimeoutException("The test window did not show within 15 s.");
+        }
 
-      string[] points = line.Result.Split(' ');
-      return new HostWindow(process, Parse(points, 0), Parse(points, 2));
+        string[] points = line.Result.Split(' ');
+        var window = new HostWindow(process, Parse(points, 0), Parse(points, 2));
+        process = null;
+        return window;
+      } finally {
+        // Whatever failed before the hand-over, the child window must not outlive the checks.
+        if (process is not null) {
+          if (!process.HasExited) {
+            process.Kill();
+          }
+
+          process.Dispose();
+        }
+      }
     }
 
     // Runs in the child process: shows the window and prints the boxes' screen centers.
