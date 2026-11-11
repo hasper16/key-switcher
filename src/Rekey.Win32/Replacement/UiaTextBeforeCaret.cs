@@ -23,8 +23,9 @@ namespace Rekey.Win32.Replacement {
     private readonly IUIAutomation? _automation = CreateAutomation();
     private IUIAutomationTextRange? _read;
 
-    // The control the latest Read looked at.
+    // The control the latest Read looked at, and the range SelectRead asked it to select.
     private IUIAutomationElement? _element;
+    private IUIAutomationTextRange? _selected;
 
     // When the latest Read began; Read and SelectRead share one budget.
     private long _started;
@@ -39,6 +40,7 @@ namespace Rekey.Win32.Replacement {
     public string? Read(int length) {
       _read = null;
       _element = null;
+      _selected = null;
       TimedOut = false;
       SelectionPending = false;
       if (_automation is null) {
@@ -79,6 +81,7 @@ namespace Rekey.Win32.Replacement {
         return false;
       }
 
+      _selected = range;
       try {
         range.Select();
         return true;
@@ -86,6 +89,26 @@ namespace Rekey.Win32.Replacement {
         TimedOut = e.HResult == _timeoutResult;
         SelectionPending = TimedOut;
         return false;
+      }
+    }
+
+    /// <inheritdoc />
+    public void Deselect() {
+      IUIAutomationTextRange? selected = _selected;
+      _selected = null;
+      if (selected is null) {
+        return;
+      }
+
+      try {
+        IUIAutomationTextRange end = selected.Clone();
+        end.MoveEndpointByRange(
+            TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start,
+            end,
+            TextPatternRangeEndpoint.TextPatternRangeEndpoint_End);
+        end.Select();
+      } catch (COMException) {
+        // An app that cannot answer keeps its selection; nothing else is safe to send.
       }
     }
 

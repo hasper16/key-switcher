@@ -57,6 +57,16 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void RequestThatTurnedStaleBeforeSelectingSelectsNothing() {
+      var control = new FakeControl("ghbdtn");
+
+      ReplacementMethod method = VerifiedReplacement.Prepare(control, "ghbdtn", () => false);
+
+      Assert.Equal(ReplacementMethod.Stale, method);
+      Assert.False(control.Selected);
+    }
+
+    [Fact]
     public void NoReaderMeansRetype() {
       Assert.Equal(ReplacementMethod.Retype, VerifiedReplacement.Prepare(null, "ghbdtn"));
     }
@@ -89,8 +99,14 @@ namespace Rekey.Win32.Tests.Replacement {
 
       public bool FocusMoved { get; init; }
 
+      public bool Deselected { get; private set; }
+
       public bool FocusUnchanged() {
         return !FocusMoved;
+      }
+
+      public void Deselect() {
+        Deselected = true;
       }
 
       public string? Read(int length) {

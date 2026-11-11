@@ -64,7 +64,11 @@ namespace Rekey.Win32.Replacement {
     public ReplacementResult Replace(
         ReplaceText replace, string appId, Func<ReplacementResult?> recheck) {
       ITextBeforeCaret? reader = _verify && !_slowApps.IsSlow(appId) ? _reader : null;
-      ReplacementMethod method = VerifiedReplacement.Prepare(reader, replace.Expected);
+      ReplacementResult? staleBeforeSelect = null;
+      ReplacementMethod method = VerifiedReplacement.Prepare(reader, replace.Expected, () => {
+        staleBeforeSelect = recheck();
+        return staleBeforeSelect is null;
+      });
       if (reader is { TimedOut: true }) {
         _slowApps.RecordTimeout(appId);
       }
@@ -72,9 +76,11 @@ namespace Rekey.Win32.Replacement {
       switch (method) {
         case ReplacementMethod.Cancel:
           return ReplacementResult.Mismatch;
+        case ReplacementMethod.Stale:
+          return staleBeforeSelect ?? ReplacementResult.TooLate;
         case ReplacementMethod.Abandon:
-          // The app handles the pending selection before this input, so it ends collapsed.
-          CollapseUnlessMoved(recheck());
+          // The app handles the pending selection before this input, so it lands first.
+          Collapse(recheck() ?? ReplacementResult.TimedOut);
           return ReplacementResult.TimedOut;
         default:
           break;
@@ -82,16 +88,15 @@ namespace Rekey.Win32.Replacement {
 
       // Focus can move inside the window while the text is checked; Backspaces would then
       // erase in another control.
-      if (reader is not null && !reader.FocusUnchanged()) {
-        return ReplacementResult.Interrupted;
-      }
-
-      if (recheck() is { } stale) {
+      ReplacementResult? stale = reader is not null && !reader.FocusUnchanged()
+          ? ReplacementResult.FocusMoved
+          : recheck();
+      if (stale is not null) {
         if (method == ReplacementMethod.SelectAndType) {
-          CollapseUnlessMoved(stale);
+          Collapse(stale.Value);
         }
 
-        return stale;
+        return stale.Value;
       }
 
       // One character per Keystroke in the supported Layouts, so one Backspace each.
@@ -104,12 +109,20 @@ namespace Rekey.Win32.Replacement {
       return retype ? ReplacementResult.Retyped : ReplacementResult.Verified;
     }
 
-    // Collapses a selection so a re-injected Space cannot type over the Word. After a click or
-    // a focus move it would land elsewhere; then the click already collapsed the selection, or
-    // the held keys go to the other control and leave the Word alone.
-    private void CollapseUnlessMoved(ReplacementResult? stale) {
-      if (stale != ReplacementResult.Interrupted) {
-        _send(InputBuilder.CollapseSelection(_heldModifiers()));
+    // Collapses a selection so neither a re-injected Space nor later typing replaces the Word.
+    // A click already placed the caret where the user wants it, so it is left alone. After a
+    // focus move, Right would land in the other control, so the read control is collapsed
+    // through UI Automation instead.
+    private void Collapse(ReplacementResult why) {
+      switch (why) {
+        case ReplacementResult.Interrupted:
+          break;
+        case ReplacementResult.FocusMoved:
+          _reader.Deselect();
+          break;
+        default:
+          _send(InputBuilder.CollapseSelection(_heldModifiers()));
+          break;
       }
     }
   }

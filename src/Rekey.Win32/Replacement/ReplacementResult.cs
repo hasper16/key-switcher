@@ -19,10 +19,16 @@ namespace Rekey.Win32.Replacement {
     TooLate,
 
     /// <summary>
-    /// A mouse click came after the key that asked for it, or focus moved to another window,
-    /// so the caret may be elsewhere; nothing was changed.
+    /// A mouse click came after the key that asked for it, so the caret is where the user put
+    /// it; nothing was changed.
     /// </summary>
     Interrupted,
+
+    /// <summary>
+    /// Focus moved to another control while the text was checked; nothing was typed, and a
+    /// selection made in the control that was read is collapsed there.
+    /// </summary>
+    FocusMoved,
 
     /// <summary>
     /// Windows refused some or all of the injected input, as it does for a window of higher

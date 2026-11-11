@@ -73,14 +73,14 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
-    public void HoldThatTurnedStaleDuringTheCheckSendsNothing() {
-      var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], inputs => {
-        _sent.Add(inputs);
-        return true;
-      });
+    public void HoldThatTurnedStaleAfterSelectingTypesNothing() {
+      TextReplacer replacer = Replacer(new FakeControl("ghbdtn"), verify: true);
+      int checks = 0;
 
       ReplacementResult result = replacer.Replace(
-          new ReplaceText("ghbdtn", "привет"), _editor, () => ReplacementResult.TooLate);
+          new ReplaceText("ghbdtn", "привет"),
+          _editor,
+          () => ++checks == 1 ? null : ReplacementResult.TooLate);
 
       // The Word was already selected, so the selection is collapsed back to the caret.
       Assert.Equal(ReplacementResult.TooLate, result);
@@ -90,15 +90,46 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
-    public void FocusThatMovedDuringTheCheckGetsNoCleanupKey() {
-      // Right would land in the newly focused control, and the held Space goes there too, so
-      // the selected Word is left as it is.
-      TextReplacer replacer = Replacer(new FakeControl("ghbdtn"), verify: true);
+    public void HoldThatTurnedStaleBeforeSelectingSendsNothing() {
+      var control = new FakeControl("ghbdtn");
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      ReplacementResult result = replacer.Replace(
+          new ReplaceText("ghbdtn", "привет"), _editor, () => ReplacementResult.TooLate);
+
+      Assert.Equal(ReplacementResult.TooLate, result);
+      Assert.False(control.Selected);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void ClickBeforeSelectingSelectsNothing() {
+      var control = new FakeControl("ghbdtn");
+      TextReplacer replacer = Replacer(control, verify: true);
 
       ReplacementResult result = replacer.Replace(
           new ReplaceText("ghbdtn", "привет"), _editor, () => ReplacementResult.Interrupted);
 
       Assert.Equal(ReplacementResult.Interrupted, result);
+      Assert.False(control.Selected);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void FocusThatMovedAfterSelectingIsCleanedUpInTheReadControl() {
+      // Right would land in the newly focused control, so the read control's selection is
+      // collapsed through UI Automation instead.
+      var control = new FakeControl("ghbdtn");
+      TextReplacer replacer = Replacer(control, verify: true);
+      int checks = 0;
+
+      ReplacementResult result = replacer.Replace(
+          new ReplaceText("ghbdtn", "привет"),
+          _editor,
+          () => ++checks == 1 ? null : ReplacementResult.FocusMoved);
+
+      Assert.Equal(ReplacementResult.FocusMoved, result);
+      Assert.True(control.Deselected);
       Assert.Empty(_sent);
     }
 
@@ -108,7 +139,7 @@ namespace Rekey.Win32.Tests.Replacement {
 
       ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
 
-      Assert.Equal(ReplacementResult.Interrupted, result);
+      Assert.Equal(ReplacementResult.FocusMoved, result);
       Assert.Empty(_sent);
     }
 

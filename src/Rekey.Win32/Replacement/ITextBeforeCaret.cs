@@ -24,6 +24,12 @@ namespace Rekey.Win32.Replacement {
     bool FocusUnchanged();
 
     /// <summary>
+    /// Collapses the selection made by <see cref="SelectRead" /> to its end, in the control
+    /// that was read, without sending input; failures are ignored.
+    /// </summary>
+    void Deselect();
+
+    /// <summary>
     /// Reads the characters just before the caret.
     /// </summary>
     /// <param name="length">The number of characters to read.</param>

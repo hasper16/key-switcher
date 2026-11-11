@@ -17,5 +17,10 @@ namespace Rekey.Win32.Replacement {
     /// nothing, and collapse any selection back to the caret.
     /// </summary>
     Abandon,
+
+    /// <summary>
+    /// The text matched, but the request turned stale before it was selected; change nothing.
+    /// </summary>
+    Stale,
   }
 }

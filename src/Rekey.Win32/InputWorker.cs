@@ -582,16 +582,20 @@ namespace Rekey.Win32 {
       return _replacer.Replace(replace, app, () => Stale(held, _landMilliseconds));
     }
 
-    // Why the held key can no longer be replaced before, or null if it still can: the valve
-    // may have let later keys through, or a click, which is never held, or the app itself may
-    // have moved focus since the key was read.
+    // Why the held key can no longer be replaced before, or null if it still can: a click,
+    // which is never held, may have moved the caret, the app may have moved focus, or the
+    // valve may have let later keys through. A move is reported first, since what is cleaned
+    // up depends on where the caret went.
     private ReplacementResult? Stale(in RawInput held, long maxAge) {
-      if (Environment.TickCount64 - held.Tick >= maxAge) {
-        return ReplacementResult.TooLate;
+      if (_gate.ClickedAfter(held.Sequence)) {
+        return ReplacementResult.Interrupted;
       }
 
-      bool moved = _gate.ClickedAfter(held.Sequence) || (_focus?.WindowChanged() ?? true);
-      return moved ? ReplacementResult.Interrupted : null;
+      if (_focus?.WindowChanged() ?? true) {
+        return ReplacementResult.FocusMoved;
+      }
+
+      return Environment.TickCount64 - held.Tick >= maxAge ? ReplacementResult.TooLate : null;
     }
   }
 }

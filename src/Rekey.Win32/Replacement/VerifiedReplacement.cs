@@ -13,6 +13,24 @@ namespace Rekey.Win32.Replacement {
     /// <param name="expected">The text Rekey expects just before the caret.</param>
     /// <returns>How to replace the text.</returns>
     public static ReplacementMethod Prepare(ITextBeforeCaret? reader, string expected) {
+      return Prepare(reader, expected, () => true);
+    }
+
+    /// <summary>
+    /// Checks the text before the caret and, when it matches and the request is still valid,
+    /// selects it.
+    /// </summary>
+    /// <param name="reader">
+    /// The focused control's text, or <see langword="null" /> to skip the check.
+    /// </param>
+    /// <param name="expected">The text Rekey expects just before the caret.</param>
+    /// <param name="stillValid">
+    /// Called just before selecting; a click in between would otherwise be undone by the
+    /// selection.
+    /// </param>
+    /// <returns>How to replace the text.</returns>
+    public static ReplacementMethod Prepare(
+        ITextBeforeCaret? reader, string expected, Func<bool> stillValid) {
       string? before = reader?.Read(expected.Length);
       if (reader is null || before is null) {
         return ReplacementMethod.Retype;
@@ -20,6 +38,10 @@ namespace Rekey.Win32.Replacement {
 
       if (!string.Equals(before, expected, StringComparison.Ordinal)) {
         return ReplacementMethod.Cancel;
+      }
+
+      if (!stillValid()) {
+        return ReplacementMethod.Stale;
       }
 
       if (reader.SelectRead()) {
