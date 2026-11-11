@@ -39,6 +39,10 @@ The original swaps the word in place through the macOS Accessibility API where i
 - Hook-side: on Ctrl+Z, if `correctionGeneration` changed since the last key the hook saw (hook-local counter), the record is `undoable`, and `now - time < 5 s` → swallow and enqueue `UndoRequested`. Any other key between makes the hook's counter advance, so Ctrl+Z passes through.
 - Worker: Backspace over Rendering + trigger text, type the original text + trigger text, switch back to the source Layout, emit `UndoPerformed(word, rendering)` for learning and statistics.
 
+### D5. ISO key in Key Maps
+- `KeyMapReader` (worker thread, `MapVirtualKeyEx` + `ToUnicodeEx`) adds scan code 0x56 to its printable keys, giving 48 entries per Layout. Without it a Word containing that key has no Rendering, so it can neither be detected nor replaced.
+- On Layouts where 0x56 repeats another key's characters (English (US) gives "\" on both 0x2B and 0x56), typing a text still picks the lower scan code; Rendering reads whichever key was pressed.
+
 ## Risks / Trade-offs
 
 - [Holding Space adds latency to every word end] → bounded by decision time (< 5 ms target) and the 150 ms valve; measured in the latency benchmark.
