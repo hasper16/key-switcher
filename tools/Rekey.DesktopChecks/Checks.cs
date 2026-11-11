@@ -14,7 +14,7 @@ namespace Rekey.DesktopChecks {
 
     private readonly Report _report = new();
     private readonly EventLog _log = new();
-    private readonly Restorer _restorer = new();
+    private readonly Restorer _restorer;
     private readonly InputWorker _worker;
     private readonly DateTime _startedAt = DateTime.Now;
     private HostWindow? _first;
@@ -23,6 +23,7 @@ namespace Rekey.DesktopChecks {
     private Point? _console;
 
     public Checks() {
+      _restorer = new Restorer(_report);
       _worker = new InputWorker(new Settings(), _log.AddIncident, TimeProvider.System);
       _worker.Observed += inputEvent => _log.Add(inputEvent, _worker.WordLength);
       _worker.SelfPauseChanged += _log.AddSelfPause;
@@ -57,6 +58,7 @@ namespace Rekey.DesktopChecks {
       Step("4.1 Layout list", CheckLayoutList);
       Step("5.3 hook watchdog", CheckHookWatchdog);
       Step("5.5 freeze watchdog", CheckFreezeWatchdog);
+      Step("5.3 the app's tray", CheckAppTray);
       Step("5.5 restart after a freeze", CheckRestart);
 
       Dispose();

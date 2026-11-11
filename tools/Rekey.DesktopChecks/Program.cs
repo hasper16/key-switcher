@@ -31,7 +31,7 @@ namespace Rekey.DesktopChecks {
       }
 
       string saved = File.ReadAllText(SystemState.LanguageSnapshot);
-      SystemState.WriteLanguages(LanguageList.Parse(saved));
+      SystemState.RestoreLanguages(LanguageList.Parse(saved));
       File.Delete(SystemState.LanguageSnapshot);
       Console.WriteLine("The language list is restored.");
       return 0;

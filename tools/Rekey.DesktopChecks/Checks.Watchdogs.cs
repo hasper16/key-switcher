@@ -15,16 +15,24 @@ namespace Rekey.DesktopChecks {
     private static readonly TimeSpan _watchdogWait = TimeSpan.FromSeconds(4);
 #endif
 
+    private static string AppPath() {
+      return Path.Join(
+          RepositoryRoot(), "src", _appName, "bin", "Debug", "net10.0-windows", $"{_appName}.exe");
+    }
+
 #if DEBUG
     // Windows removes a low-level hook whose callback runs longer than this.
     private static int HookTimeoutMilliseconds() {
       object? value = Registry.GetValue(
           @"HKEY_CURRENT_USER\Control Panel\Desktop", "LowLevelHooksTimeout", null);
-      return value switch {
+      int set = value switch {
         int number => number,
         string text when int.TryParse(text, CultureInfo.InvariantCulture, out int number) => number,
         _ => 1000,
       };
+
+      // Windows caps the effective limit at 1,000 ms whatever the registry says.
+      return Math.Clamp(set, 0, 1000);
     }
 #endif
 
@@ -32,9 +40,9 @@ namespace Rekey.DesktopChecks {
     // Keeps typing, as a user would after the hook drops, until the condition holds. The
     // watchdog acts only on input newer than the last the hook saw, and the stalled callback
     // stamps its time when it finally returns.
-    private static bool TypeUntil(Func<bool> condition) {
+    private static bool TypeUntil(Func<bool> condition, int seconds = 6) {
       var clock = Stopwatch.StartNew();
-      while (clock.Elapsed < TimeSpan.FromSeconds(6)) {
+      while (clock.Elapsed < TimeSpan.FromSeconds(seconds)) {
         Input.Type("w");
         if (EventLog.WaitFor(condition, TimeSpan.FromMilliseconds(300))) {
           return true;
@@ -42,6 +50,14 @@ namespace Rekey.DesktopChecks {
       }
 
       return condition();
+    }
+
+    private static string? ReadState(string path) {
+      try {
+        return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
+      } catch (IOException) {
+        return null;
+      }
     }
 
     private void CheckHookWatchdog() {
@@ -119,7 +135,51 @@ namespace Rekey.DesktopChecks {
           && restartAsked.Wait(_watchdogWait);
       Expect("5.5 a second freeze within an hour asks to restart", restart, $"{restart}");
     }
+
+    private void CheckAppTray() {
+      if (Process.GetProcessesByName(_appName).Length > 0) {
+        Expect("5.3 the app's tray shows the self-pause", false, "close the running Rekey first");
+        return;
+      }
+
+      string state = Path.Join(SystemState.DataFolder, "check-tray.txt");
+      _restorer.Defer("Rekey settings file", SystemState.KeepFile("settings.json"));
+      _restorer.Defer("Rekey restart state", SystemState.KeepFile("restart-state.txt"));
+      _restorer.Defer("Rekey tray check file", SystemState.KeepFile("check-tray.txt"));
+      _restorer.Defer("test Rekey processes", StopTestApps);
+      File.Delete(Path.Join(SystemState.DataFolder, "settings.json"));
+      File.Delete(state);
+
+      var start = new ProcessStartInfo(AppPath());
+      start.ArgumentList.Add("--check-self-pause");
+      start.ArgumentList.Add("--check-auto-resume");
+      using Process app = Process.Start(start)
+          ?? throw new InvalidOperationException("The app did not start.");
+      EventLog.WaitFor(() => ReadState(state) is not null, TimeSpan.FromSeconds(10));
+      Focus(First().Ordinary);
+
+      // The app drops its own hook at the first key and again 8 s later, then pauses itself
+      // and, in this mode, chooses Resume 2 s after that.
+      const string paused = "tooltip-self-paused=True resume-item=True";
+      const string running = "tooltip-self-paused=False resume-item=False";
+      bool shown = TypeUntil(() => ReadState(state) == paused, seconds: 30);
+      Expect(
+          "5.3 the app's tray shows the self-pause with Resume",
+          shown,
+          $"tray state {ReadState(state) ?? "not written"}");
+      bool resumed = EventLog.WaitFor(() => ReadState(state) == running, TimeSpan.FromSeconds(10));
+      Expect(
+          "5.3 Resume in the app's tray ends the self-pause",
+          resumed,
+          $"tray state {ReadState(state) ?? "not written"}");
+      StopTestApps();
+    }
+
 #else
+    private void CheckAppTray() {
+      Expect("5.3 the app's tray shows the self-pause", false, "run the checks from a Debug build");
+    }
+
     private void CheckHookWatchdog() {
       Expect("5.3 hook watchdog", false, "run the checks from a Debug build");
     }
@@ -135,11 +195,14 @@ namespace Rekey.DesktopChecks {
         return;
       }
 
-      string app = Path.Join(
-          RepositoryRoot(), "src", _appName, "bin", "Debug", "net10.0-windows", $"{_appName}.exe");
+      string app = AppPath();
       _restorer.Defer("Rekey settings file", SystemState.KeepFile("settings.json"));
       _restorer.Defer("Rekey restart state", SystemState.KeepFile("restart-state.txt"));
       _restorer.Defer("test Rekey processes", StopTestApps);
+
+      // A recent real restart or saved settings could stop the test restart; start clean.
+      File.Delete(Path.Join(SystemState.DataFolder, "settings.json"));
+      File.Delete(Path.Join(SystemState.DataFolder, "restart-state.txt"));
       string state = Path.Join(SystemState.DataFolder, "restart-state.txt");
       DateTime stateBefore = File.Exists(state) ? File.GetLastWriteTime(state) : DateTime.MinValue;
 

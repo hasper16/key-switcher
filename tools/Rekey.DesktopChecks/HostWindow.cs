@@ -35,7 +35,14 @@ namespace Rekey.DesktopChecks {
           string.Create(CultureInfo.InvariantCulture, $"{title}|{location.X}|{location.Y}"));
       Process process = Process.Start(start)
           ?? throw new InvalidOperationException("The test window did not start.");
-      string[] points = (process.StandardOutput.ReadLine() ?? string.Empty).Split(' ');
+      Task<string?> line = process.StandardOutput.ReadLineAsync();
+      if (!line.Wait(TimeSpan.FromSeconds(15)) || line.Result is null) {
+        process.Kill();
+        process.Dispose();
+        throw new TimeoutException("The test window did not show within 15 s.");
+      }
+
+      string[] points = line.Result.Split(' ');
       return new HostWindow(process, Parse(points, 0), Parse(points, 2));
     }
 

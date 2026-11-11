@@ -20,7 +20,7 @@ Do not touch the mouse or keyboard for about 5 minutes. The tool opens its own t
 | 4.1 | Adding a spare language (German, French or Italian) shows its Layout within 5 s; removing it drops it; the language list is back as before |
 | 4.3 | Per-window mode: two test windows and a console keep their own Layouts; global mode: the Layout follows to the next window |
 | 4.4 | A verified switch lands in a test window, a browser text box and a console, with no `SwitchNotLanded` |
-| 5.3 | A hook stalled past Windows' limit is dropped and reinstalled; Shift released and Caps Lock toggled while it was gone are resynced; a second drop pauses Rekey; Resume ends the pause |
+| 5.3 | A hook stalled past Windows' limit is dropped and reinstalled; Shift released and Caps Lock toggled while it was gone are resynced; a second drop pauses Rekey; Resume ends the pause; the Debug app, started with `--check-self-pause --check-auto-resume`, shows the self-pause in its tray with Resume, and Resume clears it |
 | 5.5 | Two freezes record `InputFrozen`, then `FreezeRestart`; the Debug app started with `--check-freeze` restarts itself and saves the restart time |
 
 Last run: 30 of 30 checks passed at commit a11ca63 (owner's desktop, Firefox as default browser); the language list was restored. Tasks 2.1, 3.2, 3.3, 4.1, 4.3, 4.4, 5.5 and 6.2 are ticked on that run; 3.1 and 5.3 also need the checks by hand below.
@@ -35,5 +35,5 @@ Use invented text.
   Expected: Notepad gives `IsElevated = False`, the elevated console `IsElevated = True`, Notepad again `IsElevated = False`; no `INCIDENT` line while typing in the elevated console.
 - [ ] **Modifiers after Win+L (3.1).** With the probe running, press Win+L, unlock, click into Notepad and type a letter.
   Expected: the letter's `KeyDown` line shows `Modifiers = None`.
-- [ ] **Self-pause in the tray (5.3).** Stop the probe. Run `src/Rekey.App/bin/Debug/net10.0-windows/Rekey.App.exe --check-self-pause`, click into Notepad and keep typing for 15 seconds.
-  Expected: the tray tooltip says Rekey paused itself and the tray menu shows Resume; choosing Resume hides the item and restores the tooltip. Quit Rekey from the tray afterwards.
+- [ ] **Self-pause in the tray (5.3).** Close every running Rekey. Run `src/Rekey.App/bin/Debug/net10.0-windows/Rekey.App.exe --check-self-pause`, click into Notepad and type steadily for 30 seconds without stopping: at least two letters a second, or hold one letter key down. The app drops its own hook at your first key and again 8 s later. Then open the tray menu (on Windows 11 the icon may sit in the overflow, behind the ^ arrow).
+  Expected: the tooltip says Rekey paused itself, and the menu shows Resume at the top; choosing Resume removes the item and restores the tooltip. Quit Rekey from the tray afterwards.

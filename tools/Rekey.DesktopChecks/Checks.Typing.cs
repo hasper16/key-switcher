@@ -76,19 +76,20 @@ namespace Rekey.DesktopChecks {
       Expect("2.1 no Incident at start-up", early.Count == 0, $"{early.Count} Incidents");
 
       Focus(First().Ordinary);
+
+      // The untagged key after the tagged one is the sentinel: once the worker reported it, it
+      // has read the tagged key too, so exactly one KeyDown means the tagged one was ignored.
       EventLog.Position tagged = _log.Mark();
       Input.Press(VIRTUAL_KEY.VK_A, 0x1E, InjectedInput.Tag);
-      Thread.Sleep(_settle);
-      int seenTagged = _log.KeyDownsSince(tagged).Count;
-      Expect("2.1 Rekey's own keys are ignored", seenTagged == 0, $"{seenTagged} KeyDowns");
-
-      EventLog.Position untagged = _log.Mark();
       Input.Press(VIRTUAL_KEY.VK_A, 0x1E);
-      List<KeyDown> other = WaitForKeys(untagged, 1);
+      WaitForKeys(tagged, 1);
+      Thread.Sleep(_settle);
+      List<KeyDown> other = _log.KeyDownsSince(tagged);
+      Expect("2.1 Rekey's own keys are ignored", other.Count == 1, $"{other.Count} KeyDowns");
       Expect(
           "2.1 other injected key is a Character",
-          other.Count == 1 && other[0].Kind == KeyKind.Character,
-          $"{other.Count} KeyDowns, kind {other.FirstOrDefault()?.Kind}");
+          other.Count >= 1 && other[^1].Kind == KeyKind.Character,
+          $"kind {other.LastOrDefault()?.Kind}");
 
       EventLog.Position typed = _log.Mark();
       Input.Type("qwe");
@@ -163,16 +164,26 @@ namespace Rekey.DesktopChecks {
     }
 
     // Types two Words at once and returns the most Word keys the worker held meanwhile.
+    // Returns -1 when the worker did not report every key typed.
     private int TypeTwoWords(string first, string second) {
       EventLog.Position mark = _log.Mark();
       Input.Type(first);
       Input.Space();
       Input.Type(second);
-      WaitForKeys(mark, first.Length + second.Length + 1);
+      int expected = first.Length + second.Length + 1;
+      if (WaitForKeys(mark, expected).Count < expected) {
+        return -1;
+      }
+
       return _log.EventsSince(mark).Select(seen => seen.WordKeys).DefaultIfEmpty(0).Max();
     }
 
     private void ExpectRounds(string path, List<int> userWords, List<int> secretKeys) {
+      int unseen = userWords.Concat(secretKeys).Count(keys => keys < 0);
+      Expect(
+          $"{path}: every typed key reached the worker",
+          unseen == 0,
+          $"keys missing in {unseen} of {userWords.Count + secretKeys.Count} rounds");
       int counted = userWords.Count(keys => keys > 0);
       Expect(
           $"{path}: the user-name box builds Words",
@@ -188,9 +199,9 @@ namespace Rekey.DesktopChecks {
     private void ExpectNothingKept(string item, EventLog.Position mark) {
       EventLog.Position typed = _log.Mark();
       Input.Type("asd");
-      WaitForKeys(typed, 3);
+      int keys = WaitForKeys(typed, 3).Count;
       int most = _log.EventsSince(mark).Select(seen => seen.WordKeys).DefaultIfEmpty(0).Max();
-      Expect(item, most == 0, $"most Word keys {most}");
+      Expect(item, keys == 3 && most == 0, $"{keys} of 3 keys seen, most Word keys {most}");
     }
   }
 }

@@ -70,20 +70,25 @@ namespace Rekey.DesktopChecks {
     }
 
     private void CheckLayoutList() {
-      // Read and saved before any change; an unreadable list stops the check here.
+      if (File.Exists(SystemState.LanguageSnapshot)) {
+        Expect(
+            "4.1 Layout list",
+            false,
+            "a language list saved by an earlier run is waiting; run restore-languages first");
+        return;
+      }
+
+      // Read before any change; an unreadable list stops the check here.
       LanguageList original = SystemState.ReadLanguages();
-      File.WriteAllText(SystemState.LanguageSnapshot, original.ToText());
       (string tag, uint klid) = _extraLanguages.FirstOrDefault(extra => !original.Has(extra.Tag));
       if (tag is null) {
         Expect("4.1 Layout added", false, "every spare language is already installed");
         return;
       }
 
+      File.WriteAllText(SystemState.LanguageSnapshot, original.ToText());
       _restorer.Defer("language list", () => {
-        if (!SystemState.ReadLanguages().SameAs(original)) {
-          SystemState.WriteLanguages(original);
-        }
-
+        SystemState.RestoreLanguages(original);
         File.Delete(SystemState.LanguageSnapshot);
       });
       var added = new LayoutId(klid);
@@ -99,10 +104,10 @@ namespace Rekey.DesktopChecks {
               $"seen {seen} after {clock.Elapsed.TotalSeconds:F1} s"));
 
       EventLog.Position removed = _log.Mark();
-      SystemState.WriteLanguages(original);
+      SystemState.RestoreLanguages(original);
       bool gone = EventLog.WaitFor(() => ListedSince(removed, added) == false, _layoutListWait);
       Expect("4.1 a removed Layout disappears", gone, $"gone {gone}");
-      Expect("4.1 the language list is restored", true, "read back the same as before");
+      Expect("4.1 the language list is restored", true, "read back the same, settings included");
     }
 
     // Whether the latest Layout list since the mark includes the Layout; null when none came.
@@ -129,10 +134,18 @@ namespace Rekey.DesktopChecks {
     }
 
     // Switches the window at the point to a Layout; returns whether the worker saw it land.
+    // Waits for the worker's own report on this request, so focus never moves while the switch
+    // is pending, even when the window already had the Layout.
     private bool SwitchIn(Point at, LayoutId target) {
       Focus(at);
+      EventLog.Position mark = _log.Mark();
       _worker.SwitchLayout(target);
-      return EventLog.WaitFor(() => CurrentLayout() == target, TimeSpan.FromSeconds(2));
+      bool reported = EventLog.WaitFor(
+          () => _log.EventsSince(mark).Exists(
+              seen => seen.Event is LayoutChanged changed && changed.Layout == target)
+              || _log.IncidentsSince(mark).Contains(IncidentType.SwitchNotLanded),
+          TimeSpan.FromSeconds(2));
+      return reported && CurrentLayout() == target;
     }
 
     private bool FocusShows(Point at, LayoutId expected) {

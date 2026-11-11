@@ -3,37 +3,61 @@ using Xunit;
 
 namespace Rekey.DesktopChecks.Tests {
   // The desktop checks restore the user's language list from this snapshot, so it must read and
-  // write it back exactly.
+  // put it back exactly.
   public sealed class LanguageListTests {
     // A list like the one that broke the first desktop run: one language with two keyboards.
-    private const string _output = "en-US|0409:00000409\r\nuk|0422:00020422,0422:00000419\r\n";
+    private const string _output =
+        "en-US|0409:00000409|True|False\r\nuk|0422:00020422,0422:00000419|True|False\r\n";
 
     [Fact]
-    public void ReadsEachLanguageWithItsInputMethods() {
+    public void ReadsEachLanguageWithItsSettings() {
       LanguageList list = LanguageList.Parse(_output);
 
       Assert.Equal(["en-US", "uk"], list.Languages.Select(language => language.Tag));
       Assert.Equal(["0422:00020422", "0422:00000419"], list.Languages[1].Tips);
+      Assert.True(list.Languages[0].Spellchecking);
+      Assert.False(list.Languages[0].Handwriting);
     }
 
     [Theory]
     [InlineData("en-US\r\nuk\r\n|\r\n0409:00000409,0422:00020422\r\n")]
     [InlineData("")]
-    [InlineData("|0409:00000409")]
+    [InlineData("|0409:00000409|True|False")]
+    [InlineData("en-US|0409:00000409")]
+    [InlineData("en-US|0409:00000409|maybe|False")]
     public void RefusesOutputThatIsNotOneLanguagePerLine(string output) {
       Assert.Throws<FormatException>(() => LanguageList.Parse(output));
     }
 
     [Fact]
-    public void WriteScriptRebuildsEveryLanguageAndInputMethodInOrder() {
-      string script = LanguageList.Parse(_output).WriteScript();
+    public void LanguagesAddedSinceTheSnapshotAreFound() {
+      LanguageList snapshot = LanguageList.Parse(_output);
+      LanguageList now = LanguageList.Parse(_output + "de-DE|0407:00000407|True|False");
+
+      Assert.Equal(["de-DE"], snapshot.ExtraIn(now));
+    }
+
+    [Fact]
+    public void RemoveScriptKeepsTheOtherLanguageObjects() {
+      string script = LanguageList.RemoveScript(["de-DE"]);
 
       Assert.Equal(
-          "$l = New-WinUserLanguageList 'en-US'; $l[0].InputMethodTips.Clear(); "
-              + "$l[0].InputMethodTips.Add('0409:00000409'); "
-              + "$l.Add('uk'); $l[1].InputMethodTips.Clear(); "
-              + "$l[1].InputMethodTips.Add('0422:00020422'); "
-              + "$l[1].InputMethodTips.Add('0422:00000419'); "
+          "$l = Get-WinUserLanguageList; $remove = @('de-DE'); "
+              + "for ($i = $l.Count - 1; $i -ge 0; $i--) { "
+              + "if ($remove -contains $l[$i].LanguageTag) { $l.RemoveAt($i) } }; "
+              + "Set-WinUserLanguageList $l -Force",
+          script);
+    }
+
+    [Fact]
+    public void WriteScriptRebuildsEveryLanguageAndSetting() {
+      string script = LanguageList.Parse("uk|0422:00020422,0422:00000419|True|False").WriteScript();
+
+      Assert.Equal(
+          "$l = New-WinUserLanguageList 'uk'; $l[0].InputMethodTips.Clear(); "
+              + "$l[0].InputMethodTips.Add('0422:00020422'); "
+              + "$l[0].InputMethodTips.Add('0422:00000419'); "
+              + "$l[0].Spellchecking = $True; $l[0].Handwriting = $False; "
               + "Set-WinUserLanguageList $l -Force",
           script);
     }
@@ -46,17 +70,18 @@ namespace Rekey.DesktopChecks.Tests {
     }
 
     [Fact]
-    public void ListWithAnAddedLanguageIsNotTheSame() {
+    public void ChangedSettingIsNotTheSame() {
       LanguageList list = LanguageList.Parse(_output);
+      LanguageList changed = LanguageList.Parse(_output.Replace(
+          "en-US|0409:00000409|True", "en-US|0409:00000409|False", StringComparison.Ordinal));
 
-      Assert.False(LanguageList.Parse(_output + "de-DE|0407:00000407").SameAs(list));
+      Assert.False(changed.SameAs(list));
     }
 
     [Fact]
     public void QuotesInValuesAreEscaped() {
-      string script = LanguageList.Parse("x'y|0409:00000409").WriteScript();
-
-      Assert.Contains("'x''y'", script, StringComparison.Ordinal);
+      Assert.Contains(
+          "'x''y'", LanguageList.RemoveScript(["x'y"]), StringComparison.Ordinal);
     }
   }
 }

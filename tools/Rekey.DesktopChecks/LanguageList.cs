@@ -2,15 +2,16 @@ using System.Globalization;
 using System.Text;
 
 namespace Rekey.DesktopChecks {
-  // The user's Windows language list with each language's input methods, as PowerShell's
-  // Get-WinUserLanguageList shows it, and the scripts that read and write it back exactly.
+  // The user's Windows language list with each language's settable properties, as PowerShell's
+  // Get-WinUserLanguageList shows it, and the scripts that read it and put it back.
   internal sealed record LanguageList(IReadOnlyList<LanguageList.Language> Languages) {
     // Get-WinUserLanguageList writes the whole list as one object, which both ForEach-Object and
     // foreach see as a single item, so the script indexes into it: one line per language,
-    // "tag|tip,tip".
+    // "tag|tip,tip|spellchecking|handwriting".
     public const string ReadScript =
         "$list = Get-WinUserLanguageList; for ($i = 0; $i -lt $list.Count; $i++) { "
-        + "$list[$i].LanguageTag + '|' + ($list[$i].InputMethodTips -join ',') }";
+        + "$list[$i].LanguageTag + '|' + ($list[$i].InputMethodTips -join ',') + '|' "
+        + "+ $list[$i].Spellchecking + '|' + $list[$i].Handwriting }";
 
     // Parses ReadScript's output; throws rather than guess, so no change is made from a bad
     // snapshot.
@@ -19,11 +20,14 @@ namespace Rekey.DesktopChecks {
           StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries;
       var languages = new List<Language>();
       foreach (string[] parts in output.Split('\n', lines).Select(line => line.Split('|'))) {
-        if (parts.Length != 2 || parts[0].Length == 0) {
+        if (parts.Length != 4 || parts[0].Length == 0
+            || !bool.TryParse(parts[2], out bool spellchecking)
+            || !bool.TryParse(parts[3], out bool handwriting)) {
           throw new FormatException($"Unexpected language list line {languages.Count + 1}.");
         }
 
-        languages.Add(new Language(parts[0], [.. parts[1].Split(',', lines)]));
+        languages.Add(new Language(
+            parts[0], [.. parts[1].Split(',', lines)], spellchecking, handwriting));
       }
 
       if (languages.Count == 0) {
@@ -33,12 +37,28 @@ namespace Rekey.DesktopChecks {
       return new LanguageList(languages);
     }
 
+    // A script that removes languages from the user's list and leaves every other language
+    // object, with all its settings, as it is.
+    public static string RemoveScript(IEnumerable<string> tags) {
+      string quoted = string.Join(", ", tags.Select(Quote));
+      return "$l = Get-WinUserLanguageList; $remove = @(" + quoted + "); "
+          + "for ($i = $l.Count - 1; $i -ge 0; $i--) { "
+          + "if ($remove -contains $l[$i].LanguageTag) { $l.RemoveAt($i) } }; "
+          + "Set-WinUserLanguageList $l -Force";
+    }
+
     public bool Has(string tag) {
       return Languages.Any(
           language => string.Equals(language.Tag, tag, StringComparison.OrdinalIgnoreCase));
     }
 
-    // A script that makes the user's list exactly this one, input methods included.
+    // The languages of the current list that this list lacks.
+    public IReadOnlyList<string> ExtraIn(LanguageList current) {
+      return [.. current.Languages.Select(language => language.Tag).Where(tag => !Has(tag))];
+    }
+
+    // A script that rebuilds the user's list as exactly this one; the fallback when removing
+    // the added languages did not restore it.
     public string WriteScript() {
       var script = new StringBuilder();
       for (int i = 0; i < Languages.Count; i++) {
@@ -50,6 +70,12 @@ namespace Rekey.DesktopChecks {
           script.Append(
               CultureInfo.InvariantCulture, $"$l[{i}].InputMethodTips.Add({Quote(tip)}); ");
         }
+
+        script.Append(
+            CultureInfo.InvariantCulture,
+            $"$l[{i}].Spellchecking = ${language.Spellchecking}; ");
+        script.Append(
+            CultureInfo.InvariantCulture, $"$l[{i}].Handwriting = ${language.Handwriting}; ");
       }
 
       script.Append("Set-WinUserLanguageList $l -Force");
@@ -58,8 +84,7 @@ namespace Rekey.DesktopChecks {
 
     // The snapshot file's text: ReadScript's format, one language per line.
     public string ToText() {
-      return string.Join(
-          '\n', Languages.Select(language => $"{language.Tag}|{string.Join(',', language.Tips)}"));
+      return string.Join('\n', Languages.Select(language => language.ToText()));
     }
 
     public bool SameAs(LanguageList other) {
@@ -71,10 +96,19 @@ namespace Rekey.DesktopChecks {
       return "'" + value.Replace("'", "''", StringComparison.Ordinal) + "'";
     }
 
-    internal sealed record Language(string Tag, IReadOnlyList<string> Tips) {
+    internal sealed record Language(
+        string Tag, IReadOnlyList<string> Tips, bool Spellchecking, bool Handwriting) {
       public bool SameAs(Language other) {
         return string.Equals(Tag, other.Tag, StringComparison.OrdinalIgnoreCase)
-            && Tips.SequenceEqual(other.Tips, StringComparer.OrdinalIgnoreCase);
+            && Tips.SequenceEqual(other.Tips, StringComparer.OrdinalIgnoreCase)
+            && Spellchecking == other.Spellchecking
+            && Handwriting == other.Handwriting;
+      }
+
+      public string ToText() {
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{Tag}|{string.Join(',', Tips)}|{Spellchecking}|{Handwriting}");
       }
     }
   }

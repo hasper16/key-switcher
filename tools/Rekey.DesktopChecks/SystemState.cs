@@ -1,8 +1,10 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -36,23 +38,32 @@ namespace Rekey.DesktopChecks {
           $"$l = Get-WinUserLanguageList; $l.Add({Quote(tag)}); Set-WinUserLanguageList $l -Force");
     }
 
-    // Writes the list back and reads it again; one retry, then a clear failure.
-    public static void WriteLanguages(LanguageList languages) {
-      for (int attempt = 0; attempt < 2; attempt++) {
-        PowerShell(languages.WriteScript());
-        if (ReadLanguages().SameAs(languages)) {
-          return;
-        }
+    // Removes what the checks added and leaves every other language object, with all its
+    // settings, as it is; only when that does not match the snapshot does it rebuild the list.
+    public static void RestoreLanguages(LanguageList snapshot) {
+      IReadOnlyList<string> extra = snapshot.ExtraIn(ReadLanguages());
+      if (extra.Count > 0) {
+        PowerShell(LanguageList.RemoveScript(extra));
       }
 
-      throw new InvalidOperationException(
-          "The language list differs after restoring it; run the restore-languages command.");
+      if (ReadLanguages().SameAs(snapshot)) {
+        return;
+      }
+
+      PowerShell(snapshot.WriteScript());
+      if (!ReadLanguages().SameAs(snapshot)) {
+        throw new InvalidOperationException(
+            "The language list differs after restoring it; run the restore-languages command.");
+      }
     }
 
     public static unsafe bool PerWindowInput() {
       int value = 0;
-      PInvoke.SystemParametersInfo(
-          (SYSTEM_PARAMETERS_INFO_ACTION)_getPerWindowInput, 0, &value, 0);
+      if (!PInvoke.SystemParametersInfo(
+          (SYSTEM_PARAMETERS_INFO_ACTION)_getPerWindowInput, 0, &value, 0)) {
+        throw new Win32Exception(Marshal.GetLastPInvokeError());
+      }
+
       return value != 0;
     }
 
@@ -60,8 +71,10 @@ namespace Rekey.DesktopChecks {
       const SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS save =
           SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS.SPIF_UPDATEINIFILE
           | SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS.SPIF_SENDCHANGE;
-      PInvoke.SystemParametersInfo(
-          (SYSTEM_PARAMETERS_INFO_ACTION)_setPerWindowInput, 0, (void*)(on ? 1 : 0), save);
+      if (!PInvoke.SystemParametersInfo(
+          (SYSTEM_PARAMETERS_INFO_ACTION)_setPerWindowInput, 0, (void*)(on ? 1 : 0), save)) {
+        throw new Win32Exception(Marshal.GetLastPInvokeError());
+      }
     }
 
     public static bool CapsLockOn() {
