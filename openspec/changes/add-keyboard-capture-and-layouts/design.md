@@ -52,7 +52,7 @@ The worker thread turns raw events into `InputEvent`: decides letter vs boundary
 - Verify by polling `GetKeyboardLayout` of that thread every 25 ms up to 500 ms; on timeout adopt the real Layout and record Incident `switch-not-landed`.
 
 ### D7. Freeze watchdog and self-restart
-- A watchdog thread (separate from the hook watchdog in D4) reads a heartbeat counter that only the worker writes after each processed batch (one writer). If input is queued and the heartbeat has not moved for > 5 s, that is a freeze.
+- A watchdog thread (separate from the hook watchdog in D4) reads a heartbeat counter that only the worker writes after each processed batch and after each input it processes (so a worker that is slow but moving, as while focus queries near their timeout, is not taken for frozen) (one writer). If input is queued and the heartbeat has not moved for > 5 s, that is a freeze.
 - Second freeze within 1 h → record Incident `freeze-restart` (flushed synchronously), start a new Rekey process with `--restarted-after-freeze <pid>` and exit. The new process waits for the old PID to exit before taking the single-instance mutex. The time of the last restart is kept in a small state file next to the settings, so the 10-minute limit survives the restart.
 - `add-telemetry` reuses this watchdog's freeze signal for freeze reports instead of running its own.
 - Settings `KeyboardWatchdogEnabled` and `RestartAfterFreezeEnabled` (both on, as in the original). With the keyboard watchdog off, D4 does not run. With restart off, freezes are still detected and recorded (telemetry needs them) but never restart the process.
