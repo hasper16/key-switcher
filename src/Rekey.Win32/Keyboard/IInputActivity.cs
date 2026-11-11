@@ -12,5 +12,10 @@ namespace Rekey.Win32.Keyboard {
     /// Gets the tick of the last input Rekey's hooks saw.
     /// </summary>
     long HookLastInputTick { get; }
+
+    /// <summary>
+    /// Gets the number of times the hooks were installed again successfully.
+    /// </summary>
+    long Reattachments { get; }
   }
 }

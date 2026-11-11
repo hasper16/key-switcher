@@ -30,5 +30,8 @@ namespace Rekey.Win32.Keyboard {
 
     /// <inheritdoc />
     public long HookLastInputTick => _hook.LastInputTick;
+
+    /// <inheritdoc />
+    public long Reattachments => _hook.Reattachments;
   }
 }

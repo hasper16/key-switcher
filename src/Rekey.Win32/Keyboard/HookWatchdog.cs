@@ -15,6 +15,9 @@ namespace Rekey.Win32.Keyboard {
     private static readonly TimeSpan _failureWindow = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan _pause = TimeSpan.FromMinutes(10);
 
+    // Design decision: how long a requested reinstall may take before input is judged again.
+    private static readonly TimeSpan _reinstallGrace = TimeSpan.FromSeconds(5);
+
     private readonly IInputActivity _activity;
     private readonly TimeProvider _time;
 
@@ -22,6 +25,9 @@ namespace Rekey.Win32.Keyboard {
     // before a reinstall, or arrived while the watchdog was off.
     private long _accountedTick;
     private DateTimeOffset? _lastFailure;
+    private bool _awaitingReinstall;
+    private long _reattachmentsAtRequest;
+    private long _requestedAt;
 
     public HookWatchdog(IInputActivity activity, TimeProvider time) {
       _activity = activity;
@@ -56,7 +62,7 @@ namespace Rekey.Win32.Keyboard {
         return Reattach([]);
       }
 
-      if (!Enabled || foregroundElevated) {
+      if (!Enabled || foregroundElevated || AwaitsReinstall()) {
         _accountedTick = _activity.SystemLastInputTick;
         return WatchdogOutcome.None;
       }
@@ -86,8 +92,25 @@ namespace Rekey.Win32.Keyboard {
       return Reattach([]);
     }
 
+    // Windows drops a hook whose callback is stuck, and the hook thread can reinstall only once
+    // that callback returns; input the user types meanwhile is part of the same drop, not a
+    // second one. So after a request, input is judged again only once the hooks are back or the
+    // grace period ran out.
+    private bool AwaitsReinstall() {
+      if (!_awaitingReinstall) {
+        return false;
+      }
+
+      bool back = _activity.Reattachments != _reattachmentsAtRequest;
+      _awaitingReinstall = !back && _time.GetElapsedTime(_requestedAt) < _reinstallGrace;
+      return back || _awaitingReinstall;
+    }
+
     private WatchdogOutcome Reattach(IReadOnlyList<Incident> incidents) {
       _accountedTick = _activity.SystemLastInputTick;
+      _awaitingReinstall = true;
+      _reattachmentsAtRequest = _activity.Reattachments;
+      _requestedAt = _time.GetTimestamp();
       return new WatchdogOutcome(true, incidents);
     }
   }

@@ -89,6 +89,43 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void TypingBeforeTheReinstallFinishesIsNotASecondFailure() {
+      // Windows drops a hook whose callback is stuck, so the hook thread reinstalls only once
+      // that callback returns; the user keeps typing meanwhile.
+      _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
+      _watchdog.Check(foregroundElevated: false);
+
+      _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
+      WatchdogOutcome stillWaiting = _watchdog.Check(foregroundElevated: false);
+
+      Assert.Equal(WatchdogOutcome.None, stillWaiting);
+      Assert.Null(_watchdog.SelfPausedUntil);
+    }
+
+    [Fact]
+    public void InputMissedBeforeTheReinstallFinishedIsAccountedFor() {
+      _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
+      _watchdog.Check(foregroundElevated: false);
+      _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
+      _watchdog.Check(foregroundElevated: false);
+
+      _activity.HooksBack();
+
+      Assert.Equal(WatchdogOutcome.None, _watchdog.Check(foregroundElevated: false));
+    }
+
+    [Fact]
+    public void ReinstallThatNeverFinishesIsJudgedAgainAfterFiveSeconds() {
+      _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
+      _watchdog.Check(foregroundElevated: false);
+      _time.Advance(TimeSpan.FromSeconds(5));
+
+      _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
+
+      Assert.True(_watchdog.Check(foregroundElevated: false).Reinstall);
+    }
+
+    [Fact]
     public void FailuresElevenMinutesApartDoNotPause() {
       Fail();
       _time.Advance(TimeSpan.FromMinutes(11));
@@ -145,9 +182,14 @@ namespace Rekey.Win32.Tests.Keyboard {
       return [.. outcome.Incidents.Select(incident => incident.Type)];
     }
 
+    // One drop: the user types unseen, the watchdog reinstalls, the hooks come back, and the
+    // worker's next loop (every 250 ms) notices before the user types on.
     private WatchdogOutcome Fail() {
       _activity.UserTypesUnseen(TimeSpan.FromSeconds(2));
-      return _watchdog.Check(foregroundElevated: false);
+      WatchdogOutcome outcome = _watchdog.Check(foregroundElevated: false);
+      _activity.HooksBack();
+      _watchdog.Check(foregroundElevated: false);
+      return outcome;
     }
 
     // Moves the system's last input forward without the hook seeing it.
@@ -155,6 +197,13 @@ namespace Rekey.Win32.Tests.Keyboard {
       public long SystemLastInputTick { get; private set; } = 5_000;
 
       public long HookLastInputTick { get; } = 5_000;
+
+      public long Reattachments { get; private set; }
+
+      // The hook thread finished a reinstall.
+      public void HooksBack() {
+        Reattachments++;
+      }
 
       public void UserTypesUnseen(TimeSpan after) {
         SystemLastInputTick += (long)after.TotalMilliseconds;
