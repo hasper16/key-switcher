@@ -23,7 +23,7 @@ Do not touch the mouse or keyboard for about 5 minutes. The tool opens its own t
 | 5.3 | A hook stalled past Windows' limit is dropped and reinstalled; Shift released and Caps Lock toggled while it was gone are resynced; a second drop pauses Rekey; Resume ends the pause; the Debug app, started with `--check-self-pause --check-auto-resume`, shows the self-pause in its tray with Resume, Resume clears it, and quitting ends the process |
 | 5.5 | Two freezes record `InputFrozen`, then `FreezeRestart`; the Debug app started with `--check-freeze` restarts itself and saves the restart time |
 
-Last run: 30 of 30 checks passed at commit a11ca63 (owner's desktop, Firefox as default browser); the language list was restored. Tasks 2.1, 3.2, 3.3, 4.1, 4.3, 4.4, 5.5 and 6.2 are ticked on that run; 3.1 and 5.3 also need the checks by hand below.
+Last runs: 30 of 30 at a11ca63 and 35 of 35 at e88f8e3 (owner's desktop, Firefox as default browser; product code unchanged since 547e0fc); the language list was restored each time. With the checks by hand below, all desktop checks of this change have passed.
 
 If the browser does not expose the page's boxes to UI Automation, the 3.3 lines fail with that reason; make Edge or Chrome the default browser and run again.
 
@@ -31,9 +31,9 @@ If the browser does not expose the page's boxes to UI Automation, the 3.3 lines 
 
 Use invented text.
 
-- [ ] **Elevated window (3.1).** Run `dotnet run --project tools/Rekey.InputProbe` (one probe only). Open Notepad, then a Command Prompt with "Run as administrator", then Notepad again; type a few letters in each.
+- [x] **Elevated window (3.1).** Run `dotnet run --project tools/Rekey.InputProbe` (one probe only). Open Notepad, then a Command Prompt with "Run as administrator", then Notepad again; type a few letters in each.
   Expected: Notepad gives `IsElevated = False`, the elevated console `IsElevated = True`, Notepad again `IsElevated = False`; no `INCIDENT` line while typing in the elevated console.
-- [ ] **Modifiers after Win+L (3.1).** With the probe running, press Win+L, unlock, click into Notepad and type a letter.
+  Note: on a machine where UAC elevates Windows binaries without a prompt (ConsentPromptBehaviorAdmin = 5), no prompt appears; the secure-desktop case is then covered only by `InputDesktopTests`.
+- [x] **Modifiers after Win+L (3.1).** With the probe running, press Win+L, unlock, click into Notepad and type a letter.
   Expected: the letter's `KeyDown` line shows `Modifiers = None`.
-- [ ] **Self-pause in the tray (5.3).** Close every running Rekey. Run `src/Rekey.App/bin/Debug/net10.0-windows/Rekey.App.exe --check-self-pause`, click into Notepad and type steadily for 30 seconds without stopping: at least two letters a second, or hold one letter key down. The app drops its own hook at your first key and again 8 s later. Then open the tray menu (on Windows 11 the icon may sit in the overflow, behind the ^ arrow).
-  Expected: the tooltip says Rekey paused itself, and the menu shows Resume at the top; choosing Resume removes the item and restores the tooltip. Quit Rekey from the tray afterwards.
+- [x] **Self-pause in the tray (5.3).** Covered by the desktop checks' "5.3 the app's tray" steps (pause shown with Resume, Resume clears it, Quit ends the app); no step by hand.

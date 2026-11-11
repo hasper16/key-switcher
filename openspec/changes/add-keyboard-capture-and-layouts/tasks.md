@@ -15,7 +15,7 @@
 
 ## 3. Focus, password and elevation
 
-- [ ] 3.1 Implement WinEvent foreground/focus hooks, app id, elevation check; verify manually that switching between Notepad and an elevated cmd logs the right `FocusChanged` values
+- [x] 3.1 Implement WinEvent foreground/focus hooks, app id, elevation check; verify manually that switching between Notepad and an elevated cmd logs the right `FocusChanged` values
 - [x] 3.2 Implement Password Field detection via UI Automation `IsPassword` with `ES_PASSWORD` fallback; verify manually in a browser login form and a Win32 password dialog
 - [x] 3.3 Write failing tests (fake focus check, controlled ring): a character key is kept only when the check says "not a Password Field" and nothing written after it is queued, otherwise it is dropped with the rest of its Word; implement the per-key confirmation on the worker; verify the tests pass, and manually that typing into a browser password box right after Tab shows `Word keys = 0`
 
@@ -31,7 +31,7 @@
 
 - [x] 5.1 Add `KeyboardWatchdogEnabled` and `RestartAfterFreezeEnabled` (both on) to `Settings`; verify the settings defaults and round-trip tests pass
 - [x] 5.2 Write failing tests (fake clock and fake input-info source): system input newer than hook input by > 1.5 s → reinstall + Incident; two reinstalls in 10 min → SelfPause; manual Resume clears; watchdog off → no checks; implement the watchdog logic; verify they pass
-- [ ] 5.3 Wire the watchdog to the real hook thread; verify manually by blocking the callback with a debugger long enough for Windows to drop the hook and observing automatic reinstall
+- [x] 5.3 Wire the watchdog to the real hook thread; verify manually by blocking the callback with a debugger long enough for Windows to drop the hook and observing automatic reinstall
 - [x] 5.4 Write failing tests for the freeze watchdog with a fake clock (stalled heartbeat with queued input > 5 s = freeze; second freeze within 1 h → restart request; no second restart within 10 min; restart off → Incident only); implement; verify they pass
 - [x] 5.5 Implement self-restart (`--restarted-after-freeze <pid>`, wait for old PID, restart-time state file); verify manually by freezing the worker with a debug command twice and seeing one restart and one Incident
 
