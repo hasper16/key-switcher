@@ -81,7 +81,7 @@ namespace Rekey.Win32 {
           IsKeyDown,
           IsCapsLockOn);
       _keyConfirmer = new KeyConfirmer(
-          () => _focus?.IsPasswordFocused() ?? true, () => _ring.Written);
+          () => _focus?.IsPasswordFocused() ?? true, () => _ring.ActionsWritten);
       _foregroundLayout = new ForegroundLayout(_layouts);
       _switcher = new LayoutSwitcher(_foregroundLayout, time);
       _hookWatchdog = new HookWatchdog(new SessionInputActivity(_hook), time) {

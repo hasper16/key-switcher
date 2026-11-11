@@ -13,11 +13,16 @@ namespace Rekey.Win32.Keyboard {
   /// <param name="Sequence">
   /// The input's position in the order the hook wrote it; <see cref="InputRing" /> sets it.
   /// </param>
+  /// <param name="Actions">
+  /// The number of key-downs and mouse-button presses written up to and including this input;
+  /// <see cref="InputRing" /> sets it. Only those inputs can move focus.
+  /// </param>
   internal readonly record struct RawInput(
       RawInputKind Kind,
       ushort VirtualKey,
       ushort ScanCode,
       bool Extended,
       long Tick,
-      long Sequence = 0);
+      long Sequence = 0,
+      long Actions = 0);
 }

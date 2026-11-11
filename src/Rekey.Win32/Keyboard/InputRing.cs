@@ -12,6 +12,7 @@ namespace Rekey.Win32.Keyboard {
     private long _head;
     private long _tail;
     private long _dropped;
+    private long _actions;
 
     public InputRing(int capacity) {
       if (capacity <= 0 || (capacity & (capacity - 1)) != 0) {
@@ -31,6 +32,12 @@ namespace Rekey.Win32.Keyboard {
     /// </summary>
     public long Written => Volatile.Read(ref _tail);
 
+    /// <summary>
+    /// Gets the number of key-downs and mouse-button presses written so far: the inputs that can
+    /// move focus.
+    /// </summary>
+    public long ActionsWritten => Volatile.Read(ref _actions);
+
     /// <summary>Gets the number of inputs dropped because the ring was full.</summary>
     public long Dropped => Volatile.Read(ref _dropped);
 
@@ -42,7 +49,9 @@ namespace Rekey.Win32.Keyboard {
         return false;
       }
 
-      _items[tail & _mask] = input with { Sequence = tail };
+      long actions = input.Kind == RawInputKind.KeyUp ? _actions : _actions + 1;
+      _items[tail & _mask] = input with { Sequence = tail, Actions = actions };
+      Volatile.Write(ref _actions, actions);
       Volatile.Write(ref _tail, tail + 1);
       return true;
     }
