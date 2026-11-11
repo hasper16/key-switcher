@@ -12,7 +12,7 @@
 
 ## 3. Key holding on the hook thread
 
-- [ ] 3.1 Write failing tests for `HoldGate` with a fake clock: a Trigger Key after a character key is held, after a non-character or with Ctrl it is not; every key event is held until the worker releases the last held sequence; a key after 150 ms opens the valve and counts a timeout; a full ring never holds; no policy, no hold; implement; verify they pass
+- [x] 3.1 Write failing tests for `HoldGate` with a fake clock: a Trigger Key after a character key is held, after a non-character or with Ctrl it is not; every key event is held until the worker releases the last held sequence; a key after 150 ms opens the valve and counts a timeout; a full ring never holds; no policy, no hold; implement; verify they pass
 - [ ] 3.2 Wire `HoldGate` into the hook callback and the worker (Hook Policy snapshot, held flag in the ring, re-injection after the engine's actions, release, freshness check, `HoldTimeout` Incident); verify with the desktop checks that "ghbdtn" + Space in a test window shows "привет " with the space after the word, and that keys typed during the Correction follow it in order
 
 ## 4. Injection
