@@ -275,8 +275,10 @@ namespace Rekey.Win32 {
       return [.. _shortcutModifiers.Where(IsKeyDown)];
     }
 
-    private static void SendKeys(INPUT[] inputs) {
-      PInvoke.SendInput(inputs, Marshal.SizeOf<INPUT>());
+    // Returns whether Windows took every input; it refuses input to a window of higher
+    // integrity.
+    private static bool SendKeys(INPUT[] inputs) {
+      return PInvoke.SendInput(inputs, Marshal.SizeOf<INPUT>()) == inputs.Length;
     }
 
     [SuppressMessage(
@@ -376,8 +378,10 @@ namespace Rekey.Win32 {
         _gate.ArmUndo(raw.Sequence);
       }
 
+      // Released even if Windows refuses the key: holding on would only block typing until
+      // the valve opens, and the key cannot be sent any other way.
       if (raw.Holding != Holding.UndoRequest || !_heldReplaced) {
-        SendKeys([InputBuilder.Reinject(raw)]);
+        _ = SendKeys([InputBuilder.Reinject(raw)]);
       }
 
       _gate.Release(raw.Sequence);
@@ -550,20 +554,30 @@ namespace Rekey.Win32 {
     }
 
     private void Replace(ReplaceText replace) {
-      string? app = _engine.Focus?.AppId;
-      bool fresh = _held is { } held && Environment.TickCount64 - held.Tick < _freshMilliseconds;
-      ReplacementResult result = ReplacementResult.TooLate;
-      if (fresh && app is not null && _replacer is not null) {
-        result = _replacer.Replace(replace, app);
-        _heldReplaced = result != ReplacementResult.Mismatch;
-        if (result == ReplacementResult.Mismatch) {
-          _recordIncident(
-              new Incident(_time.GetUtcNow(), IncidentType.CorrectionCancelled, []));
-        }
+      ReplacementResult result = TryReplace(replace);
+      _heldReplaced = result is ReplacementResult.Verified or ReplacementResult.Retyped;
+      if (result == ReplacementResult.Mismatch) {
+        _recordIncident(new Incident(_time.GetUtcNow(), IncidentType.CorrectionCancelled, []));
       }
 
       Replaced?.Invoke(result);
       Send(new ReplacementFinished(Now(), _heldReplaced));
+    }
+
+    private ReplacementResult TryReplace(ReplaceText replace) {
+      if (_held is not { } held
+          || _replacer is null
+          || _engine.Focus?.AppId is not { } app
+          || Environment.TickCount64 - held.Tick >= _freshMilliseconds) {
+        return ReplacementResult.TooLate;
+      }
+
+      // A click reaches the application before the held keys, so the caret may be elsewhere.
+      if (_gate.ClickedAfter(held.Sequence)) {
+        return ReplacementResult.Interrupted;
+      }
+
+      return _replacer.Replace(replace, app);
     }
   }
 }

@@ -38,6 +38,14 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void SelectionThatTimedOutCancels() {
+      // The app may still apply the selection, and Backspaces would then erase too much.
+      var control = new FakeControl("ghbdtn") { CanSelect = false, TimedOut = true };
+
+      Assert.Equal(ReplacementMethod.Cancel, VerifiedReplacement.Prepare(control, "ghbdtn"));
+    }
+
+    [Fact]
     public void NoReaderMeansRetype() {
       Assert.Equal(ReplacementMethod.Retype, VerifiedReplacement.Prepare(null, "ghbdtn"));
     }

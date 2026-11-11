@@ -22,6 +22,7 @@ namespace Rekey.Win32.Keyboard {
 
     // Written by the hook thread only.
     private long _timeouts;
+    private long _lastClick = _nothing;
     private long _lastHeld = _nothing;
     private long _valveOpenFor = _nothing;
     private long _holdStart;
@@ -48,6 +49,24 @@ namespace Rekey.Win32.Keyboard {
     /// Gets the number of times the hook stopped holding because the worker took too long.
     /// </summary>
     public long Timeouts => Volatile.Read(ref _timeouts);
+
+    /// <summary>
+    /// Records a mouse click at a ring sequence; called by the hook thread only.
+    /// </summary>
+    /// <remarks>
+    /// Clicks are not held, so a click during a hold reaches the application before the held
+    /// keys and may move the caret.
+    /// </remarks>
+    public void NoteClick(long sequence) {
+      Volatile.Write(ref _lastClick, sequence);
+    }
+
+    /// <summary>
+    /// Returns whether a mouse click came after the key at a ring sequence.
+    /// </summary>
+    public bool ClickedAfter(long sequence) {
+      return Volatile.Read(ref _lastClick) > sequence;
+    }
 
     /// <summary>
     /// Replaces the policy; called by the worker only.

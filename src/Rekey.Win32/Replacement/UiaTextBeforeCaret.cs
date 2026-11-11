@@ -23,6 +23,9 @@ namespace Rekey.Win32.Replacement {
     private readonly IUIAutomation? _automation = CreateAutomation();
     private IUIAutomationTextRange? _read;
 
+    // When the latest Read began; Read and SelectRead share one budget.
+    private long _started;
+
     /// <inheritdoc />
     public bool TimedOut { get; private set; }
 
@@ -34,10 +37,10 @@ namespace Rekey.Win32.Replacement {
         return null;
       }
 
-      long started = Stopwatch.GetTimestamp();
+      _started = Stopwatch.GetTimestamp();
       try {
         IUIAutomationTextRange? caret = Caret(_automation);
-        if (caret is null || OverBudget(started)) {
+        if (caret is null || OverBudget()) {
           return null;
         }
 
@@ -47,7 +50,7 @@ namespace Rekey.Win32.Replacement {
             TextUnit.TextUnit_Character,
             -length);
         string text = TextOf(range, length);
-        if (OverBudget(started)) {
+        if (OverBudget()) {
           return null;
         }
 
@@ -63,14 +66,15 @@ namespace Rekey.Win32.Replacement {
     public bool SelectRead() {
       IUIAutomationTextRange? range = _read;
       _read = null;
-      if (range is null) {
+      if (range is null || OverBudget()) {
         return false;
       }
 
       try {
         range.Select();
         return true;
-      } catch (COMException) {
+      } catch (COMException e) {
+        TimedOut = e.HResult == _timeoutResult;
         return false;
       }
     }
@@ -116,8 +120,8 @@ namespace Rekey.Win32.Replacement {
       }
     }
 
-    private bool OverBudget(long started) {
-      TimedOut = Stopwatch.GetElapsedTime(started).TotalMilliseconds > _budgetMilliseconds;
+    private bool OverBudget() {
+      TimedOut = Stopwatch.GetElapsedTime(_started).TotalMilliseconds > _budgetMilliseconds;
       return TimedOut;
     }
   }

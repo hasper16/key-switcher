@@ -224,6 +224,7 @@ namespace Rekey.Win32.Keyboard {
         // Moves and wheel turns only prove the hook is alive; button presses end the Word.
         if ((uint)wParam.Value is PInvoke.WM_LBUTTONDOWN or PInvoke.WM_RBUTTONDOWN
             or PInvoke.WM_MBUTTONDOWN or PInvoke.WM_XBUTTONDOWN) {
+          _gate.NoteClick(_ring.Written);
           Enqueue(new RawInput(RawInputKind.MouseDown, 0, 0, false, LastInputTick));
         }
       }

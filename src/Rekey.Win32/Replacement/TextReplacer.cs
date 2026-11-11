@@ -14,7 +14,7 @@ namespace Rekey.Win32.Replacement {
     private readonly ITextBeforeCaret _reader;
     private readonly bool _verify;
     private readonly Func<IReadOnlyList<VIRTUAL_KEY>> _heldModifiers;
-    private readonly Action<INPUT[]> _send;
+    private readonly Func<INPUT[], bool> _send;
     private readonly SlowApps _slowApps = new();
 
     /// <summary>
@@ -26,12 +26,14 @@ namespace Rekey.Win32.Replacement {
     /// Replacement); otherwise, <see langword="false" />.
     /// </param>
     /// <param name="heldModifiers">Returns the Ctrl, Alt and Windows keys down now.</param>
-    /// <param name="send">Sends inputs to Windows.</param>
+    /// <param name="send">
+    /// Sends inputs to Windows; returns <see langword="false" /> unless Windows took them all.
+    /// </param>
     public TextReplacer(
         ITextBeforeCaret reader,
         bool verify,
         Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
-        Action<INPUT[]> send) {
+        Func<INPUT[], bool> send) {
       _reader = reader;
       _verify = verify;
       _heldModifiers = heldModifiers;
@@ -58,7 +60,10 @@ namespace Rekey.Win32.Replacement {
       // One character per Keystroke in the supported Layouts, so one Backspace each.
       bool retype = method == ReplacementMethod.Retype;
       int erase = retype ? new StringInfo(replace.Expected).LengthInTextElements : 0;
-      _send(InputBuilder.Replacement(erase, replace.Replacement, _heldModifiers()));
+      if (!_send(InputBuilder.Replacement(erase, replace.Replacement, _heldModifiers()))) {
+        return ReplacementResult.Blocked;
+      }
+
       return retype ? ReplacementResult.Retyped : ReplacementResult.Verified;
     }
   }

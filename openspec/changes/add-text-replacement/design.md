@@ -34,7 +34,8 @@ The original swaps the word in place through the macOS Accessibility API where i
 - On the worker thread, with its own `IUIAutomation` whose connection and transaction timeouts are 50 ms (design decision), as the Password Field probe already does: get the focused element's `TextPattern`; take the caret range from `GetSelection()` (one degenerate range); clone it, `MoveEndpointByUnit(Start, Character, -len)`; compare `GetText` with the text Rekey expects before the caret (the Rendering of the Words in the current Layout, spaces included for a Deferred run).
 - Match → `Select()` that range, then type only the replacement over it, no Backspaces.
 - Mismatch → cancel: inject nothing, record Incident `CorrectionCancelled`, and still re-inject held keys.
-- No TextPattern, no single degenerate caret range, a failed call, or more than 50 ms spent in total → retype as in D2. An app that ran out of time twice is "slow" for the session and goes straight to D2 (the original also remembers slow apps); apps are told apart by `Context.AppId`.
+- No TextPattern, no single degenerate caret range, a failed call, or more than 50 ms spent in total → retype as in D2. A selection that runs out of time cancels instead: the app may still apply it, and Backspaces would then erase more than the Word.
+- A mouse click that came after the Trigger Key (the hook notes clicks; it does not hold them) cancels the replacement, since the click reached the app first and may have moved the caret. So does `SendInput` taking fewer inputs than sent (as for a window of higher integrity): nothing is switched or made undoable. An app that ran out of time twice is "slow" for the session and goes straight to D2 (the original also remembers slow apps); apps are told apart by `Context.AppId`.
 - The decision (`VerifiedReplacement.Prepare`) takes the reader as an interface, so it is unit-tested with a fake reader; only the UIA reader itself needs a desktop.
 - `Settings.VerifiedReplacement = false` skips the reader and always retypes.
 
@@ -58,7 +59,7 @@ The original swaps the word in place through the macOS Accessibility API where i
 
 - [Holding Space adds latency to every word end] → bounded by decision time (< 5 ms target) and the 150 ms valve; nothing is held while no Word Evaluator is installed.
 - [The freshness check and the 150 ms valve race when the worker is preempted for more than 50 ms between the check and `SendInput`] → accepted: it needs a long stall at exactly that point, and the result is a replacement at the wrong place, as without the check.
-- [A mouse click during a hold reaches the app before held keys] → accepted: clicks are not held; the click ends the Word, so nothing is corrected after it.
+- [A mouse click during a hold reaches the app before held keys] → clicks are not held; a click after the Trigger Key cancels its replacement (D3).
 - [Apps that react to Backspace specially (autocomplete popups, IDE snippets)] → verified replacement avoids most Backspaces; users can add such apps to Excluded Apps.
 - [Some apps ignore `KEYEVENTF_UNICODE`] (rare: some games, remote-desktop clients) → listed as known limitation; suggest Excluded App.
 - [Typing over a UIA selection can trigger app-specific "replace selection" behavior (e.g. auto-pairing quotes)] → only letters are typed over selections; held keys come after.

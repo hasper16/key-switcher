@@ -14,7 +14,8 @@ namespace Rekey.Win32.Replacement {
     /// <param name="text">The text to type.</param>
     /// <param name="heldModifiers">
     /// The Ctrl, Alt and Windows keys down now; they are released first, so Backspace does not
-    /// become Ctrl+Backspace, which deletes a whole word.
+    /// become Ctrl+Backspace, which deletes a whole word, and pressed again after the text, as
+    /// the user still holds them.
     /// </param>
     /// <returns>The inputs, in order.</returns>
     public static INPUT[] Replacement(
@@ -32,6 +33,7 @@ namespace Rekey.Win32.Replacement {
             0, unit, KEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE | KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP));
       }
 
+      inputs.AddRange(heldModifiers.Select(key => Key(key, 0, 0)));
       return [.. inputs];
     }
 

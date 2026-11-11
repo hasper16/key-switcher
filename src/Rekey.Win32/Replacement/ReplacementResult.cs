@@ -17,5 +17,17 @@ namespace Rekey.Win32.Replacement {
     /// nothing was changed.
     /// </summary>
     TooLate,
+
+    /// <summary>
+    /// A mouse click came after the key that asked for it, so the caret may have moved; nothing
+    /// was changed.
+    /// </summary>
+    Interrupted,
+
+    /// <summary>
+    /// Windows refused some or all of the injected input, as it does for a window of higher
+    /// integrity; the text may be partly changed, so nothing is switched or made undoable.
+    /// </summary>
+    Blocked,
   }
 }

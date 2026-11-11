@@ -154,6 +154,26 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void ClickDuringTheHoldComesAfterTheHeldKey() {
+      Letter();
+      Space();
+      long space = _sequence - 1;
+
+      _gate.NoteClick(_sequence++);
+
+      Assert.True(_gate.ClickedAfter(space));
+    }
+
+    [Fact]
+    public void ClickBeforeTheTriggerKeyDoesNotCount() {
+      _gate.NoteClick(_sequence++);
+      Letter();
+      Space();
+
+      Assert.False(_gate.ClickedAfter(_sequence - 1));
+    }
+
+    [Fact]
     public void CtrlZRightAfterTheArmedTriggerIsAnUndoRequest() {
       ArmedCorrection();
       Down(VIRTUAL_KEY.VK_LCONTROL, _ctrlScan);

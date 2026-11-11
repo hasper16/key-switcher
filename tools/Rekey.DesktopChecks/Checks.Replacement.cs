@@ -13,8 +13,6 @@ namespace Rekey.DesktopChecks {
   // The checks of change add-text-replacement: Corrections, held keys and Undo in real apps.
   // Only the spec's example Words are typed and corrected; reports carry no text.
   internal sealed partial class Checks {
-    private const string _notepadFile = "rekey-desktop-check.txt";
-
     private static readonly TimeSpan _replaceWait = TimeSpan.FromSeconds(3);
 
     public int RunTextReplacement() {
@@ -180,15 +178,17 @@ namespace Rekey.DesktopChecks {
     }
 
     private void CheckNotepad() {
-      string file = Path.Join(Path.GetTempPath(), _notepadFile);
-      File.WriteAllText(file, string.Empty);
+      // A new file of this run's own, so nothing that exists is overwritten or deleted.
+      string name = $"rekey-desktop-check-{Guid.NewGuid():N}.txt";
+      string file = Path.Join(Path.GetTempPath(), name);
+      new FileStream(file, FileMode.CreateNew).Dispose();
       _restorer.Defer("Notepad test file", () => File.Delete(file));
       string notepadPath = Path.Join(
           Environment.GetFolderPath(Environment.SpecialFolder.Windows), "notepad.exe");
       Process.Start(new ProcessStartInfo(notepadPath, $"\"{file}\"") {
         UseShellExecute = true,
       })?.Dispose();
-      HWND? window = Desktop.FindWindow(_notepadFile, TimeSpan.FromSeconds(15));
+      HWND? window = Desktop.FindWindow(name, TimeSpan.FromSeconds(15));
       if (window is not { } notepad) {
         Expect("4.1 Notepad", false, "Notepad did not open the test file");
         return;

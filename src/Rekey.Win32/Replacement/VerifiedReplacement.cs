@@ -22,7 +22,12 @@ namespace Rekey.Win32.Replacement {
         return ReplacementMethod.Cancel;
       }
 
-      return reader.SelectRead() ? ReplacementMethod.SelectAndType : ReplacementMethod.Retype;
+      if (reader.SelectRead()) {
+        return ReplacementMethod.SelectAndType;
+      }
+
+      // A selection that timed out may still land, and Backspaces would then erase too much.
+      return reader.TimedOut ? ReplacementMethod.Cancel : ReplacementMethod.Retype;
     }
   }
 }

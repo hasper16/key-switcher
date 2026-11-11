@@ -21,7 +21,7 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
-    public void ReplacementFirstReleasesHeldShortcutModifiers() {
+    public void ReplacementReleasesHeldShortcutModifiersAroundTheText() {
       INPUT[] inputs = InputBuilder.Replacement(
           erase: 0, "a", [VIRTUAL_KEY.VK_LCONTROL, VIRTUAL_KEY.VK_RMENU]);
 
@@ -29,6 +29,7 @@ namespace Rekey.Win32.Tests.Replacement {
           [
             Key(VIRTUAL_KEY.VK_LCONTROL, up: true), Key(VIRTUAL_KEY.VK_RMENU, up: true),
             Unicode('a', up: false), Unicode('a', up: true),
+            Key(VIRTUAL_KEY.VK_LCONTROL, up: false), Key(VIRTUAL_KEY.VK_RMENU, up: false),
           ],
           inputs.Select(Describe));
     }

@@ -55,8 +55,20 @@ namespace Rekey.Win32.Tests.Replacement {
       Assert.Equal(0, control.AskedLength);
     }
 
+    [Fact]
+    public void InputThatWindowsRefusesIsReportedAsBlocked() {
+      var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], _ => false);
+
+      ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.Blocked, result);
+    }
+
     private TextReplacer Replacer(ITextBeforeCaret control, bool verify) {
-      return new TextReplacer(control, verify, () => [], _sent.Add);
+      return new TextReplacer(control, verify, () => [], inputs => {
+        _sent.Add(inputs);
+        return true;
+      });
     }
   }
 }
