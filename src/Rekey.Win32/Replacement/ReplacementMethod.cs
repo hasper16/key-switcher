@@ -11,5 +11,11 @@ namespace Rekey.Win32.Replacement {
 
     /// <summary>The text before the caret is not what Rekey expects; change nothing.</summary>
     Cancel,
+
+    /// <summary>
+    /// Selecting the text ran out of time, but the app may still apply the selection; change
+    /// nothing, and collapse any selection back to the caret.
+    /// </summary>
+    Abandon,
   }
 }

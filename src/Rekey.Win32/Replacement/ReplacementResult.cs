@@ -29,5 +29,11 @@ namespace Rekey.Win32.Replacement {
     /// integrity; the text may be partly changed, so nothing is switched or made undoable.
     /// </summary>
     Blocked,
+
+    /// <summary>
+    /// The focused app did not finish selecting the text in time; nothing was changed, and any
+    /// selection that lands late is collapsed back to the caret.
+    /// </summary>
+    TimedOut,
   }
 }

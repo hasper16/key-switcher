@@ -47,14 +47,45 @@ namespace Rekey.Win32.Replacement {
     /// <param name="appId">The app that has focus.</param>
     /// <returns>Whether and how the text was replaced.</returns>
     public ReplacementResult Replace(ReplaceText replace, string appId) {
+      return Replace(replace, appId, () => null);
+    }
+
+    /// <summary>
+    /// Replaces the text before the caret, unless the request turned stale while the text was
+    /// checked.
+    /// </summary>
+    /// <param name="replace">What to replace and with what.</param>
+    /// <param name="appId">The app that has focus.</param>
+    /// <param name="recheck">
+    /// Called just before the input is sent; returns why the request is no longer valid, or
+    /// <see langword="null" /> when it still is.
+    /// </param>
+    /// <returns>Whether and how the text was replaced.</returns>
+    public ReplacementResult Replace(
+        ReplaceText replace, string appId, Func<ReplacementResult?> recheck) {
       ITextBeforeCaret? reader = _verify && !_slowApps.IsSlow(appId) ? _reader : null;
       ReplacementMethod method = VerifiedReplacement.Prepare(reader, replace.Expected);
       if (reader is { TimedOut: true }) {
         _slowApps.RecordTimeout(appId);
       }
 
-      if (method == ReplacementMethod.Cancel) {
-        return ReplacementResult.Mismatch;
+      switch (method) {
+        case ReplacementMethod.Cancel:
+          return ReplacementResult.Mismatch;
+        case ReplacementMethod.Abandon:
+          // The app handles the pending selection before this input, so it ends collapsed.
+          _send(InputBuilder.CollapseSelection());
+          return ReplacementResult.TimedOut;
+        default:
+          break;
+      }
+
+      if (recheck() is { } stale) {
+        if (method == ReplacementMethod.SelectAndType) {
+          _send(InputBuilder.CollapseSelection());
+        }
+
+        return stale;
       }
 
       // One character per Keystroke in the supported Layouts, so one Backspace each.

@@ -38,6 +38,21 @@ namespace Rekey.Win32.Replacement {
     }
 
     /// <summary>
+    /// Returns the inputs that collapse a selection to its end, where the caret was before it.
+    /// </summary>
+    /// <returns>The inputs, in order.</returns>
+    public static INPUT[] CollapseSelection() {
+      // Right is an extended key; without the flag it would be the keypad's 6.
+      return [
+          Key(VIRTUAL_KEY.VK_RIGHT, 0, KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY),
+          Key(
+              VIRTUAL_KEY.VK_RIGHT,
+              0,
+              KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY | KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP),
+      ];
+    }
+
+    /// <summary>
     /// Returns the input that sends a held key event on to the application.
     /// </summary>
     /// <remarks>

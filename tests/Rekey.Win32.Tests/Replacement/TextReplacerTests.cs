@@ -56,6 +56,36 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void SelectionThatTimedOutIsCollapsedAndNothingTyped() {
+      var control = new FakeControl("ghbdtn") { CanSelect = false, TimedOut = true };
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.TimedOut, result);
+      Assert.Equal(
+          [VIRTUAL_KEY.VK_RIGHT, VIRTUAL_KEY.VK_RIGHT],
+          Assert.Single(_sent).Select(input => input.Anonymous.ki.wVk));
+    }
+
+    [Fact]
+    public void HoldThatTurnedStaleDuringTheCheckSendsNothing() {
+      var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], inputs => {
+        _sent.Add(inputs);
+        return true;
+      });
+
+      ReplacementResult result = replacer.Replace(
+          new ReplaceText("ghbdtn", "привет"), _editor, () => ReplacementResult.TooLate);
+
+      // The Word was already selected, so the selection is collapsed back to the caret.
+      Assert.Equal(ReplacementResult.TooLate, result);
+      Assert.Equal(
+          [VIRTUAL_KEY.VK_RIGHT, VIRTUAL_KEY.VK_RIGHT],
+          Assert.Single(_sent).Select(input => input.Anonymous.ki.wVk));
+    }
+
+    [Fact]
     public void InputThatWindowsRefusesIsReportedAsBlocked() {
       var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], _ => false);
 

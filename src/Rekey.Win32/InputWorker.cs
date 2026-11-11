@@ -38,6 +38,9 @@ namespace Rekey.Win32 {
     // valve could have let later keys through.
     private const long _freshMilliseconds = 50;
 
+    // Checked again just before the input is sent, after UI Automation: 50 ms below the valve.
+    private const long _landMilliseconds = 100;
+
     // Design D5: Windows does not tell other processes about added Layouts, so poll.
     private static readonly TimeSpan _layoutPollPeriod = TimeSpan.FromSeconds(2);
 
@@ -565,19 +568,26 @@ namespace Rekey.Win32 {
     }
 
     private ReplacementResult TryReplace(ReplaceText replace) {
-      if (_held is not { } held
-          || _replacer is null
-          || _engine.Focus?.AppId is not { } app
-          || Environment.TickCount64 - held.Tick >= _freshMilliseconds) {
+      if (_held is not { } held || _replacer is null || _engine.Focus?.AppId is not { } app) {
         return ReplacementResult.TooLate;
       }
 
-      // A click reaches the application before the held keys, so the caret may be elsewhere.
-      if (_gate.ClickedAfter(held.Sequence)) {
-        return ReplacementResult.Interrupted;
+      if (Stale(held, _freshMilliseconds) is { } stale) {
+        return stale;
       }
 
-      return _replacer.Replace(replace, app);
+      return _replacer.Replace(replace, app, () => Stale(held, _landMilliseconds));
+    }
+
+    // Why the held key can no longer be replaced before, or null if it still can: the valve
+    // may have let later keys through, or a click, which is never held, may have moved the
+    // caret.
+    private ReplacementResult? Stale(in RawInput held, long maxAge) {
+      if (Environment.TickCount64 - held.Tick >= maxAge) {
+        return ReplacementResult.TooLate;
+      }
+
+      return _gate.ClickedAfter(held.Sequence) ? ReplacementResult.Interrupted : null;
     }
   }
 }

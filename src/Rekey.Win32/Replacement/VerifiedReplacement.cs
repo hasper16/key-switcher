@@ -27,7 +27,7 @@ namespace Rekey.Win32.Replacement {
       }
 
       // A selection that timed out may still land, and Backspaces would then erase too much.
-      return reader.TimedOut ? ReplacementMethod.Cancel : ReplacementMethod.Retype;
+      return reader.TimedOut ? ReplacementMethod.Abandon : ReplacementMethod.Retype;
     }
   }
 }
