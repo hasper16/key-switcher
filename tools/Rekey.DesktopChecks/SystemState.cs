@@ -38,19 +38,20 @@ namespace Rekey.DesktopChecks {
           $"$l = Get-WinUserLanguageList; $l.Add({Quote(tag)}); Set-WinUserLanguageList $l -Force");
     }
 
-    // Removes what the checks added and leaves every other language object, with all its
-    // settings, as it is. It never rebuilds the list: new language objects could reset settings
+    // Removes the language the checks added and leaves every other language object, with all
+    // its settings, as it is. It never rebuilds the list: new language objects could reset settings
     // PowerShell does not show, such as text prediction, so a remaining difference is reported.
-    public static void RestoreLanguages(LanguageList snapshot) {
-      IReadOnlyList<string> extra = snapshot.ExtraIn(ReadLanguages());
-      if (extra.Count > 0) {
-        PowerShell(LanguageList.RemoveScript(extra));
+    public static void RestoreLanguages(LanguageSnapshot snapshot) {
+      IReadOnlyList<string> added = snapshot.ToRemoveFrom(ReadLanguages());
+      if (added.Count > 0) {
+        PowerShell(LanguageList.RemoveScript(added));
       }
 
-      if (!ReadLanguages().SameAs(snapshot)) {
+      if (!ReadLanguages().SameAs(snapshot.List)) {
         throw new InvalidOperationException(
             $"The language list still differs from the one saved in {LanguageSnapshot}; "
-            + "compare them in Settings > Time & language > Language & region.");
+            + "compare them in Settings > Time & language > Language & region, fix the list "
+            + "there, then delete the saved file.");
       }
     }
 

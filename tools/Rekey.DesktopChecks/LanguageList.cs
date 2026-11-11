@@ -51,11 +51,6 @@ namespace Rekey.DesktopChecks {
           language => string.Equals(language.Tag, tag, StringComparison.OrdinalIgnoreCase));
     }
 
-    // The languages of the current list that this list lacks.
-    public IReadOnlyList<string> ExtraIn(LanguageList current) {
-      return [.. current.Languages.Select(language => language.Tag).Where(tag => !Has(tag))];
-    }
-
     // The snapshot file's text: ReadScript's format, one language per line.
     public string ToText() {
       return string.Join('\n', Languages.Select(language => language.ToText()));

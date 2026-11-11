@@ -109,7 +109,7 @@ namespace Rekey.DesktopChecks {
       try {
         check();
       } catch (Exception e) when (e is not OutOfMemoryException) {
-        _report.Add(name, false, $"stopped by {e.GetType().Name}");
+        _report.Add(name, false, $"stopped: {Report.Describe(e)}");
       }
     }
 

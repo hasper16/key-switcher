@@ -30,14 +30,6 @@ namespace Rekey.DesktopChecks.Tests {
     }
 
     [Fact]
-    public void LanguagesAddedSinceTheSnapshotAreFound() {
-      LanguageList snapshot = LanguageList.Parse(_output);
-      LanguageList now = LanguageList.Parse(_output + "de-DE|0407:00000407|True|False");
-
-      Assert.Equal(["de-DE"], snapshot.ExtraIn(now));
-    }
-
-    [Fact]
     public void RemoveScriptKeepsTheOtherLanguageObjects() {
       string script = LanguageList.RemoveScript(["de-DE"]);
 

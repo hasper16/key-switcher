@@ -86,9 +86,10 @@ namespace Rekey.DesktopChecks {
         return;
       }
 
-      File.WriteAllText(SystemState.LanguageSnapshot, original.ToText());
+      var snapshot = new LanguageSnapshot(original, tag);
+      File.WriteAllText(SystemState.LanguageSnapshot, snapshot.ToText());
       _restorer.Defer("language list", () => {
-        SystemState.RestoreLanguages(original);
+        SystemState.RestoreLanguages(snapshot);
         File.Delete(SystemState.LanguageSnapshot);
       });
       var added = new LayoutId(klid);
@@ -104,7 +105,7 @@ namespace Rekey.DesktopChecks {
               $"seen {seen} after {clock.Elapsed.TotalSeconds:F1} s"));
 
       EventLog.Position removed = _log.Mark();
-      SystemState.RestoreLanguages(original);
+      SystemState.RestoreLanguages(snapshot);
       bool gone = EventLog.WaitFor(() => ListedSince(removed, added) == false, _layoutListWait);
       Expect("4.1 a removed Layout disappears", gone, $"gone {gone}");
       Expect("4.1 the language list is restored", true, "read back the same, settings included");

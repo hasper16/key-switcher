@@ -19,11 +19,7 @@ namespace Rekey.DesktopChecks {
           step.Undo();
           Console.WriteLine($"   restored: {step.What}");
         } catch (Exception e) when (e is not OutOfMemoryException) {
-          _report.Add($"restore {step.What}", false, $"failed with {e.GetType().Name}");
-          if (step.What == "language list") {
-            Console.WriteLine(
-                "   run: dotnet run --project tools/Rekey.DesktopChecks -- restore-languages");
-          }
+          _report.Add($"restore {step.What}", false, Report.Describe(e));
         }
       }
     }
