@@ -61,8 +61,44 @@ namespace Rekey.DesktopChecks {
     }
 
     // Compares without printing either text.
+    // Says where the texts part without showing either: their lengths, how many leading
+    // characters agree, and whether the text ends with a space.
     private static string Compare(string? text, string expected) {
-      return $"as expected {text == expected}, length {text?.Length} of {expected.Length}";
+      int same = 0;
+      while (text is not null && same < Math.Min(text.Length, expected.Length)
+          && text[same] == expected[same]) {
+        same++;
+      }
+
+      bool endsWithSpace = text?.EndsWith(' ') == true;
+      return $"as expected {text == expected}, length {text?.Length} of {expected.Length}, "
+          + $"first {same} characters agree, ends with a space {endsWithSpace}";
+    }
+
+    // The Notepad processes running now; the checks close only those they started.
+    private static int[] NotepadIds() {
+      Process[] running = Process.GetProcessesByName("Notepad");
+      int[] ids = [.. running.Select(process => process.Id)];
+      foreach (Process process in running) {
+        process.Dispose();
+      }
+
+      return ids;
+    }
+
+    private static void CloseNotepadsStartedSince(int[] before) {
+      foreach (Process process in Process.GetProcessesByName("Notepad")) {
+        using (process) {
+          if (before.Contains(process.Id) || process.HasExited) {
+            continue;
+          }
+
+          process.CloseMainWindow();
+          if (!process.WaitForExit(TimeSpan.FromSeconds(3))) {
+            process.Kill();
+          }
+        }
+      }
     }
 
     private void CheckSpaceAfterWord() {
@@ -185,6 +221,7 @@ namespace Rekey.DesktopChecks {
       _restorer.Defer("Notepad test file", () => File.Delete(file));
       string notepadPath = Path.Join(
           Environment.GetFolderPath(Environment.SpecialFolder.Windows), "notepad.exe");
+      int[] before = NotepadIds();
       Process.Start(new ProcessStartInfo(notepadPath, $"\"{file}\"") {
         UseShellExecute = true,
       })?.Dispose();
@@ -194,14 +231,20 @@ namespace Rekey.DesktopChecks {
         return;
       }
 
+      // Below the always-on-top test windows, so clicks meant for Notepad reach it.
+      PInvoke.MoveWindow(notepad, 80, 320, 640, 360, true);
+      Thread.Sleep(_settle);
       Point editor = Desktop.Center(notepad);
-      _restorer.Defer("Notepad tab", () => {
-        // Saved empty first, so closing asks nothing and the session keeps no draft.
+      _restorer.Defer("Notepad", () => {
+        // Saved empty first, so closing asks nothing and the session keeps no draft; a
+        // Notepad the user had open keeps running, one this run started is closed.
         Focus(editor);
         Input.ClearBox();
         Input.Control('s');
         Thread.Sleep(_settle);
         Input.CloseTab();
+        Thread.Sleep(_settle);
+        CloseNotepadsStartedSince(before);
       });
       ExpectCorrected("4.1 Notepad", editor);
     }
@@ -254,12 +297,22 @@ namespace Rekey.DesktopChecks {
           ? AutomationElement.FromHandle(found).FindFirst(TreeScope.Subtree, hasText)
           : null;
       string? text = TextOf(buffer);
-      bool corrected = text?.Contains("привет ", StringComparison.Ordinal) == true
-          && !text.Contains("ghbdtn", StringComparison.Ordinal);
+      bool hasCorrected = text?.Contains("привет", StringComparison.Ordinal) == true;
+      bool hasTyped = text?.Contains("ghbdtn", StringComparison.Ordinal) == true;
+      bool spaceAfter = text?.Contains("привет ", StringComparison.Ordinal) == true;
+      string detail = $"corrected Word present {hasCorrected}, typed Word still present "
+          + $"{hasTyped}, space after it {spaceAfter}, buffer read {text is not null}, "
+          + $"replacement {result}";
       Expect(
           "4.1 console: the corrected Word, then the Space",
-          corrected,
-          $"as expected {corrected}, replacement {result}");
+          hasCorrected && spaceAfter && !hasTyped,
+          detail);
+
+      // A console's UI Automation selection is the terminal's own, so it is never verified.
+      Expect(
+          "5.1 console: retyped, not claimed as checked and selected",
+          result == ReplacementResult.Retyped,
+          $"replacement {result}");
       Input.Escape();
     }
 

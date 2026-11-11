@@ -8,6 +8,7 @@ GetWindowText
 GetWindowTextLength
 INPUT
 IsWindowVisible
+MoveWindow
 SendInput
 SetCursorPos
 SystemParametersInfo
