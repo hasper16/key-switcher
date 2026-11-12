@@ -78,9 +78,7 @@ namespace Rekey.Win32.Focus {
     public void CatchUp(TimeSpan keyTime) {
       // A different window, or a different control inside the same window (Tab, a click, the
       // page's own script), means focus moved without a WinEvent yet.
-      FocusTarget? target = FocusTarget.Read();
-      if (target?.Window != _reportedWindow
-          || !_passwords.Same(_passwords.FocusedElement(), _reportedElement)) {
+      if (MovedSinceReport()) {
         // Stamped with the key's time, so the engine drops that key: its focus is uncertain.
         ReportCurrent(keyTime);
       }
@@ -106,7 +104,20 @@ namespace Rekey.Win32.Focus {
         int childId,
         uint threadId,
         uint time) {
-      ReportCurrent(EventTime(time));
+      // Chromium apps such as VS Code raise focus events for the control that already has
+      // focus once UI Automation has read their text; reporting those would end the Word.
+      if (MovedSinceReport()) {
+        ReportCurrent(EventTime(time));
+      }
+    }
+
+    // Whether focus is now in another window or another control than the one last reported;
+    // an unknown focus counts as moved.
+    private bool MovedSinceReport() {
+      return _blind
+          || FocusTarget.Read()?.Window is not { } window
+          || window != _reportedWindow
+          || !_passwords.Same(_passwords.FocusedElement(), _reportedElement);
     }
 
     private void ReportCurrent(TimeSpan time) {
