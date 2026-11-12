@@ -105,6 +105,7 @@ namespace Rekey.DesktopChecks {
 
         Input.Space();
       };
+      int keptBefore = Volatile.Read(ref _focusMovesKeptWord);
       var results = new List<ReplacementResult?> { CorrectIn(editor, word, clear: false) };
       var traces = new List<string> { _trace };
       for (int attempt = 1; attempt < 3; attempt++) {
@@ -116,10 +117,13 @@ namespace Rekey.DesktopChecks {
 
       Input.Control('s');
       Thread.Sleep(TimeSpan.FromSeconds(1));
-      ExpectVsCodeText(File.ReadAllText(file), results);
+      int kept = Volatile.Read(ref _focusMovesKeptWord) - keptBefore;
+      ExpectVsCodeText(File.ReadAllText(file), results, kept);
     }
 
-    private void ExpectVsCodeText(string text, List<ReplacementResult?> results) {
+    // The suggestion list must have taken focus while typing, or the run proves nothing about
+    // design D7.
+    private void ExpectVsCodeText(string text, List<ReplacementResult?> results, int kept) {
       string[] words = text.Split([' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
       bool damaged = words.Any(word => word is not ("ghbdtn" or "привет"));
       bool lastCorrected = words.Length > 0 && words[^1] == "привет";
@@ -127,10 +131,12 @@ namespace Rekey.DesktopChecks {
       // The text alone cannot show a replacement: a Word typed in Russian reads the same.
       bool replaced = results[^1] is ReplacementResult.Verified or ReplacementResult.Retyped;
       string detail = $"words {words.Length} of 3, damaged {damaged}, last corrected "
-          + $"{lastCorrected}, replacements {string.Join('/', results)} {_trace}";
+          + $"{lastCorrected}, replacements {string.Join('/', results)}, focus moves that kept "
+          + $"the Word {kept} {_trace}";
       Expect(
-          "5.4 VS Code: no Word damaged, and the third Word corrected by a replacement",
-          words.Length == 3 && !damaged && lastCorrected && replaced,
+          "5.4 VS Code: no Word damaged, and the third Word corrected by a replacement while "
+              + "the suggestion list took focus",
+          words.Length == 3 && !damaged && lastCorrected && replaced && kept > 0,
           detail);
     }
   }

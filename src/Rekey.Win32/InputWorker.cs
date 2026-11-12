@@ -207,6 +207,12 @@ namespace Rekey.Win32 {
     public string LastFocusMove => _focus?.LastMove ?? "none";
 
     /// <summary>
+    /// Gets how many focus moves to an element that takes no text kept the Word so far (design
+    /// D7); read it only on the worker thread, as from <see cref="Observed" />.
+    /// </summary>
+    public int FocusMovesKeptWord => _focus?.SetAsideMoves ?? 0;
+
+    /// <summary>
     /// Gets the longest Password Field check so far, in milliseconds; read it only on the
     /// worker thread, as from <see cref="Observed" />.
     /// </summary>

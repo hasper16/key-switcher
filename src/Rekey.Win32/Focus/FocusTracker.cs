@@ -42,6 +42,12 @@ namespace Rekey.Win32.Focus {
     /// </summary>
     public IUIAutomationElement? TypingElement => _setAside is null ? null : _reportedElement;
 
+    /// <summary>
+    /// Gets how many focus moves kept the Word so far (design D7), for diagnostics; read on the
+    /// worker thread.
+    /// </summary>
+    public int SetAsideMoves { get; private set; }
+
     public FocusTracker(Action<InputEvent> report, Func<Typing> typingNow) {
       _report = report;
       _typingNow = typingNow;
@@ -177,6 +183,7 @@ namespace Rekey.Win32.Focus {
 
       if (typing == Typing.Yes) {
         _setAside = now;
+        SetAsideMoves++;
       }
 
       return typing != Typing.No;
