@@ -216,6 +216,25 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void MismatchLeavesATraceOfHowTheReadDiffered() {
+      TextReplacer replacer = Replacer(new FakeControl("ghbxyz"), verify: true);
+
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(6, replacer.LastMismatch?.ExpectedLength);
+      Assert.Equal(3, replacer.LastMismatch?.SameStart);
+    }
+
+    [Fact]
+    public void ReplacementThatMatchedLeavesNoMismatchTrace() {
+      TextReplacer replacer = Replacer(new FakeControl("ghbdtn"), verify: true);
+
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Null(replacer.LastMismatch);
+    }
+
+    [Fact]
     public void InputThatWindowsRefusesIsReportedAsBlocked() {
       var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], _ => false);
 

@@ -49,6 +49,7 @@ namespace Rekey.DesktopChecks {
           TimeProvider.System,
           new SpecWords().Evaluate);
       worker.Replaced += result => Console.WriteLine($"Replacement {result}");
+      worker.Mismatched += trace => Console.WriteLine($"Mismatch {trace}");
       worker.Undone += _ => Console.WriteLine("Undo");
       worker.Start();
       Console.WriteLine("Rekey now corrects the spec's example Words typed in English (US).");

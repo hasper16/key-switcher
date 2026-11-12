@@ -168,6 +168,12 @@ namespace Rekey.Win32 {
     public event Action<ReplacementResult>? Replaced;
 
     /// <summary>
+    /// Occurs on the worker thread when the text before the caret differed from the Word, with
+    /// how it differed and which control was read; it carries no text.
+    /// </summary>
+    public event Action<ReplacementTrace>? Mismatched;
+
+    /// <summary>
     /// Occurs on the worker thread after an Undo, for the features that learn from it.
     /// </summary>
     /// <remarks>
@@ -568,6 +574,9 @@ namespace Rekey.Win32 {
       _heldReplaced = result is ReplacementResult.Verified or ReplacementResult.Retyped;
       if (result == ReplacementResult.Mismatch) {
         _recordIncident(new Incident(_time.GetUtcNow(), IncidentType.CorrectionCancelled, []));
+        if (_replacer?.LastMismatch is { } trace) {
+          Mismatched?.Invoke(trace);
+        }
       }
 
       Replaced?.Invoke(result);

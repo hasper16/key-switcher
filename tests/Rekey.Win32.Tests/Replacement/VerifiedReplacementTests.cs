@@ -131,6 +131,11 @@ namespace Rekey.Win32.Tests.Replacement {
         Deselected = when;
       }
 
+      public ReplacementTrace Describe(string expected) {
+        return ReplacementTrace.Of(
+            _text ?? string.Empty, expected, new ReaderFacts("Fake", "Fake", 0, 0));
+      }
+
       public string? Read(int length) {
         AskedLength = length;
         return _text;

@@ -65,6 +65,12 @@ namespace Rekey.Win32.Replacement {
     }
 
     /// <summary>
+    /// Gets how the text read before the caret differed from the Word in the latest
+    /// replacement, or <see langword="null" /> when it did not differ; it carries no text.
+    /// </summary>
+    public ReplacementTrace? LastMismatch { get; private set; }
+
+    /// <summary>
     /// Replaces the text before the caret.
     /// </summary>
     /// <param name="replace">What to replace and with what.</param>
@@ -93,6 +99,7 @@ namespace Rekey.Win32.Replacement {
         return ReplacementResult.Unsupported;
       }
 
+      LastMismatch = null;
       ITextBeforeCaret? reader = _verify && !_slowApps.IsSlow(appId) ? _reader : null;
       ReplacementResult? staleBeforeSelect = null;
       Func<bool> stillValid = () => {
@@ -107,6 +114,7 @@ namespace Rekey.Win32.Replacement {
 
       switch (method) {
         case ReplacementMethod.Cancel:
+          LastMismatch = _reader.Describe(replace.Expected);
           return ReplacementResult.Mismatch;
         case ReplacementMethod.Stale:
           return staleBeforeSelect ?? ReplacementResult.TooLate;

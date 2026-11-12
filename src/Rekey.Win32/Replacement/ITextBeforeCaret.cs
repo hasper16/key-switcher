@@ -34,6 +34,14 @@ namespace Rekey.Win32.Replacement {
     void Deselect(Deselection when);
 
     /// <summary>
+    /// Describes how the latest <see cref="Read" /> compared with the expected text and which
+    /// control it read, without either text.
+    /// </summary>
+    /// <param name="expected">The text Rekey expected before the caret.</param>
+    /// <returns>The comparison.</returns>
+    ReplacementTrace Describe(string expected);
+
+    /// <summary>
     /// Reads the characters just before the caret.
     /// </summary>
     /// <param name="length">The number of characters to read.</param>

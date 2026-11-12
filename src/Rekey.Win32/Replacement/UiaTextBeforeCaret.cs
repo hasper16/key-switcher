@@ -27,6 +27,10 @@ namespace Rekey.Win32.Replacement {
     private IUIAutomationElement? _element;
     private IUIAutomationTextRange? _selected;
 
+    // What the latest Read got, kept only to describe a mismatch without the text.
+    private string _lastText = string.Empty;
+    private int _moved;
+
     // When the latest Read began; Read and SelectRead share one budget.
     private long _started;
 
@@ -41,6 +45,8 @@ namespace Rekey.Win32.Replacement {
       _read = null;
       _element = null;
       _selected = null;
+      _lastText = string.Empty;
+      _moved = 0;
       TimedOut = false;
       SelectionPending = false;
       if (_automation is null) {
@@ -56,7 +62,7 @@ namespace Rekey.Win32.Replacement {
         }
 
         IUIAutomationTextRange range = caret.Clone();
-        range.MoveEndpointByUnit(
+        _moved = range.MoveEndpointByUnit(
             TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start,
             TextUnit.TextUnit_Character,
             -length);
@@ -69,6 +75,7 @@ namespace Rekey.Win32.Replacement {
         }
 
         _read = range;
+        _lastText = text;
         return text;
       } catch (COMException e) {
         TimedOut = e.HResult == _timeoutResult;
@@ -120,6 +127,24 @@ namespace Rekey.Win32.Replacement {
       } catch (COMException) {
         // An app that cannot answer keeps its selection; nothing else is safe to send.
       }
+    }
+
+    /// <inheritdoc />
+    public ReplacementTrace Describe(string expected) {
+      var facts = new ReaderFacts(string.Empty, string.Empty, 0, _moved);
+      if (_element is { } element) {
+        try {
+          facts = facts with {
+            Framework = TextOf(element.CurrentFrameworkId),
+            ClassName = TextOf(element.CurrentClassName),
+            ControlType = (int)element.CurrentControlType,
+          };
+        } catch (COMException) {
+          // An app that cannot answer leaves the control facts empty.
+        }
+      }
+
+      return ReplacementTrace.Of(_lastText, expected, facts);
     }
 
     /// <inheritdoc />
@@ -191,7 +216,10 @@ namespace Rekey.Win32.Replacement {
     }
 
     private static string TextOf(IUIAutomationTextRange range, int length) {
-      BSTR text = range.GetText(length);
+      return TextOf(range.GetText(length));
+    }
+
+    private static string TextOf(BSTR text) {
       try {
         return text.ToString() ?? string.Empty;
       } finally {
