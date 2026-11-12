@@ -15,6 +15,9 @@ namespace Rekey.DesktopChecks {
   internal sealed partial class Checks {
     private static readonly TimeSpan _replaceWait = TimeSpan.FromSeconds(3);
 
+    // What the worker saw during the latest CorrectIn, for failure details.
+    private string _trace = string.Empty;
+
     public int RunTextReplacement() {
       Begin(minutes: 3);
       LayoutId[] installed = [.. InstalledLayouts()];
@@ -319,7 +322,7 @@ namespace Rekey.DesktopChecks {
       bool corrected = text?.Contains(_marker + " привет ", StringComparison.Ordinal) == true;
       bool kept = text?.Contains(_marker + " ghbdtn ", StringComparison.Ordinal) == true;
       string detail = $"window class {ClassOf(found)}, buffer read {markerShown}, "
-          + $"corrected {corrected}, typed Word kept {kept}, replacement {result}";
+          + $"corrected {corrected}, typed Word kept {kept}, replacement {result} {_trace}";
       if (takesText) {
         Expect(
             $"4.1 console ({host}): the corrected Word, then the Space, retyped",
@@ -345,7 +348,7 @@ namespace Rekey.DesktopChecks {
       Expect(
           $"{item}: the corrected Word, then the Space",
           text == "привет ",
-          $"{Compare(text, "привет ")}, replacement {result}");
+          $"{Compare(text, "привет ")}, replacement {result} {_trace}");
       Expect(
           $"5.1 {item}: the text was checked through UI Automation first",
           result == ReplacementResult.Verified,
@@ -355,17 +358,35 @@ namespace Rekey.DesktopChecks {
     // Switches the box at the point to English (US), empties it, types and waits for the
     // worker to replace text or decide not to.
     private ReplacementResult? CorrectIn(Point at, Action type, bool clear = true) {
-      SwitchIn(at, SpecWords.EnglishUs);
+      EventLog.Position before = _log.Mark();
+      bool switched = SwitchIn(at, SpecWords.EnglishUs);
       if (clear) {
         Input.ClearBox();
       }
 
+      bool english = CurrentLayout() == SpecWords.EnglishUs;
       EventLog.Position mark = _log.Mark();
       type();
       EventLog.WaitFor(() => _log.ReplacementsSince(mark).Count > 0, _replaceWait);
       Thread.Sleep(TimeSpan.FromMilliseconds(300));
       List<ReplacementResult> results = _log.ReplacementsSince(mark);
+      _trace = Trace(before, mark, switched, english);
       return results.Count == 0 ? null : results[^1];
+    }
+
+    // What the worker saw around one attempt, without text: whether the switch to English (US)
+    // landed, the Layout Rekey believed in, the keys it held, the focus reports and Incidents.
+    private string Trace(
+        EventLog.Position before, EventLog.Position mark, bool switched, bool english) {
+      List<KeyDown> keys = _log.KeyDownsSince(mark);
+      int held = keys.Count(key => key.Held);
+      int dropped = keys.Count(key => !key.FocusConfirmed);
+      int focusReports = _log.EventsSince(before)
+          .Count(seen => seen.Event is FocusChanged or FocusLost);
+      string incidents = string.Join('/', _log.IncidentsSince(before));
+      return $"[switch landed {switched}, English (US) before typing {english}, "
+          + $"keys {keys.Count}, held {held}, unconfirmed {dropped}, "
+          + $"focus reports {focusReports}, Incidents [{incidents}]]";
     }
   }
 }
