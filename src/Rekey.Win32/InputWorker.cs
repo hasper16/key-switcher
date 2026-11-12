@@ -309,7 +309,7 @@ namespace Rekey.Win32 {
           _verifiedReplacement,
           HeldModifiers,
           SendKeys,
-          ConsoleWindows.ForegroundIsConsole);
+          ConsoleWindows.ForegroundTarget);
       RefreshLayouts();
       using var focus = new FocusTracker(OnFocusChanged);
       _focus = focus;

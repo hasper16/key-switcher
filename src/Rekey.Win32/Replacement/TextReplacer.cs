@@ -15,7 +15,7 @@ namespace Rekey.Win32.Replacement {
     private readonly bool _verify;
     private readonly Func<IReadOnlyList<VIRTUAL_KEY>> _heldModifiers;
     private readonly Func<INPUT[], bool> _send;
-    private readonly Func<bool> _isConsole;
+    private readonly Func<TextTarget> _target;
     private readonly SlowApps _slowApps = new();
 
     /// <summary>
@@ -35,7 +35,7 @@ namespace Rekey.Win32.Replacement {
         bool verify,
         Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
         Func<INPUT[], bool> send)
-        : this(reader, verify, heldModifiers, send, () => false) {
+        : this(reader, verify, heldModifiers, send, () => TextTarget.Editable) {
     }
 
     /// <summary>
@@ -50,20 +50,18 @@ namespace Rekey.Win32.Replacement {
     /// <param name="send">
     /// Sends inputs to Windows; returns <see langword="false" /> unless Windows took them all.
     /// </param>
-    /// <param name="isConsole">
-    /// Returns whether the focused window is a console, where nothing is replaced.
-    /// </param>
+    /// <param name="target">Returns how the focused window takes a replacement.</param>
     public TextReplacer(
         ITextBeforeCaret reader,
         bool verify,
         Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
         Func<INPUT[], bool> send,
-        Func<bool> isConsole) {
+        Func<TextTarget> target) {
       _reader = reader;
       _verify = verify;
       _heldModifiers = heldModifiers;
       _send = send;
-      _isConsole = isConsole;
+      _target = target;
     }
 
     /// <summary>
@@ -89,10 +87,9 @@ namespace Rekey.Win32.Replacement {
     /// <returns>Whether and how the text was replaced.</returns>
     public ReplacementResult Replace(
         ReplaceText replace, string appId, Func<ReplacementResult?> recheck) {
-      // A console took the Backspaces but dropped the typed Rendering on the owner's desktop,
-      // deleting the Word, and its UI Automation selection is the terminal's own; until a way
-      // in is proven there, a console is left as it is.
-      if (_isConsole()) {
+      // Never erase where the typed Rendering is not proven to arrive: that deletes the Word.
+      TextTarget target = _target();
+      if (target == TextTarget.Unsupported) {
         return ReplacementResult.Unsupported;
       }
 
@@ -103,7 +100,7 @@ namespace Rekey.Win32.Replacement {
         return staleBeforeSelect is null;
       };
       ReplacementMethod method = VerifiedReplacement.Prepare(
-          reader, replace.Expected, stillValid, canSelect: true);
+          reader, replace.Expected, stillValid, canSelect: target == TextTarget.Editable);
       if (reader is { TimedOut: true }) {
         _slowApps.RecordTimeout(appId);
       }

@@ -188,17 +188,31 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
-    public void ConsoleIsLeftUntouched() {
-      // A console took the Backspaces but not the typed Rendering, which deleted the Word; until
-      // a console is known to take the text, nothing is erased there.
+    public void UnprovenTargetIsLeftUntouched() {
+      // Nothing is erased where typing the Rendering is not proven to arrive.
       var control = new FakeControl("ghbdtn");
-      var replacer = new TextReplacer(control, true, () => [], Send, () => true);
+      var replacer = new TextReplacer(
+          control, true, () => [], Send, () => TextTarget.Unsupported);
 
       ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
 
       Assert.Equal(ReplacementResult.Unsupported, result);
       Assert.Equal(0, control.AskedLength);
       Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void ConsoleIsCheckedThenRetypedNeverSelected() {
+      // A console's UI Automation selection is the terminal's own, which typing ignores.
+      var control = new FakeControl("ghbdtn");
+      var replacer = new TextReplacer(control, true, () => [], Send, () => TextTarget.Console);
+
+      ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.Retyped, result);
+      Assert.Equal(6, control.AskedLength);
+      Assert.False(control.Selected);
+      Assert.Equal(24, Assert.Single(_sent).Length);
     }
 
     [Fact]
