@@ -2,13 +2,15 @@
 
 One **orchestrator** session drives the changes in `docs/roadmap.md` strictly in order, one at a time. For each change it starts one **implementer** session and keeps that same session for the whole life of the change: implementation, review fixes and archiving. Only the orchestrator merges into `main`.
 
+Language: the orchestrator replies to and asks the user in Russian. Implementers think, report and reply in English, including to the user, because only the orchestrator's messages need to be in the user's language and English costs fewer tokens. Messages between sessions are in English.
+
 ## Orchestrator
 
 The orchestrator coordinates; it does not author. It never edits files, commits or pushes. Its tools are session management (`start_session`, `SendMessage`, `list_sessions`), read-only `gh` / `git` queries, and `gh pr merge`.
 
 Loop, for each change in roadmap order:
 
-1. **Start** one implementer: `start_session` with `use_worktree: true`, name `impl-<change>`, a brief naming the change and pointing to this document. Record the session id.
+1. **Start** one implementer: `start_session` with `use_worktree: true`, name `impl-<change>`, a brief in English naming the change, pointing to this document and stating that the implementer works and reports in English. Record the session id.
 2. **Wait** for the implementer's report. The app wakes the orchestrator when the session ends a turn; do not poll.
 3. **Check readiness** of the PR the implementer reports (all must hold):
    - every required check passes: `gh pr checks <N> --required`;
@@ -29,6 +31,7 @@ Escalate to the user (and pause the loop) when: a manual checklist needs running
 ## Implementer
 
 - Work only in your worktree, on branch `change/<change>` (archive: `chore/archive-<change>`).
+- Think, report and reply in English, including end-of-turn summaries and answers to the user. Only the orchestrator writes to the user in Russian.
 - Load `ub-mode`, run `/opsx:apply <change>`, follow `AGENTS.md`. Conventional Commits, no `Co-Authored-By` trailers.
 - Push your branch and open a PR against `main`; turn on Auto-fix for it so CI failures and review comments wake you.
 - Resolve **every** review thread (CodeRabbit and humans): fix the code, or reply with the reason it stays as is; then mark the thread resolved. Keep the branch up to date with `main`.

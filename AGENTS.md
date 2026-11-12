@@ -48,4 +48,5 @@ Rekey sees every keystroke. Typed text exists only in the engine's memory:
 ## Language
 
 - Reply to the user in Russian.
+- Under orchestration (`docs/agents/orchestration.md`), only the orchestrator talks to the user in Russian. Implementers think, report and reply in English, including to the user, to save tokens.
 - Code, comments, specs, commits and agent-facing docs are in English.
