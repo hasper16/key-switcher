@@ -21,7 +21,7 @@ Do not touch the mouse or keyboard for about 3 minutes. The tool runs Rekey's wo
 | 5.2 | Text before the caret that differs from the Word (letters the hook ignores, as an autocomplete would add) is left alone, with a `CorrectionCancelled` Incident |
 | 6.1 | Ctrl+Z 1 s after a Correction restores "ghbdtn " and English (US), is reported as an Undo and does not reach the window; after 6 s, after another letter, or after an Enter-triggered Correction, Ctrl+Z reaches the window and nothing is undone |
 
-`dotnet run --project tools/Rekey.DesktopChecks -- console-probe` (about a minute, no Rekey corrections) types into a console four ways and reports which one shows the corrected Word: Backspaces then Unicode characters in one call, Unicode alone, one call per key, and the same keys in the Russian Layout. It decides how Rekey may replace text in consoles later.
+`dotnet run --project tools/Rekey.DesktopChecks -- console-probe` (about two minutes, no Rekey corrections) types into the default console and into a classic conhost window, seven ways each, and reports per way whether the corrected Word shows, plus each window's class: Backspaces then Unicode characters in one call, Unicode alone, one call per key, a 150 ms pause after the Backspaces, the keys typed in the Russian Layout, the keys by scan code alone, and erase, verified switch to Russian, retype the keys. It decides how Rekey replaces text in consoles.
 
 If the browser does not expose the page's boxes to UI Automation, the browser lines fail with that reason; make Edge or Chrome the default browser and run again.
 

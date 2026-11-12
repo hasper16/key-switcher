@@ -38,6 +38,35 @@ namespace Rekey.DesktopChecks {
       }
     }
 
+    // Types the letters by scan code alone (KEYEVENTF_SCANCODE), as Rekey re-injects a held
+    // key, so Windows maps each through the Layout active when it arrives.
+    public static void TypeByScanCode(string letters) {
+      foreach (char letter in letters) {
+        (_, ushort scanCode) = _keys[letter];
+        foreach (bool up in new[] { false, true }) {
+          KEYBD_EVENT_FLAGS flags = KEYBD_EVENT_FLAGS.KEYEVENTF_SCANCODE;
+          if (up) {
+            flags |= KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+          }
+
+          Send(new INPUT {
+            type = INPUT_TYPE.INPUT_KEYBOARD,
+            Anonymous = new INPUT._Anonymous_e__Union {
+              ki = new KEYBDINPUT { wScan = scanCode, dwFlags = flags },
+            },
+          });
+        }
+
+        Thread.Sleep(_keyGap);
+      }
+    }
+
+    public static void Backspaces(int count) {
+      for (int i = 0; i < count; i++) {
+        Press(VIRTUAL_KEY.VK_BACK, 0x0E);
+      }
+    }
+
     // Sends every key in one SendInput call, faster than any typist, so the later keys arrive
     // while Rekey is still applying a Correction.
     public static void TypeAtOnce(string letters) {
@@ -51,7 +80,8 @@ namespace Rekey.DesktopChecks {
 
     // Types text as Unicode characters (VK_PACKET), the way Rekey types a Rendering, after
     // the given number of Backspaces; all in one SendInput call unless one call per key.
-    public static void TypeUnicode(string text, int backspaces, bool oneCallEach) {
+    public static void TypeUnicode(
+        string text, int backspaces, bool oneCallEach, TimeSpan pauseAfterBackspaces = default) {
       var inputs = new List<INPUT>();
       for (int i = 0; i < backspaces; i++) {
         inputs.Add(KeyInput(VIRTUAL_KEY.VK_BACK, 0x0E, false, 0));
@@ -61,6 +91,12 @@ namespace Rekey.DesktopChecks {
       foreach (char unit in text) {
         inputs.Add(UnicodeInput(unit, up: false));
         inputs.Add(UnicodeInput(unit, up: true));
+      }
+
+      if (pauseAfterBackspaces > TimeSpan.Zero) {
+        PInvoke.SendInput([.. inputs.Take(2 * backspaces)], Marshal.SizeOf<INPUT>());
+        Thread.Sleep(pauseAfterBackspaces);
+        inputs.RemoveRange(0, 2 * backspaces);
       }
 
       if (oneCallEach) {
