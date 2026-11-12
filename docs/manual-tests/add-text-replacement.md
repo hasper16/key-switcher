@@ -19,7 +19,7 @@ Do not touch the mouse or keyboard for about 3 minutes. The tool runs Rekey's wo
 | 4.2 | In the test page's chat box, where Enter sends the message, "ghbdtn" + Enter sends "привет"; the clipboard sequence number is unchanged after every Correction and Undo |
 | 5.1 | In Notepad and the browser text box the text was checked and selected through UI Automation (`Verified`), not retyped |
 | 5.2 | Text before the caret that differs from the Word (letters the hook ignores, as an autocomplete would add) is left alone, with a `CorrectionCancelled` Incident |
-| 5.4 | When VS Code is installed: a separate VS Code with a throwaway profile gets three Corrections; read back from the saved file, no Word is damaged and the third is corrected (an unreliable readback cancels the first two, then retypes); skipped when VS Code is absent |
+| 5.4, 5.5 | When VS Code is installed: a separate VS Code with a throwaway profile and its word suggestions on gets three Words on one line, typed at a person's pace so the suggestion list opens while the second and third are typed; read back from the saved file, no Word is damaged and the third is corrected (an unreliable readback cancels the first two, then retypes); skipped when VS Code is absent |
 | 6.1 | Ctrl+Z 1 s after a Correction restores "ghbdtn " and English (US), is reported as an Undo and does not reach the window; after 6 s, after another letter, or after an Enter-triggered Correction, Ctrl+Z reaches the window and nothing is undone |
 
 `dotnet run --project tools/Rekey.DesktopChecks -- console-probe` (about two minutes, no Rekey corrections) types into the default console and into a classic conhost window, seven ways each, and reports per way whether the corrected Word shows, after proving the buffer read by digits typed first, plus each window's class: Backspaces then Unicode characters in one call, Unicode alone, one call per key, a 150 ms pause after the Backspaces, the keys typed in the Russian Layout, the keys by scan code alone, and erase, verified switch to Russian, retype the keys. It decides how Rekey replaces text in consoles.
@@ -38,7 +38,7 @@ dotnet run --project tools/Rekey.DesktopChecks -- try-corrections
 
 It prints one line per replacement (`Verified`, `Retyped`, `Mismatch` or `TooLate`), Undo and Incident, never text. Press Enter in its window to stop it. Use English (US) as the starting Layout.
 
-- [ ] **Electron editor (4.1, 5.4).** In your own VS Code, in a plain-text file, type "ghbdtn" and Space.
+- [ ] **Electron editor (4.1, 5.4, 5.5).** In your own VS Code, in a plain-text file, type "ghbdtn" and Space three times on one line, letting the suggestion list open.
   Expected: the first two times `try-corrections` prints `Replacement Mismatch` (VS Code's readback is unreliable) and nothing changes; from the third time the line reads "привет " (`Replacement Retyped`) and the Layout is Russian; nothing else in the file changed. Ctrl+Z right away gives back "ghbdtn " and English (US).
 - [ ] **Chat app with Enter (4.2).** In Telegram Desktop, in Saved Messages, copy some text first, then type "ghbdtn" and press Enter.
   Expected: the sent message reads "привет"; pasting afterwards gives the text copied before.
