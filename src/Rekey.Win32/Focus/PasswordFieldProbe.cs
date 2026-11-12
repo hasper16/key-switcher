@@ -36,6 +36,22 @@ namespace Rekey.Win32.Focus {
     }
 
     /// <summary>
+    /// Returns an element's UI Automation control type and whether it is a Password Field, or
+    /// <see langword="null" /> when it is unknown or cannot answer.
+    /// </summary>
+    public static (int ControlType, bool IsPassword)? Facts(IUIAutomationElement? element) {
+      if (element is null) {
+        return null;
+      }
+
+      try {
+        return ((int)element.CurrentControlType, element.CurrentIsPassword);
+      } catch (COMException) {
+        return null;
+      }
+    }
+
+    /// <summary>
     /// Returns whether the focused control is a Password Field.
     /// </summary>
     /// <param name="focus">The focused window.</param>

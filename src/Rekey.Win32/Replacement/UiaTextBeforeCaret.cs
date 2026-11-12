@@ -21,6 +21,7 @@ namespace Rekey.Win32.Replacement {
     private const int _timeoutResult = unchecked((int)0x80131505);
 
     private readonly IUIAutomation? _automation = CreateAutomation();
+    private readonly Func<IUIAutomationElement?> _typingElement;
     private IUIAutomationTextRange? _read;
 
     // The control the latest Read looked at, and the range SelectRead asked it to select.
@@ -34,6 +35,18 @@ namespace Rekey.Win32.Replacement {
 
     // When the latest Read began; Read and SelectRead share one budget.
     private long _started;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UiaTextBeforeCaret" /> class.
+    /// </summary>
+    /// <param name="typingElement">
+    /// Gives the text control the Word is typed in when UI Automation focus is on an element
+    /// that takes no text, such as an autocomplete list (design D7); otherwise,
+    /// <see langword="null" />, and the focused element is read.
+    /// </param>
+    public UiaTextBeforeCaret(Func<IUIAutomationElement?> typingElement) {
+      _typingElement = typingElement;
+    }
 
     /// <inheritdoc />
     public bool TimedOut { get; private set; }
@@ -57,7 +70,7 @@ namespace Rekey.Win32.Replacement {
 
       _started = Stopwatch.GetTimestamp();
       try {
-        _element = _automation.GetFocusedElement();
+        _element = Target(_automation);
         IUIAutomationTextRange? caret = Caret(_element);
         if (caret is null || OverBudget()) {
           return null;
@@ -184,7 +197,7 @@ namespace Rekey.Win32.Replacement {
       }
 
       try {
-        return _automation.CompareElements(_automation.GetFocusedElement(), _element);
+        return _automation.CompareElements(Target(_automation), _element);
       } catch (COMException) {
         return false;
       }
@@ -245,6 +258,10 @@ namespace Rekey.Win32.Replacement {
 
     private static string TextOf(BSTR text) {
       return UiaStrings.Take(text);
+    }
+
+    private IUIAutomationElement Target(IUIAutomation automation) {
+      return _typingElement() ?? automation.GetFocusedElement();
     }
 
     private bool OverBudget() {

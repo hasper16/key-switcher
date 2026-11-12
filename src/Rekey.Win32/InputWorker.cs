@@ -73,6 +73,7 @@ namespace Rekey.Win32 {
     private readonly HookWatchdog _hookWatchdog;
     private readonly ModifierSync _modifierSync;
     private readonly KeyConfirmer _keyConfirmer;
+    private readonly TypingState _typing = new();
     private readonly WordEvaluator? _evaluate;
     private readonly bool _verifiedReplacement;
     private readonly Thread _thread;
@@ -314,6 +315,13 @@ namespace Rekey.Win32 {
       return PInvoke.SendInput(inputs, Marshal.SizeOf<INPUT>()) == inputs.Length;
     }
 
+    // A key-down that is not a KeyDown, such as an Undo request, is not typing.
+    private static (KeyKind Kind, KeyModifiers Modifiers) KindOf(InputEvent? inputEvent) {
+      return inputEvent is KeyDown key
+          ? (key.Kind, key.Modifiers)
+          : (KeyKind.Other, KeyModifiers.None);
+    }
+
     [SuppressMessage(
         "Reliability",
         "S3869:SafeHandle.DangerousGetHandle should not be called",
@@ -332,13 +340,14 @@ namespace Rekey.Win32 {
 
       _started.Set();
       _replacer = new TextReplacer(
-          new UiaTextBeforeCaret(),
+          new UiaTextBeforeCaret(() => _focus?.TypingElement),
           _verifiedReplacement,
           HeldModifiers,
           SendKeys,
           ConsoleWindows.ForegroundTarget);
       RefreshLayouts();
-      using var focus = new FocusTracker(OnFocusChanged);
+      using var focus = new FocusTracker(
+          OnFocusChanged, () => _typing.Now(_ring.ActionsWritten));
       _focus = focus;
       focus.Start();
       HANDLE[] handles = [(HANDLE)_signal.SafeWaitHandle.DangerousGetHandle()];
@@ -376,12 +385,14 @@ namespace Rekey.Win32 {
           Send(new InputLost(TimeSpan.FromMilliseconds(raw.Tick)));
         }
 
+        InputEvent? inputEvent = _translator.Translate(raw);
+
         // WinEvents arrive asynchronously: a key typed into a new window can come first.
         if (raw.Kind == RawInputKind.KeyDown) {
-          _focus?.CatchUp(TimeSpan.FromMilliseconds(raw.Tick));
+          _focus?.CatchUp(TimeSpan.FromMilliseconds(raw.Tick), TypingFor(raw, inputEvent));
         }
 
-        InputEvent? inputEvent = _translator.Translate(raw);
+        RecordTyping(raw, inputEvent);
         if (inputEvent is KeyDown { Kind: KeyKind.Character } keyDown) {
           // Focus may have moved inside the window before its WinEvent arrived.
           inputEvent = keyDown with { FocusConfirmed = _keyConfirmer.Confirm(raw) };
@@ -406,6 +417,22 @@ namespace Rekey.Win32 {
       // The user may have switched Layout with the keys just read.
       if (any) {
         FollowForegroundLayout();
+      }
+    }
+
+    // Design D7: whether only typing could have moved focus by the time this key is handled.
+    private Typing TypingFor(in RawInput raw, InputEvent? inputEvent) {
+      (KeyKind kind, KeyModifiers modifiers) = KindOf(inputEvent);
+      return _typing.ForKey(
+          kind, modifiers, raw.Holding == Holding.None, raw.Actions, _ring.ActionsWritten);
+    }
+
+    private void RecordTyping(in RawInput raw, InputEvent? inputEvent) {
+      if (raw.Kind == RawInputKind.MouseDown) {
+        _typing.ClickRead(raw.Actions);
+      } else if (raw.Kind == RawInputKind.KeyDown) {
+        (KeyKind kind, KeyModifiers modifiers) = KindOf(inputEvent);
+        _typing.KeyRead(kind, modifiers, raw.Actions);
       }
     }
 
