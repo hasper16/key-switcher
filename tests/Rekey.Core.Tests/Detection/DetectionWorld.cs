@@ -7,6 +7,8 @@ namespace Rekey.Core.Tests.Detection {
     private static readonly LanguageSet _bundled =
         LanguageSet.LoadBundled(DateTimeOffset.UnixEpoch).Languages;
 
+    public static LanguageSet Bundled => _bundled;
+
     public static LanguageProfile English { get; } = Profile(Language.English);
 
     public static LanguageProfile Russian { get; } = Profile(Language.Russian);

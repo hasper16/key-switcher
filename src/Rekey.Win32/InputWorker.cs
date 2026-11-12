@@ -75,6 +75,7 @@ namespace Rekey.Win32 {
     private readonly KeyConfirmer _keyConfirmer;
     private readonly TypingState _typing = new();
     private readonly WordEvaluator? _evaluate;
+    private readonly Settings _settings;
     private readonly bool _verifiedReplacement;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
@@ -129,6 +130,7 @@ namespace Rekey.Win32 {
       _recordIncident = recordIncident;
       _time = time;
       _evaluate = evaluate;
+      _settings = settings;
       _verifiedReplacement = settings.VerifiedReplacement;
       _meter = new SlowCallbackMeter(time);
       _hook = new InputHook(_ring, _gate, _signal, _meter, time);
@@ -375,7 +377,7 @@ namespace Rekey.Win32 {
         _recordIncident(incident);
       }
 
-      _engine = new Engine(load.Languages, _evaluate);
+      _engine = new Engine(load.Languages, _settings, _time, _evaluate);
     }
 
     private void DrainInput() {

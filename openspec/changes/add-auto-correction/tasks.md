@@ -7,10 +7,10 @@
 
 ## 2. Engine pipeline
 
-- [ ] 2.1 Write failing engine tests: Trigger Key + wrong-layout Word → Correction actions; non-trigger key → nothing; disabled trigger → nothing; every gate reason → nothing; implement the pipeline using the scorer (design D7) and text-replacement actions; verify they pass
-- [ ] 2.2 Write failing tests for user Layout Switch detection (a `LayoutChanged` by the user marks the Word and drops Deferred Words; Rekey's own switch does not); implement; verify they pass
-- [ ] 2.3 Write failing tests that the pause expires on its own (fake clock) and survives a settings reload; implement; verify they pass
-- [ ] 2.4 Write failing tests for the Word counters of design D8 (ended, evaluated, dropped for an unconfirmed key); implement; verify they pass
+- [x] 2.1 Write failing engine tests: Trigger Key + wrong-layout Word → Correction actions; non-trigger key → nothing; disabled trigger → nothing; every gate reason → nothing; implement the pipeline using the scorer (design D7) and text-replacement actions; verify they pass
+- [x] 2.2 Write failing tests for user Layout Switch detection (a `LayoutChanged` by the user marks the Word and drops Deferred Words; Rekey's own switch does not); implement; verify they pass
+- [x] 2.3 Write failing tests that the pause expires on its own (fake clock) and survives a settings reload; implement; verify they pass
+- [x] 2.4 Write failing tests for the Word counters of design D8 (ended, evaluated, dropped for an unconfirmed key); implement; verify they pass
 
 ## 3. Win32 wiring
 
