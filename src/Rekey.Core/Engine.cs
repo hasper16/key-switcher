@@ -287,7 +287,7 @@ namespace Rekey.Core {
 
     private void OnFocusChanged(FocusChanged focus) {
       _focusSince = TimeSpan.FromTicks(Math.Max(_focusSince.Ticks, focus.Timestamp.Ticks));
-      Focus = new Context(focus.AppId, focus.IsPassword, focus.IsElevated);
+      Focus = new Context(focus.App, focus.IsPassword, focus.IsElevated);
       _word.Clear();
       Interrupt();
     }

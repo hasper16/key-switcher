@@ -651,7 +651,7 @@ namespace Rekey.Win32 {
     }
 
     private ReplacementResult TryReplace(ReplaceText replace) {
-      if (_held is not { } held || _replacer is null || _engine.Focus?.AppId is not { } app) {
+      if (_held is not { } held || _replacer is null || _engine.Focus?.App.Key is not { } app) {
         return ReplacementResult.TooLate;
       }
 

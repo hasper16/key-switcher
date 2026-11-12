@@ -67,8 +67,8 @@ namespace Rekey.Core.Tests {
     public void KeysTypedBeforeTheLatestFocusChangeAreNotKept() {
       // The worker fell behind: password keys reach the engine after focus left the field.
       var engine = new Engine();
-      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: true, IsElevated: false));
-      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Focused(10, isPassword: true));
+      engine.Handle(Focused(12, isPassword: false));
 
       engine.Handle(Letter(Seconds(11)));
 
@@ -78,8 +78,8 @@ namespace Rekey.Core.Tests {
     [Fact]
     public void KeyStampedWithTheFocusChangeIsNotKept() {
       var engine = new Engine();
-      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: true, IsElevated: false));
-      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Focused(10, isPassword: true));
+      engine.Handle(Focused(12, isPassword: false));
 
       engine.Handle(Letter(Seconds(12)));
 
@@ -90,7 +90,7 @@ namespace Rekey.Core.Tests {
     public void RestOfAWordWithARejectedKeyIsNotKept() {
       // A rejected key may be the Word's first; keeping the rest would leave a partial Word.
       var engine = new Engine();
-      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Focused(12, isPassword: false));
       engine.Handle(Letter(Seconds(12)));
 
       engine.Handle(Letter(Seconds(13)));
@@ -101,7 +101,7 @@ namespace Rekey.Core.Tests {
     [Fact]
     public void WordBoundaryAfterARejectedKeyStartsAFreshWord() {
       var engine = new Engine();
-      engine.Handle(new FocusChanged(Seconds(12), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Focused(12, isPassword: false));
       engine.Handle(Letter(Seconds(12)));
 
       engine.Handle(new KeyDown(Seconds(13), new Keystroke(0x39, false, false), KeyKind.Space, 0));
@@ -113,9 +113,9 @@ namespace Rekey.Core.Tests {
     [Fact]
     public void KeysTypedBeforeFocusWasLostAreNotKept() {
       var engine = new Engine();
-      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Focused(10, isPassword: false));
       engine.Handle(new FocusLost(Seconds(15)));
-      engine.Handle(new FocusChanged(Seconds(20), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Focused(20, isPassword: false));
 
       engine.Handle(Letter(Seconds(17)));
 
@@ -146,7 +146,7 @@ namespace Rekey.Core.Tests {
     public void UnconfirmedKeyIsNotKeptNorTheRestOfItsWord() {
       // Spec: "Each Keystroke is confirmed outside a Password Field".
       var engine = new Engine();
-      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Focused(10, isPassword: false));
       engine.Handle(Letter(Seconds(11)));
 
       engine.Handle(Letter(Seconds(11)) with { FocusConfirmed = false });
@@ -158,7 +158,7 @@ namespace Rekey.Core.Tests {
     [Fact]
     public void WordAfterAnUnconfirmedKeyIsKeptAgain() {
       var engine = new Engine();
-      engine.Handle(new FocusChanged(Seconds(10), "app", IsPassword: false, IsElevated: false));
+      engine.Handle(Focused(10, isPassword: false));
       engine.Handle(Letter(Seconds(11)) with { FocusConfirmed = false });
 
       engine.Handle(new KeyDown(Seconds(12), new Keystroke(0x39, false, false), KeyKind.Space, 0));
@@ -171,7 +171,7 @@ namespace Rekey.Core.Tests {
     public void EngineReportsTheFocusedControl() {
       Typist typist = new Typist().Focus(isPassword: true);
 
-      Assert.Equal(new Context(@"C:\Apps\Editor.exe", true, false), typist.Engine.Focus);
+      Assert.Equal(new Context(Typist.App, true, false), typist.Engine.Focus);
     }
 
     [Fact]
@@ -183,6 +183,10 @@ namespace Rekey.Core.Tests {
 
       Correction? next = typist.Engine.DeferredWords.Add(Decision.Correct(_russian, "вапро"));
       Assert.Equal(["вапро"], next?.Texts);
+    }
+
+    private static FocusChanged Focused(int seconds, bool isPassword) {
+      return new FocusChanged(Seconds(seconds), Typist.App, isPassword, IsElevated: false);
     }
 
     private static TimeSpan Seconds(int value) {

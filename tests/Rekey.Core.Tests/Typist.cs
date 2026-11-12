@@ -6,6 +6,9 @@ namespace Rekey.Core.Tests {
   // Feeds an Engine the events of a user typing in English (US), 100 ms apart unless told
   // otherwise.
   internal sealed class Typist {
+    // The invented application the user types in.
+    public static readonly AppId App = new(@"C:\Apps\Editor.exe");
+
     private static readonly TimeSpan _step = TimeSpan.FromMilliseconds(100);
 
     private TimeSpan _now = TimeSpan.FromSeconds(10);
@@ -86,7 +89,7 @@ namespace Rekey.Core.Tests {
     }
 
     public Typist Focus(bool isPassword = false, bool isElevated = false) {
-      Send(new FocusChanged(Next(), @"C:\Apps\Editor.exe", isPassword, isElevated));
+      Send(new FocusChanged(Next(), App, isPassword, isElevated));
       return this;
     }
 
