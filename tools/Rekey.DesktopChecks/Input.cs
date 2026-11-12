@@ -49,6 +49,32 @@ namespace Rekey.DesktopChecks {
       Thread.Sleep(_keyGap);
     }
 
+    // Types text as Unicode characters (VK_PACKET), the way Rekey types a Rendering, after
+    // the given number of Backspaces; all in one SendInput call unless one call per key.
+    public static void TypeUnicode(string text, int backspaces, bool oneCallEach) {
+      var inputs = new List<INPUT>();
+      for (int i = 0; i < backspaces; i++) {
+        inputs.Add(KeyInput(VIRTUAL_KEY.VK_BACK, 0x0E, false, 0));
+        inputs.Add(KeyInput(VIRTUAL_KEY.VK_BACK, 0x0E, true, 0));
+      }
+
+      foreach (char unit in text) {
+        inputs.Add(UnicodeInput(unit, up: false));
+        inputs.Add(UnicodeInput(unit, up: true));
+      }
+
+      if (oneCallEach) {
+        foreach (INPUT input in inputs) {
+          Send(input);
+          Thread.Sleep(_keyGap);
+        }
+      } else {
+        PInvoke.SendInput([.. inputs], Marshal.SizeOf<INPUT>());
+      }
+
+      Thread.Sleep(_keyGap);
+    }
+
     public static void Press(VIRTUAL_KEY key, ushort scanCode, nuint extraInfo = 0) {
       Key(key, scanCode, up: false, extraInfo);
       Key(key, scanCode, up: true, extraInfo);
@@ -123,6 +149,20 @@ namespace Rekey.DesktopChecks {
             dwFlags = up ? KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP : 0,
             dwExtraInfo = extraInfo,
           },
+        },
+      };
+    }
+
+    private static INPUT UnicodeInput(char unit, bool up) {
+      KEYBD_EVENT_FLAGS flags = KEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE;
+      if (up) {
+        flags |= KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+      }
+
+      return new INPUT {
+        type = INPUT_TYPE.INPUT_KEYBOARD,
+        Anonymous = new INPUT._Anonymous_e__Union {
+          ki = new KEYBDINPUT { wScan = unit, dwFlags = flags },
         },
       };
     }

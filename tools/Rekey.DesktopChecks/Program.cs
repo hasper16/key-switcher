@@ -27,6 +27,11 @@ namespace Rekey.DesktopChecks {
         return replacement.RunTextReplacement();
       }
 
+      if (args is ["console-probe"]) {
+        using var probe = new Checks();
+        return probe.RunConsoleProbe();
+      }
+
       if (args is ["try-corrections"]) {
         return TryCorrections();
       }

@@ -108,6 +108,16 @@ namespace Rekey.DesktopChecks {
       }
     }
 
+    // The console's whole buffer, through UI Automation.
+    private static string? ConsoleText() {
+      HWND? window = Desktop.FindWindow(_consoleTitle, TimeSpan.FromSeconds(1));
+      var hasText = new PropertyCondition(AutomationElement.IsTextPatternAvailableProperty, true);
+      AutomationElement? buffer = window is { } found
+          ? AutomationElement.FromHandle(found).FindFirst(TreeScope.Subtree, hasText)
+          : null;
+      return TextOf(buffer);
+    }
+
     private void CheckSpaceAfterWord() {
       ReplacementResult? result = CorrectIn(First().Ordinary, () => {
         Input.Type("ghbdtn");
@@ -299,28 +309,17 @@ namespace Rekey.DesktopChecks {
             Input.Space();
           },
           clear: false);
-      HWND? window = Desktop.FindWindow(_consoleTitle, TimeSpan.FromSeconds(1));
-      var hasText = new PropertyCondition(AutomationElement.IsTextPatternAvailableProperty, true);
-      AutomationElement? buffer = window is { } found
-          ? AutomationElement.FromHandle(found).FindFirst(TreeScope.Subtree, hasText)
-          : null;
-      string? text = TextOf(buffer);
+      string? text = ConsoleText();
       bool hasCorrected = text?.Contains("привет", StringComparison.Ordinal) == true;
-      bool hasTyped = text?.Contains("ghbdtn", StringComparison.Ordinal) == true;
-      bool spaceAfter = text?.Contains("привет ", StringComparison.Ordinal) == true;
-      string detail = $"corrected Word present {hasCorrected}, typed Word still present "
-          + $"{hasTyped}, space after it {spaceAfter}, buffer read {text is not null}, "
-          + $"replacement {result}";
-      Expect(
-          "4.1 console: the corrected Word, then the Space",
-          hasCorrected && spaceAfter && !hasTyped,
-          detail);
+      bool keptTyped = text?.Contains("ghbdtn ", StringComparison.Ordinal) == true;
+      string detail = $"typed Word and Space kept {keptTyped}, corrected Word present "
+          + $"{hasCorrected}, buffer read {text is not null}, replacement {result}";
 
-      // A console's UI Automation selection is the terminal's own, so it is never verified.
+      // A console took the Backspaces but not the typed text, so Rekey leaves it alone.
       Expect(
-          "5.1 console: retyped, not claimed as checked and selected",
-          result == ReplacementResult.Retyped,
-          $"replacement {result}");
+          "4.1 console: the Word is left as typed, nothing erased",
+          result == ReplacementResult.Unsupported && keptTyped && !hasCorrected,
+          detail);
       Input.Escape();
     }
 
