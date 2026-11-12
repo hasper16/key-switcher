@@ -379,11 +379,11 @@ namespace Rekey.Win32 {
           FinishHeld(raw);
         }
 
-        ReportMismatch();
-
         // Progress per input, so a pass that stays busy is not taken for a freeze.
         Volatile.Write(ref _heartbeat, _heartbeat + 1);
       }
+
+      ReportMismatch();
 
       // The user may have switched Layout with the keys just read.
       if (any) {
