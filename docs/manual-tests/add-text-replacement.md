@@ -15,13 +15,13 @@ Do not touch the mouse or keyboard for about 3 minutes. The tool runs Rekey's wo
 | Task | What the tool checks |
 |---|---|
 | 3.2 | In a test window, "ghbdtn" + Space reads "привет " with the space after the Word, and the Layout is then Russian; Space and three letters sent in one burst during the Correction follow it in order |
-| 4.1 | The corrected Word, then the Space, in Notepad and a browser text box; in a console the Word is left as typed and nothing is erased (consoles are unsupported for now); a Deferred run "yt pyf." + Space reads "не знаю " |
+| 4.1 | The corrected Word, then the Space, in Notepad and a browser text box; in a classic conhost window the corrected Word, retyped; in the default console, if it is Windows Terminal, the Word left as typed and nothing erased until it is proven to take typed text (each console check first proves the buffer is read by finding digits typed before the Word); a Deferred run "yt pyf." + Space reads "не знаю " |
 | 4.2 | In the test page's chat box, where Enter sends the message, "ghbdtn" + Enter sends "привет"; the clipboard sequence number is unchanged after every Correction and Undo |
 | 5.1 | In Notepad and the browser text box the text was checked and selected through UI Automation (`Verified`), not retyped |
 | 5.2 | Text before the caret that differs from the Word (letters the hook ignores, as an autocomplete would add) is left alone, with a `CorrectionCancelled` Incident |
 | 6.1 | Ctrl+Z 1 s after a Correction restores "ghbdtn " and English (US), is reported as an Undo and does not reach the window; after 6 s, after another letter, or after an Enter-triggered Correction, Ctrl+Z reaches the window and nothing is undone |
 
-`dotnet run --project tools/Rekey.DesktopChecks -- console-probe` (about two minutes, no Rekey corrections) types into the default console and into a classic conhost window, seven ways each, and reports per way whether the corrected Word shows, plus each window's class: Backspaces then Unicode characters in one call, Unicode alone, one call per key, a 150 ms pause after the Backspaces, the keys typed in the Russian Layout, the keys by scan code alone, and erase, verified switch to Russian, retype the keys. It decides how Rekey replaces text in consoles.
+`dotnet run --project tools/Rekey.DesktopChecks -- console-probe` (about two minutes, no Rekey corrections) types into the default console and into a classic conhost window, seven ways each, and reports per way whether the corrected Word shows, after proving the buffer read by digits typed first, plus each window's class: Backspaces then Unicode characters in one call, Unicode alone, one call per key, a 150 ms pause after the Backspaces, the keys typed in the Russian Layout, the keys by scan code alone, and erase, verified switch to Russian, retype the keys. It decides how Rekey replaces text in consoles.
 
 If the browser does not expose the page's boxes to UI Automation, the browser lines fail with that reason; make Edge or Chrome the default browser and run again.
 

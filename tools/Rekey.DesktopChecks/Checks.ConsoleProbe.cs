@@ -15,6 +15,9 @@ namespace Rekey.DesktopChecks {
     private const string _defaultTitle = "Rekey probe default console";
     private const string _conhostTitle = "Rekey probe conhost";
 
+    // Digits read the same in every Layout; seeing them proves the buffer is the one typed in.
+    private const string _marker = "321";
+
     public int RunConsoleProbe() {
       Begin(minutes: 2);
       string shell = Path.Join(Environment.SystemDirectory, "cmd.exe");
@@ -31,12 +34,19 @@ namespace Rekey.DesktopChecks {
       return name[..Math.Max(length, 0)].ToString();
     }
 
+    // The console's buffer through UI Automation: Windows Terminal's terminal control when
+    // there is one, as its window holds other text elements, else the first one with text.
     private static string? BufferText(string title) {
       HWND? window = Desktop.FindWindow(title, TimeSpan.FromSeconds(1));
+      if (window is not { } found) {
+        return null;
+      }
+
+      AutomationElement root = AutomationElement.FromHandle(found);
+      var terminal = new PropertyCondition(AutomationElement.ClassNameProperty, "TermControl");
       var hasText = new PropertyCondition(AutomationElement.IsTextPatternAvailableProperty, true);
-      AutomationElement? buffer = window is { } found
-          ? AutomationElement.FromHandle(found).FindFirst(TreeScope.Subtree, hasText)
-          : null;
+      AutomationElement? buffer = root.FindFirst(TreeScope.Subtree, terminal)
+          ?? root.FindFirst(TreeScope.Subtree, hasText);
       return TextOf(buffer);
     }
 
@@ -105,14 +115,17 @@ namespace Rekey.DesktopChecks {
         string host, string title, string variant, Point at, LayoutId layout, Action type) {
       bool switched = SwitchIn(at, layout);
       Input.Escape();
+      Input.Type(_marker + " ");
       type();
       Thread.Sleep(_settle);
       string? text = BufferText(title);
-      bool corrected = text?.Contains("привет ", StringComparison.Ordinal) == true;
+      bool markerShown = text?.Contains(_marker, StringComparison.Ordinal) == true;
+      bool corrected = text?.Contains(_marker + " привет ", StringComparison.Ordinal) == true;
       bool typed = text?.Contains("ghbdtn", StringComparison.Ordinal) == true;
-      string detail = $"Layout switched {switched}, corrected Word and Space shown {corrected}, "
-          + $"typed Word left {typed}, buffer read {text is not null}";
-      Expect($"console probe ({host}): {variant}", corrected && !typed, detail);
+      string detail = $"buffer proven by marker {markerShown}, Layout switched {switched}, "
+          + $"corrected Word and Space shown {corrected}, typed Word left {typed}";
+      Expect(
+          $"console probe ({host}): {variant}", markerShown && corrected && !typed, detail);
       Input.Escape();
     }
   }

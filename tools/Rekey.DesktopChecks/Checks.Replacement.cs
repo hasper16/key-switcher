@@ -108,16 +108,6 @@ namespace Rekey.DesktopChecks {
       }
     }
 
-    // The console's whole buffer, through UI Automation.
-    private static string? ConsoleText() {
-      HWND? window = Desktop.FindWindow(_consoleTitle, TimeSpan.FromSeconds(1));
-      var hasText = new PropertyCondition(AutomationElement.IsTextPatternAvailableProperty, true);
-      AutomationElement? buffer = window is { } found
-          ? AutomationElement.FromHandle(found).FindFirst(TreeScope.Subtree, hasText)
-          : null;
-      return TextOf(buffer);
-    }
-
     private void CheckSpaceAfterWord() {
       ReplacementResult? result = CorrectIn(First().Ordinary, () => {
         Input.Type("ghbdtn");
@@ -296,30 +286,52 @@ namespace Rekey.DesktopChecks {
           $"{Compare(sent, "привет")}, replacement {result}");
     }
 
+    // Corrects in the default console (Windows Terminal or conhost, as Windows is set) and
+    // in a classic conhost window. conhost is corrected by retyping; a console not proven to
+    // take typed text is left as typed.
     private void CheckConsoleReplacement() {
-      if (StartConsole() is not { } console) {
-        Expect("4.1 console", false, "the console window did not appear");
+      string shell = Path.Join(Environment.SystemDirectory, "cmd.exe");
+      string conhost = Path.Join(Environment.SystemDirectory, "conhost.exe");
+      ExpectConsole(
+          "default console", OpenProbeConsole(shell, [], _defaultTitle), _defaultTitle);
+      ExpectConsole(
+          "conhost", OpenProbeConsole(conhost, [shell], _conhostTitle), _conhostTitle);
+    }
+
+    private void ExpectConsole(string host, HWND? window, string title) {
+      if (window is not { } found) {
+        Expect($"4.1 console ({host})", false, "the console window did not appear");
         return;
       }
 
+      bool takesText = ClassOf(found) == "ConsoleWindowClass";
+
+      // The digits read the same in every Layout, so seeing them proves the buffer is read.
       ReplacementResult? result = CorrectIn(
-          console,
+          Desktop.Center(found),
           () => {
-            Input.Type("ghbdtn");
+            Input.Type(_marker + " ghbdtn");
             Input.Space();
           },
           clear: false);
-      string? text = ConsoleText();
-      bool hasCorrected = text?.Contains("привет", StringComparison.Ordinal) == true;
-      bool keptTyped = text?.Contains("ghbdtn ", StringComparison.Ordinal) == true;
-      string detail = $"typed Word and Space kept {keptTyped}, corrected Word present "
-          + $"{hasCorrected}, buffer read {text is not null}, replacement {result}";
+      string? text = BufferText(title);
+      bool markerShown = text?.Contains(_marker, StringComparison.Ordinal) == true;
+      bool corrected = text?.Contains(_marker + " привет ", StringComparison.Ordinal) == true;
+      bool kept = text?.Contains(_marker + " ghbdtn ", StringComparison.Ordinal) == true;
+      string detail = $"window class {ClassOf(found)}, buffer read {markerShown}, "
+          + $"corrected {corrected}, typed Word kept {kept}, replacement {result}";
+      if (takesText) {
+        Expect(
+            $"4.1 console ({host}): the corrected Word, then the Space, retyped",
+            markerShown && corrected && result == ReplacementResult.Retyped,
+            detail);
+      } else {
+        Expect(
+            $"4.1 console ({host}): not proven to take typed text, the Word left as typed",
+            markerShown && kept && result == ReplacementResult.Unsupported,
+            detail);
+      }
 
-      // A console took the Backspaces but not the typed text, so Rekey leaves it alone.
-      Expect(
-          "4.1 console: the Word is left as typed, nothing erased",
-          result == ReplacementResult.Unsupported && keptTyped && !hasCorrected,
-          detail);
       Input.Escape();
     }
 
