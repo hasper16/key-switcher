@@ -126,10 +126,10 @@ When the foreground window belongs to a process with higher privileges than Reke
 - **THEN** Rekey makes no Correction and records no Incident
 
 ### Requirement: Suggestion list focus keeps the Word
-While the user types the Keystrokes of a Word into a text control, a focus move inside the same window to an element that takes no text and is not a menu, menu item, button or Password Field (such as a row of an autocomplete suggestion list) SHALL NOT end the Word, and the text control stays the Word's control (owner decision). Such a move that follows any other key or a click SHALL end the Word.
+While the user types the Keystrokes of a Word into a text control, a focus move inside the same window to an element that takes no text and is not a menu bar, menu, menu item, button or Password Field (such as a row of an autocomplete suggestion list) SHALL NOT end the Word, and the text control stays the Word's control (owner decision). Such a move that follows any other key or a click SHALL end the Word.
 
 #### Scenario: Suggestion list opens while typing
-- **WHEN** the user types "ghbdtn" into an editor, its suggestion list takes focus after "g" while keys still reach the editor, and the user presses Space
+- **WHEN** Space is a Trigger Key, the user types "ghbdtn" into an editor, its suggestion list takes focus after "g" while keys still reach the editor, and the user presses Space
 - **THEN** the Word "ghbdtn" is evaluated, and focus coming back to the editor is not a focus change
 
 #### Scenario: Navigation key, then a list

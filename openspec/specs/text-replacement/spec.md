@@ -79,7 +79,7 @@ When the text a control returns before the caret ends with the Word but is longe
 - **THEN** the read counts as showing no Word at the caret
 
 ### Requirement: Undo within 5 seconds
-If the user presses Ctrl+Z within the Undo Window (5 seconds, as in the original) of a Correction and before any other key, Rekey SHALL restore the text as originally typed and the previous Layout, and SHALL NOT pass that Ctrl+Z to the application.
+If the user presses Ctrl+Z within the Undo Window (5 seconds, as in the original) of a Correction not triggered by Enter, and before any other key, click or focus change, Rekey SHALL restore the text as originally typed and the previous Layout, and SHALL NOT pass that Ctrl+Z to the application.
 
 #### Scenario: Immediate undo
 - **WHEN** a Correction changed "ghbdtn " to "привет " and the user presses Ctrl+Z 2 seconds later
