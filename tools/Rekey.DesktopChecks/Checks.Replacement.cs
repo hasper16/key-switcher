@@ -112,6 +112,27 @@ namespace Rekey.DesktopChecks {
       }
     }
 
+    // Where focus is now and how it got there since the mark, to tell a stolen foreground from a
+    // Rekey fault: window and control classes, focus reports and Incidents, never text.
+    private string FocusSince(EventLog.Position mark) {
+      string control;
+      try {
+        AutomationElement? focused = AutomationElement.FocusedElement;
+        control = focused is null
+            ? "none"
+            : $"{focused.Current.ClassName}/{focused.Current.ControlType.Id}";
+      } catch (ElementNotAvailableException) {
+        control = "gone";
+      }
+
+      List<string> moves = [.. _log.EventsSince(mark)
+          .Where(s => s.Event is FocusChanged or FocusLost)
+          .Select(s => s.Note ?? "?")];
+      return $"[now: foreground {ClassOf(PInvoke.GetForegroundWindow())}, control {control}; "
+          + $"since Ctrl+Z: focus reports {moves.Count} ({string.Join("; ", moves)}), "
+          + $"Incidents [{string.Join('/', _log.IncidentsSince(mark))}]]";
+    }
+
     private void CheckSpaceAfterWord() {
       ReplacementResult? result = CorrectIn(First().Ordinary, () => {
         Input.Type("ghbdtn");
@@ -188,7 +209,8 @@ namespace Rekey.DesktopChecks {
       bool english = CurrentLayout() == SpecWords.EnglishUs;
       bool consumed = First().UndoKeysSeen() == undoKeys;
       string detail = $"Undo reported {undone}, {Compare(text, "ghbdtn ")}, "
-          + $"English (US) {english}, Ctrl+Z kept from the app {consumed}, replacement {result}";
+          + $"English (US) {english}, Ctrl+Z kept from the app {consumed}, replacement {result} "
+          + $"{FocusSince(mark)} {_trace}";
       Expect(
           "6.1 Ctrl+Z within 5 s restores the typed text and English (US)",
           undone && text == "ghbdtn " && english && consumed,
@@ -218,10 +240,9 @@ namespace Rekey.DesktopChecks {
       Thread.Sleep(_settle);
       int seen = First().UndoKeysSeen() - before;
       int undos = _log.UndosSince(mark);
-      Expect(
-          item,
-          seen == 1 && undos == 0,
-          $"Ctrl+Z seen by the app {seen}, Undos {undos}, replacement {result}");
+      string detail = $"Ctrl+Z seen by the app {seen}, Undos {undos}, replacement {result} "
+          + $"{FocusSince(mark)} {_trace}";
+      Expect(item, seen == 1 && undos == 0, detail);
     }
 
     private void CheckNotepad() {
