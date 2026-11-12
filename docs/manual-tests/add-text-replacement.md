@@ -15,7 +15,7 @@ Do not touch the mouse or keyboard for about 3 minutes. The tool runs Rekey's wo
 | Task | What the tool checks |
 |---|---|
 | 3.2 | In a test window, "ghbdtn" + Space reads "привет " with the space after the Word, and the Layout is then Russian; Space and three letters sent in one burst during the Correction follow it in order |
-| 4.1 | The corrected Word, then the Space, in Notepad and a browser text box; in a classic conhost window the corrected Word, retyped; in the default console, if it is Windows Terminal, the Word left as typed and nothing erased until it is proven to take typed text (each console check first proves the buffer is read by finding digits typed before the Word); a Deferred run "yt pyf." + Space reads "не знаю " |
+| 4.1 | The corrected Word, then the Space, in Notepad and a browser text box; in the default console (Windows Terminal) and a classic conhost window the corrected Word, retyped (`Retyped`) (each console check first proves the buffer is read by finding digits typed before the Word); a Deferred run "yt pyf." + Space reads "не знаю " |
 | 4.2 | In the test page's chat box, where Enter sends the message, "ghbdtn" + Enter sends "привет"; the clipboard sequence number is unchanged after every Correction and Undo |
 | 5.1 | In Notepad and the browser text box the text was checked and selected through UI Automation (`Verified`), not retyped |
 | 5.2 | Text before the caret that differs from the Word (letters the hook ignores, as an autocomplete would add) is left alone, with a `CorrectionCancelled` Incident |

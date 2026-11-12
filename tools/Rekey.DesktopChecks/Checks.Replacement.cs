@@ -287,7 +287,7 @@ namespace Rekey.DesktopChecks {
     }
 
     // Corrects in the default console (Windows Terminal or conhost, as Windows is set) and
-    // in a classic conhost window. conhost is corrected by retyping; a console not proven to
+    // in a classic conhost window. Both are corrected by retyping; a console not proven to
     // take typed text is left as typed.
     private void CheckConsoleReplacement() {
       string shell = Path.Join(Environment.SystemDirectory, "cmd.exe");
@@ -304,7 +304,7 @@ namespace Rekey.DesktopChecks {
         return;
       }
 
-      bool takesText = ClassOf(found) == "ConsoleWindowClass";
+      bool takesText = ClassOf(found) is "ConsoleWindowClass" or "CASCADIA_HOSTING_WINDOW_CLASS";
 
       // The digits read the same in every Layout, so seeing them proves the buffer is read.
       ReplacementResult? result = CorrectIn(
