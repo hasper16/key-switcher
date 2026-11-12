@@ -25,6 +25,12 @@ namespace Rekey.Win32.Focus {
     private HWND _reportedWindow;
     private IUIAutomationElement? _reportedElement;
 
+    /// <summary>
+    /// Gets why focus last counted as moved, for diagnostics: codes and class names, never
+    /// text; read on the worker thread.
+    /// </summary>
+    public string LastMove { get; private set; } = "none";
+
     public FocusTracker(Action<InputEvent> report) {
       _report = report;
       _onEvent = OnEvent;
@@ -112,12 +118,29 @@ namespace Rekey.Win32.Focus {
     }
 
     // Whether focus is now in another window or another control than the one last reported;
-    // an unknown focus counts as moved.
+    // an unknown focus counts as moved. LastMove says why, for diagnostics.
     private bool MovedSinceReport() {
-      return _blind
-          || FocusTarget.Read()?.Window is not { } window
-          || window != _reportedWindow
-          || !_passwords.Same(_passwords.FocusedElement(), _reportedElement);
+      if (_blind || FocusTarget.Read()?.Window is not { } window) {
+        LastMove = "focus unknown";
+        return true;
+      }
+
+      if (window != _reportedWindow) {
+        LastMove = "other window";
+        return true;
+      }
+
+      IUIAutomationElement? now = _passwords.FocusedElement();
+      bool? same = _passwords.Compare(now, _reportedElement);
+      if (same == true) {
+        return false;
+      }
+
+      LastMove = same is null
+          ? "cannot compare"
+          : $"other control {PasswordFieldProbe.Describe(_reportedElement)} -> "
+              + PasswordFieldProbe.Describe(now);
+      return true;
     }
 
     private void ReportCurrent(TimeSpan time) {

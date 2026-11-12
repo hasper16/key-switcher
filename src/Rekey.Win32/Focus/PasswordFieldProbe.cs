@@ -20,6 +20,22 @@ namespace Rekey.Win32.Focus {
     private readonly IUIAutomation? _automation = CreateAutomation();
 
     /// <summary>
+    /// Describes an element by its class name and control type, for diagnostics; never text.
+    /// </summary>
+    public static string Describe(IUIAutomationElement? element) {
+      if (element is null) {
+        return "unknown";
+      }
+
+      try {
+        string className = UiaStrings.Take(element.CurrentClassName);
+        return $"{className}/{(int)element.CurrentControlType}";
+      } catch (COMException) {
+        return "no answer";
+      }
+    }
+
+    /// <summary>
     /// Returns whether the focused control is a Password Field.
     /// </summary>
     /// <param name="focus">The focused window.</param>
@@ -47,14 +63,22 @@ namespace Rekey.Win32.Focus {
     /// Returns whether two elements are the same control; an unknown element never matches.
     /// </summary>
     public bool Same(IUIAutomationElement? first, IUIAutomationElement? second) {
+      return Compare(first, second) == true;
+    }
+
+    /// <summary>
+    /// Returns whether two elements are the same control, or <see langword="null" /> when an
+    /// element is unknown or the app cannot answer.
+    /// </summary>
+    public bool? Compare(IUIAutomationElement? first, IUIAutomationElement? second) {
       if (_automation is null || first is null || second is null) {
-        return false;
+        return null;
       }
 
       try {
         return _automation.CompareElements(first, second);
       } catch (COMException) {
-        return false;
+        return null;
       }
     }
 

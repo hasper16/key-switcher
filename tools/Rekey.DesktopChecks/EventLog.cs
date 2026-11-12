@@ -34,9 +34,9 @@ namespace Rekey.DesktopChecks {
       }
     }
 
-    public void Add(InputEvent inputEvent, int wordKeys) {
+    public void Add(InputEvent inputEvent, int wordKeys, string? note = null) {
       lock (_gate) {
-        _events.Add(new Seen(inputEvent, wordKeys));
+        _events.Add(new Seen(inputEvent, wordKeys, note));
       }
     }
 
@@ -102,6 +102,7 @@ namespace Rekey.DesktopChecks {
     internal readonly record struct Position(
         int Events, int Incidents, int SelfPauses, int Replacements, int Undos);
 
-    internal sealed record Seen(InputEvent Event, int WordKeys);
+    // Note: for a focus report, why focus counted as moved (codes and class names only).
+    internal sealed record Seen(InputEvent Event, int WordKeys, string? Note = null);
   }
 }

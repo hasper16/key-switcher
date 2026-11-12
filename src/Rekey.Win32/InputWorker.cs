@@ -200,6 +200,12 @@ namespace Rekey.Win32 {
     public KeyRejects KeyRejects => _keyConfirmer.Rejects;
 
     /// <summary>
+    /// Gets why focus last counted as moved, for diagnostics: codes and class names, never
+    /// text; read it only on the worker thread, as from <see cref="Observed" />.
+    /// </summary>
+    public string LastFocusMove => _focus?.LastMove ?? "none";
+
+    /// <summary>
     /// Gets the longest Password Field check so far, in milliseconds; read it only on the
     /// worker thread, as from <see cref="Observed" />.
     /// </summary>

@@ -53,6 +53,10 @@ namespace Rekey.DesktopChecks {
       worker.Mismatched += trace => Console.WriteLine($"Mismatch {trace}");
       var tracer = new WordEndTracer();
       worker.Observed += inputEvent => {
+        if (inputEvent is FocusChanged or FocusLost) {
+          Console.WriteLine($"Focus report: {worker.LastFocusMove}");
+        }
+
         if (tracer.Add(inputEvent, worker.WordLength) is { } line) {
           string slowest = worker.SlowestKeyCheckMilliseconds.ToString(
               "F0", CultureInfo.InvariantCulture);

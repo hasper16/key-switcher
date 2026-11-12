@@ -244,11 +244,7 @@ namespace Rekey.Win32.Replacement {
     }
 
     private static string TextOf(BSTR text) {
-      try {
-        return text.ToString() ?? string.Empty;
-      } finally {
-        Marshal.FreeBSTR((nint)text);
-      }
+      return UiaStrings.Take(text);
     }
 
     private bool OverBudget() {

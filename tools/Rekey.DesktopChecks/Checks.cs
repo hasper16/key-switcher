@@ -34,7 +34,10 @@ namespace Rekey.DesktopChecks {
       _restorer = new Restorer(_report);
       _worker = new InputWorker(
           new Settings(), _log.AddIncident, TimeProvider.System, evaluate);
-      _worker.Observed += inputEvent => _log.Add(inputEvent, _worker.WordLength);
+      _worker.Observed += inputEvent => _log.Add(
+          inputEvent,
+          _worker.WordLength,
+          inputEvent is FocusChanged or FocusLost ? _worker.LastFocusMove : null);
       _worker.SelfPauseChanged += _log.AddSelfPause;
       _worker.Replaced += _log.AddReplacement;
       _worker.Undone += _ => _log.AddUndo();

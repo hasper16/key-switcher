@@ -389,12 +389,17 @@ namespace Rekey.DesktopChecks {
       List<KeyDown> keys = _log.KeyDownsSince(mark);
       int held = keys.Count(key => key.Held);
       int dropped = keys.Count(key => !key.FocusConfirmed);
-      int focusReports = _log.EventsSince(before)
-          .Count(seen => seen.Event is FocusChanged or FocusLost);
+      List<EventLog.Seen> seen = _log.EventsSince(before);
+      List<string> moves = [.. seen
+          .Where(s => s.Event is FocusChanged or FocusLost)
+          .Select(s => s.Note ?? "?")];
+      int wordKeys = seen.LastOrDefault(s => s.Event is KeyDown { Kind: KeyKind.Character })
+          ?.WordKeys ?? 0;
       string incidents = string.Join('/', _log.IncidentsSince(before));
       return $"[switch landed {switched}, English (US) before typing {english}, "
           + $"keys {keys.Count}, held {held}, unconfirmed {dropped}, "
-          + $"focus reports {focusReports}, Incidents [{incidents}]]";
+          + $"Word keys before the end {wordKeys}, focus reports {moves.Count} "
+          + $"({string.Join("; ", moves)}), Incidents [{incidents}]]";
     }
   }
 }
