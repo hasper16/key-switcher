@@ -4,6 +4,9 @@ namespace Rekey.Win32.Replacement {
   /// exposes it (spec text-replacement "Verified replacement", design D3).
   /// </summary>
   internal static class VerifiedReplacement {
+    // How far beyond the Word a mismatch looks, enough for a typical autocomplete suffix.
+    private const int _contextLength = 32;
+
     /// <summary>
     /// Checks the text before the caret and, when it matches, selects it.
     /// </summary>
@@ -41,7 +44,7 @@ namespace Rekey.Win32.Replacement {
       }
 
       if (!string.Equals(before, expected, StringComparison.Ordinal)) {
-        return ReplacementMethod.Cancel;
+        return Classify(reader, before, expected);
       }
 
       if (!canSelect) {
@@ -58,6 +61,21 @@ namespace Rekey.Win32.Replacement {
 
       // A selection that timed out may still land, and Backspaces would then erase too much.
       return reader.SelectionPending ? ReplacementMethod.Abandon : ReplacementMethod.Retype;
+    }
+
+    // A read ending with the Word but longer comes from a provider that widened the range; the
+    // Word inside a wider stretch was changed around, as by an autocomplete; anything else
+    // says nothing about the Word.
+    private static ReplacementMethod Classify(
+        ITextBeforeCaret reader, string before, string expected) {
+      if (before.Length > expected.Length && before.EndsWith(expected, StringComparison.Ordinal)) {
+        return ReplacementMethod.Retype;
+      }
+
+      string? context = reader.ReadContext(expected.Length + _contextLength);
+      return context?.Contains(expected, StringComparison.Ordinal) == true
+          ? ReplacementMethod.Cancel
+          : ReplacementMethod.Unrelated;
     }
   }
 }

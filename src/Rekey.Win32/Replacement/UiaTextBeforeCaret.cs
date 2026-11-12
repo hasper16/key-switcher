@@ -26,6 +26,7 @@ namespace Rekey.Win32.Replacement {
     // The control the latest Read looked at, and the range SelectRead asked it to select.
     private IUIAutomationElement? _element;
     private IUIAutomationTextRange? _selected;
+    private IUIAutomationTextRange? _caret;
 
     // What the latest Read got, kept only to describe a mismatch without the text.
     private string _lastText = string.Empty;
@@ -45,6 +46,7 @@ namespace Rekey.Win32.Replacement {
       _read = null;
       _element = null;
       _selected = null;
+      _caret = null;
       _lastText = string.Empty;
       _moved = 0;
       TimedOut = false;
@@ -60,6 +62,8 @@ namespace Rekey.Win32.Replacement {
         if (caret is null || OverBudget()) {
           return null;
         }
+
+        _caret = caret;
 
         IUIAutomationTextRange range = caret.Clone();
         _moved = range.MoveEndpointByUnit(
@@ -79,6 +83,24 @@ namespace Rekey.Win32.Replacement {
         return text;
       } catch (COMException e) {
         TimedOut = e.HResult == _timeoutResult;
+        return null;
+      }
+    }
+
+    /// <inheritdoc />
+    public string? ReadContext(int length) {
+      if (_caret is null) {
+        return null;
+      }
+
+      try {
+        IUIAutomationTextRange range = _caret.Clone();
+        range.MoveEndpointByUnit(
+            TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start,
+            TextUnit.TextUnit_Character,
+            -length);
+        return TextOf(range, length);
+      } catch (COMException) {
         return null;
       }
     }

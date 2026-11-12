@@ -22,5 +22,11 @@ namespace Rekey.Win32.Replacement {
     /// The text matched, but the request turned stale before it was selected; change nothing.
     /// </summary>
     Stale,
+
+    /// <summary>
+    /// The text read has nothing to do with the Word, as when the app's readback is unreliable;
+    /// change nothing this time.
+    /// </summary>
+    Unrelated,
   }
 }

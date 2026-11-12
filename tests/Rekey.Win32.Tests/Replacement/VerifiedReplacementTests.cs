@@ -16,7 +16,7 @@ namespace Rekey.Win32.Tests.Replacement {
 
     [Fact]
     public void TextChangedByAutocompleteCancelsTheReplacement() {
-      var control = new FakeControl("dtnxyz");
+      var control = new FakeControl("dtnxyz") { Context = "w ghbdtnxyz" };
 
       ReplacementMethod method = VerifiedReplacement.Prepare(control, "ghbdtn");
 
@@ -80,12 +80,37 @@ namespace Rekey.Win32.Tests.Replacement {
 
     [Fact]
     public void TextThatDiffersInSuchAControlStillCancels() {
-      var control = new FakeControl("dtnxyz");
+      var control = new FakeControl("dtnxyz") { Context = "w ghbdtnxyz" };
 
       ReplacementMethod method =
           VerifiedReplacement.Prepare(control, "ghbdtn", () => true, canSelect: false);
 
       Assert.Equal(ReplacementMethod.Cancel, method);
+    }
+
+    [Fact]
+    public void ReadEndingWithTheWordButLongerIsRetypedNeverSelected() {
+      // A provider that moved by a larger unit than a character returned more than the Word.
+      var control = new FakeControl(" ghbdtn");
+
+      Assert.Equal(ReplacementMethod.Retype, VerifiedReplacement.Prepare(control, "ghbdtn"));
+      Assert.False(control.Selected);
+    }
+
+    [Fact]
+    public void ReadUnrelatedToTheWordIsUnrelated() {
+      var control = new FakeControl("abcdef") { Context = "qwe abcdef" };
+
+      Assert.Equal(ReplacementMethod.Unrelated, VerifiedReplacement.Prepare(control, "ghbdtn"));
+    }
+
+    [Fact]
+    public void ContextIsReadWiderThanTheWord() {
+      var control = new FakeControl("abcdef");
+
+      VerifiedReplacement.Prepare(control, "ghbdtn");
+
+      Assert.True(control.AskedContextLength > 6);
     }
 
     [Fact]
@@ -122,6 +147,15 @@ namespace Rekey.Win32.Tests.Replacement {
       public bool FocusMoved { get; init; }
 
       public Deselection? Deselected { get; private set; }
+
+      public string? Context { get; init; }
+
+      public int AskedContextLength { get; private set; }
+
+      public string? ReadContext(int length) {
+        AskedContextLength = length;
+        return Context ?? _text;
+      }
 
       public bool FocusUnchanged() {
         return !FocusMoved;

@@ -16,7 +16,8 @@ namespace Rekey.Win32.Replacement {
     private readonly Func<IReadOnlyList<VIRTUAL_KEY>> _heldModifiers;
     private readonly Func<INPUT[], bool> _send;
     private readonly Func<TextTarget> _target;
-    private readonly SlowApps _slowApps = new();
+    private readonly AppStrikes _slowApps = new();
+    private readonly AppStrikes _unreadableApps = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TextReplacer" /> class.
@@ -100,7 +101,10 @@ namespace Rekey.Win32.Replacement {
       }
 
       LastMismatch = null;
-      ITextBeforeCaret? reader = _verify && !_slowApps.IsSlow(appId) ? _reader : null;
+      bool check = _verify
+          && !_slowApps.HasStruckOut(appId)
+          && !_unreadableApps.HasStruckOut(appId);
+      ITextBeforeCaret? reader = check ? _reader : null;
       ReplacementResult? staleBeforeSelect = null;
       Func<bool> stillValid = () => {
         staleBeforeSelect = recheck();
@@ -109,12 +113,16 @@ namespace Rekey.Win32.Replacement {
       ReplacementMethod method = VerifiedReplacement.Prepare(
           reader, replace.Expected, stillValid, canSelect: target == TextTarget.Editable);
       if (reader is { TimedOut: true }) {
-        _slowApps.RecordTimeout(appId);
+        _slowApps.Record(appId);
       }
 
       switch (method) {
         case ReplacementMethod.Cancel:
           LastMismatch = _reader.Describe(replace.Expected);
+          return ReplacementResult.Mismatch;
+        case ReplacementMethod.Unrelated:
+          LastMismatch = _reader.Describe(replace.Expected);
+          _unreadableApps.Record(appId);
           return ReplacementResult.Mismatch;
         case ReplacementMethod.Stale:
           return staleBeforeSelect ?? ReplacementResult.TooLate;

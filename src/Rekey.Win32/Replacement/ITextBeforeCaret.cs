@@ -53,6 +53,17 @@ namespace Rekey.Win32.Replacement {
     string? Read(int length);
 
     /// <summary>
+    /// Reads a wider stretch of text before the caret, to tell an edited Word from text that
+    /// has nothing to do with it.
+    /// </summary>
+    /// <param name="length">The number of characters to read.</param>
+    /// <returns>
+    /// Up to <paramref name="length" /> characters ending at the caret, or
+    /// <see langword="null" /> when the control does not expose them in time.
+    /// </returns>
+    string? ReadContext(int length);
+
+    /// <summary>
     /// Selects the characters the latest <see cref="Read" /> returned, so typing replaces them.
     /// </summary>
     /// <returns><see langword="true" /> if they are selected.</returns>

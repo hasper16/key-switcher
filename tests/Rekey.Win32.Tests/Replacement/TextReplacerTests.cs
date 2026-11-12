@@ -235,6 +235,35 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void AppWhoseReadsAreUnrelatedTwiceIsRetypedWithoutReading() {
+      var control = new FakeControl("abcdef") { Context = "qwe abcdef" };
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      ReplacementResult first = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      ReplacementResult second = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      control.AskedLength = 0;
+      ReplacementResult third = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(
+          (ReplacementResult.Mismatch, ReplacementResult.Mismatch, ReplacementResult.Retyped),
+          (first, second, third));
+      Assert.Equal(0, control.AskedLength);
+    }
+
+    [Fact]
+    public void AutocompleteNeverMarksTheAppUnreadable() {
+      var control = new FakeControl("dtnxyz") { Context = "w ghbdtnxyz" };
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      ReplacementResult third = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.Mismatch, third);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
     public void InputThatWindowsRefusesIsReportedAsBlocked() {
       var replacer = new TextReplacer(new FakeControl("ghbdtn"), true, () => [], _ => false);
 
