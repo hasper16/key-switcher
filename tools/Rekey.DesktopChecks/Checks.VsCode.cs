@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Windows.Automation;
 using Rekey.Win32.Replacement;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -61,6 +62,18 @@ namespace Rekey.DesktopChecks {
           ?? throw new InvalidOperationException("VS Code did not start.");
     }
 
+    // VS Code's suggestion row: a Group whose class names a list row; codes only, never text.
+    private static bool IsSuggestionRowFocused() {
+      try {
+        AutomationElement? focused = AutomationElement.FocusedElement;
+        return focused is not null
+            && focused.Current.ControlType.Id == 50026
+            && focused.Current.ClassName.StartsWith("monaco-list-row", StringComparison.Ordinal);
+      } catch (ElementNotAvailableException) {
+        return false;
+      }
+    }
+
     private void CheckVsCode() {
       if (VsCodePath() is not { } code) {
         Console.WriteLine("   skipped: 5.4 VS Code is not installed");
@@ -96,11 +109,14 @@ namespace Rekey.DesktopChecks {
 
       // As the owner tried it: one click, then three Words on one line, no click between, at
       // a person's pace, so the suggestion popup opens while the second and third Words are
-      // typed.
+      // typed. Between keys the check looks at UI Automation focus itself, so the run shows that
+      // a suggestion row really took it.
+      int rowSamples = 0;
       Action word = () => {
         foreach (char letter in "ghbdtn") {
           Input.Type(letter.ToString());
           Thread.Sleep(TimeSpan.FromMilliseconds(150));
+          rowSamples += IsSuggestionRowFocused() ? 1 : 0;
         }
 
         Input.Space();
@@ -118,12 +134,13 @@ namespace Rekey.DesktopChecks {
       Input.Control('s');
       Thread.Sleep(TimeSpan.FromSeconds(1));
       int kept = Volatile.Read(ref _focusMovesKeptWord) - keptBefore;
-      ExpectVsCodeText(File.ReadAllText(file), results, kept);
+      ExpectVsCodeText(File.ReadAllText(file), results, kept, rowSamples);
     }
 
     // The suggestion list must have taken focus while typing, or the run proves nothing about
     // design D7.
-    private void ExpectVsCodeText(string text, List<ReplacementResult?> results, int kept) {
+    private void ExpectVsCodeText(
+        string text, List<ReplacementResult?> results, int kept, int rowSamples) {
       string[] words = text.Split([' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
       bool damaged = words.Any(word => word is not ("ghbdtn" or "привет"));
       bool lastCorrected = words.Length > 0 && words[^1] == "привет";
@@ -131,12 +148,14 @@ namespace Rekey.DesktopChecks {
       // The text alone cannot show a replacement: a Word typed in Russian reads the same.
       bool replaced = results[^1] is ReplacementResult.Verified or ReplacementResult.Retyped;
       string detail = $"words {words.Length} of 3, damaged {damaged}, last corrected "
-          + $"{lastCorrected}, replacements {string.Join('/', results)}, focus moves that kept "
-          + $"the Word {kept} {_trace}";
+          + $"{lastCorrected}, replacements {string.Join('/', results)}, suggestion row focused "
+          + $"in {rowSamples} samples, focus moves that kept the Word {kept} {_trace}";
+      bool passed = words.Length == 3 && !damaged && lastCorrected && replaced && kept > 0
+          && rowSamples > 0;
       Expect(
           "5.4 VS Code: no Word damaged, and the third Word corrected by a replacement while "
               + "the suggestion list took focus",
-          words.Length == 3 && !damaged && lastCorrected && replaced && kept > 0,
+          passed,
           detail);
     }
   }
