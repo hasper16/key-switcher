@@ -188,16 +188,17 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
-    public void ConsoleIsCheckedButRetypedNeverClaimedVerified() {
+    public void ConsoleIsLeftUntouched() {
+      // A console took the Backspaces but not the typed Rendering, which deleted the Word; until
+      // a console is known to take the text, nothing is erased there.
       var control = new FakeControl("ghbdtn");
-      var replacer = new TextReplacer(control, true, () => [], Send, () => false);
+      var replacer = new TextReplacer(control, true, () => [], Send, () => true);
 
       ReplacementResult result = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
 
-      Assert.Equal(ReplacementResult.Retyped, result);
-      Assert.Equal(6, control.AskedLength);
-      Assert.False(control.Selected);
-      Assert.Equal(24, Assert.Single(_sent).Length);
+      Assert.Equal(ReplacementResult.Unsupported, result);
+      Assert.Equal(0, control.AskedLength);
+      Assert.Empty(_sent);
     }
 
     [Fact]

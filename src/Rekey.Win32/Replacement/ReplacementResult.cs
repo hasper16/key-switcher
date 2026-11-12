@@ -41,5 +41,11 @@ namespace Rekey.Win32.Replacement {
     /// selection that lands late is collapsed back to the caret.
     /// </summary>
     TimedOut,
+
+    /// <summary>
+    /// The focused window is one where Rekey cannot replace text safely, such as a console;
+    /// nothing was changed.
+    /// </summary>
+    Unsupported,
   }
 }

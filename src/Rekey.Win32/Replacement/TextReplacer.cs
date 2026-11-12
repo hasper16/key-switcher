@@ -15,7 +15,7 @@ namespace Rekey.Win32.Replacement {
     private readonly bool _verify;
     private readonly Func<IReadOnlyList<VIRTUAL_KEY>> _heldModifiers;
     private readonly Func<INPUT[], bool> _send;
-    private readonly Func<bool> _canSelect;
+    private readonly Func<bool> _isConsole;
     private readonly SlowApps _slowApps = new();
 
     /// <summary>
@@ -35,7 +35,7 @@ namespace Rekey.Win32.Replacement {
         bool verify,
         Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
         Func<INPUT[], bool> send)
-        : this(reader, verify, heldModifiers, send, () => true) {
+        : this(reader, verify, heldModifiers, send, () => false) {
     }
 
     /// <summary>
@@ -50,21 +50,20 @@ namespace Rekey.Win32.Replacement {
     /// <param name="send">
     /// Sends inputs to Windows; returns <see langword="false" /> unless Windows took them all.
     /// </param>
-    /// <param name="canSelect">
-    /// Returns whether typing in the focused window replaces a UI Automation selection; not in
-    /// a console.
+    /// <param name="isConsole">
+    /// Returns whether the focused window is a console, where nothing is replaced.
     /// </param>
     public TextReplacer(
         ITextBeforeCaret reader,
         bool verify,
         Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
         Func<INPUT[], bool> send,
-        Func<bool> canSelect) {
+        Func<bool> isConsole) {
       _reader = reader;
       _verify = verify;
       _heldModifiers = heldModifiers;
       _send = send;
-      _canSelect = canSelect;
+      _isConsole = isConsole;
     }
 
     /// <summary>
@@ -90,6 +89,13 @@ namespace Rekey.Win32.Replacement {
     /// <returns>Whether and how the text was replaced.</returns>
     public ReplacementResult Replace(
         ReplaceText replace, string appId, Func<ReplacementResult?> recheck) {
+      // A console took the Backspaces but dropped the typed Rendering on the owner's desktop,
+      // deleting the Word, and its UI Automation selection is the terminal's own; until a way
+      // in is proven there, a console is left as it is.
+      if (_isConsole()) {
+        return ReplacementResult.Unsupported;
+      }
+
       ITextBeforeCaret? reader = _verify && !_slowApps.IsSlow(appId) ? _reader : null;
       ReplacementResult? staleBeforeSelect = null;
       Func<bool> stillValid = () => {
@@ -97,7 +103,7 @@ namespace Rekey.Win32.Replacement {
         return staleBeforeSelect is null;
       };
       ReplacementMethod method = VerifiedReplacement.Prepare(
-          reader, replace.Expected, stillValid, reader is not null && _canSelect());
+          reader, replace.Expected, stillValid, canSelect: true);
       if (reader is { TimedOut: true }) {
         _slowApps.RecordTimeout(appId);
       }
