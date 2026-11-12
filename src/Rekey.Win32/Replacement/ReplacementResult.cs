@@ -43,8 +43,8 @@ namespace Rekey.Win32.Replacement {
     TimedOut,
 
     /// <summary>
-    /// The focused window is one where typed text is not proven to arrive, such as Windows
-    /// Terminal; nothing was changed.
+    /// The focused window is one where typed text is not proven to arrive, such as the hidden
+    /// window of a pseudo console; nothing was changed.
     /// </summary>
     Unsupported,
   }

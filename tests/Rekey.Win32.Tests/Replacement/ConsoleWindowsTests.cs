@@ -10,11 +10,16 @@ namespace Rekey.Win32.Tests.Replacement {
       Assert.Equal(TextTarget.Console, ConsoleWindows.TargetOf("ConsoleWindowClass"));
     }
 
-    [Theory]
-    [InlineData("CASCADIA_HOSTING_WINDOW_CLASS")]
-    [InlineData("PseudoConsoleWindow")]
-    public void ConsolesNotYetProvenAreLeftAlone(string className) {
-      Assert.Equal(TextTarget.Unsupported, ConsoleWindows.TargetOf(className));
+    [Fact]
+    public void WindowsTerminalTakesTypedTextButNoSelection() {
+      // The desktop probe, with the buffer read proven, showed Windows Terminal taking them too.
+      Assert.Equal(
+          TextTarget.Console, ConsoleWindows.TargetOf("CASCADIA_HOSTING_WINDOW_CLASS"));
+    }
+
+    [Fact]
+    public void PseudoConsoleNotYetProvenIsLeftAlone() {
+      Assert.Equal(TextTarget.Unsupported, ConsoleWindows.TargetOf("PseudoConsoleWindow"));
     }
 
     [Theory]

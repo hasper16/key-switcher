@@ -7,7 +7,7 @@ Defines how a Correction changes the text on screen, keeps the user's keys in or
 ## ADDED Requirements
 
 ### Requirement: Replace the Word with its Rendering
-A Correction SHALL replace exactly the characters of the corrected Word(s) with the target Rendering and then switch to the target Layout.
+A Correction SHALL replace exactly the characters of the corrected Word(s) with the target Rendering and then switch to the target Layout. In a window where typed text is not known to arrive, a Correction MUST leave the Word untouched rather than erase it.
 
 #### Scenario: Single Word
 - **WHEN** a Correction changes "ghbdtn" to "привет" in Notepad
@@ -17,6 +17,14 @@ A Correction SHALL replace exactly the characters of the corrected Word(s) with 
 #### Scenario: Deferred run
 - **WHEN** a Correction covers "yt pyf." with target "не знаю"
 - **THEN** the text shows "не знаю" where "yt pyf." was
+
+#### Scenario: Console
+- **WHEN** a Correction changes "ghbdtn" to "привет" at a command prompt in Windows Terminal or a classic console window
+- **THEN** the prompt line shows "привет" where "ghbdtn" was, followed by the Space
+
+#### Scenario: Window that does not take typed text
+- **WHEN** a Correction would apply in a window where typed text is not known to arrive
+- **THEN** Rekey erases nothing and leaves the Word as typed
 
 ### Requirement: Key order is preserved
 The Trigger Key that caused a Correction, and any keys the user presses while the Correction is being applied, SHALL reach the application after the corrected text and in the order they were pressed.

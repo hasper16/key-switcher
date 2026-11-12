@@ -5,24 +5,23 @@ namespace Rekey.Win32.Replacement {
   /// Tells console windows apart by the foreground window's class (design D3).
   /// </summary>
   internal static class ConsoleWindows {
-    // conhost: the desktop probe showed Backspaces and Unicode characters arriving.
-    private const string _conhost = "ConsoleWindowClass";
+    // The hidden window of a pseudo console: not proven to take typed text.
+    private const string _unproven = "PseudoConsoleWindow";
 
-    // Windows Terminal and the hidden window of a pseudo console: not yet proven.
-    private static readonly string[] _unproven = [
-        "CASCADIA_HOSTING_WINDOW_CLASS", "PseudoConsoleWindow"];
+    // conhost and Windows Terminal: the desktop probe, with the buffer read proven, showed
+    // Backspaces and Unicode characters arriving.
+    private static readonly string[] _consoles = [
+        "ConsoleWindowClass", "CASCADIA_HOSTING_WINDOW_CLASS"];
 
     /// <summary>
     /// Returns how a window with the given top-level class takes a replacement.
     /// </summary>
     public static TextTarget TargetOf(string className) {
-      if (className == _conhost) {
+      if (_consoles.Contains(className, StringComparer.Ordinal)) {
         return TextTarget.Console;
       }
 
-      return _unproven.Contains(className, StringComparer.Ordinal)
-          ? TextTarget.Unsupported
-          : TextTarget.Editable;
+      return className == _unproven ? TextTarget.Unsupported : TextTarget.Editable;
     }
 
     /// <summary>
