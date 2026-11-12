@@ -9,7 +9,10 @@ namespace Rekey.Win32.Focus {
   /// foreground window's thread.
   /// </summary>
   /// <param name="Window">The focused window, or the foreground window when none has focus.</param>
-  /// <param name="ThreadId">The thread that owns <paramref name="Window" />.</param>
+  /// <param name="ThreadId">
+  /// The thread that runs <paramref name="Window" />: for a classic console window, the console
+  /// host thread rather than the client thread Windows reports.
+  /// </param>
   /// <param name="ProcessId">The process that owns the foreground window.</param>
   internal readonly record struct FocusTarget(HWND Window, uint ThreadId, uint ProcessId) {
     /// <summary>
@@ -30,7 +33,11 @@ namespace Rekey.Win32.Focus {
       HWND focus = PInvoke.GetGUIThreadInfo(foregroundThread, ref info) && !info.hwndFocus.IsNull
           ? info.hwndFocus
           : foreground;
-      return new FocusTarget(focus, PInvoke.GetWindowThreadProcessId(focus), processId);
+
+      // A classic console window reports its client's thread, whose Layout never changes.
+      uint thread = ConsoleThreads.HostThreadOf(foreground)
+          ?? PInvoke.GetWindowThreadProcessId(focus);
+      return new FocusTarget(focus, thread, processId);
     }
   }
 }
