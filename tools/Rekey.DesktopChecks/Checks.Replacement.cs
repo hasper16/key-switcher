@@ -39,6 +39,7 @@ namespace Rekey.DesktopChecks {
       Step("4.1 Notepad", CheckNotepad);
       Step("4.1 browser", CheckBrowserReplacement);
       Step("4.1 console", CheckConsoleReplacement);
+      Step("5.4 VS Code", CheckVsCode);
       bool untouched = PInvoke.GetClipboardSequenceNumber() == clipboard;
       Expect("4.2 the clipboard is untouched", untouched, $"same sequence number {untouched}");
       return End();
