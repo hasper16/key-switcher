@@ -21,6 +21,7 @@ namespace Rekey.Win32.Replacement {
 
     // The text the latest replacement expected, when what was read differed from it.
     private string? _mismatchExpected;
+    private MismatchKind _mismatchKind;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TextReplacer" /> class.
@@ -108,17 +109,21 @@ namespace Rekey.Win32.Replacement {
         return staleBeforeSelect is null;
       };
       ReplacementMethod method = VerifiedReplacement.Prepare(
-          reader, replace.Expected, stillValid, canSelect: target == TextTarget.Editable);
+          reader,
+          replace.Expected,
+          stillValid,
+          canSelect: target == TextTarget.Editable,
+          out MismatchKind mismatch);
       if (reader is { TimedOut: true }) {
         _slowApps.Record(appId);
       }
 
       switch (method) {
         case ReplacementMethod.Cancel:
-          _mismatchExpected = replace.Expected;
+          (_mismatchExpected, _mismatchKind) = (replace.Expected, mismatch);
           return ReplacementResult.Mismatch;
         case ReplacementMethod.Unrelated:
-          _mismatchExpected = replace.Expected;
+          (_mismatchExpected, _mismatchKind) = (replace.Expected, mismatch);
           _unreadableApps.Record(appId);
           return ReplacementResult.Mismatch;
         case ReplacementMethod.Stale:
@@ -168,7 +173,9 @@ namespace Rekey.Win32.Replacement {
     /// The comparison, or <see langword="null" /> when the latest replacement did not differ.
     /// </returns>
     public ReplacementTrace? DescribeMismatch() {
-      return _mismatchExpected is { } expected ? _reader.Describe(expected) : null;
+      return _mismatchExpected is { } expected
+          ? _reader.Describe(expected) with { Kind = _mismatchKind }
+          : null;
     }
 
     // Collapses a selection so neither a re-injected Space nor later typing replaces the Word.

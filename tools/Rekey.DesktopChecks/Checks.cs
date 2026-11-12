@@ -40,6 +40,7 @@ namespace Rekey.DesktopChecks {
           inputEvent is FocusChanged or FocusLost ? _worker.LastFocusMove : null);
       _worker.SelfPauseChanged += _log.AddSelfPause;
       _worker.Replaced += _log.AddReplacement;
+      _worker.Mismatched += trace => _log.AddMismatch(trace.Kind);
       _worker.Undone += _ => _log.AddUndo();
     }
 

@@ -20,6 +20,11 @@ namespace Rekey.Win32.Replacement {
       int SameEnd,
       bool ExpectedInside) {
     /// <summary>
+    /// Gets why the text did not match, and so whether the app got a strike.
+    /// </summary>
+    public MismatchKind Kind { get; init; }
+
+    /// <summary>
     /// Compares a read with the expected text.
     /// </summary>
     /// <param name="read">The text read before the caret.</param>

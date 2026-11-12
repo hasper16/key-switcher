@@ -396,10 +396,12 @@ namespace Rekey.DesktopChecks {
       int wordKeys = seen.LastOrDefault(s => s.Event is KeyDown { Kind: KeyKind.Character })
           ?.WordKeys ?? 0;
       string incidents = string.Join('/', _log.IncidentsSince(before));
+      string mismatches = string.Join('/', _log.MismatchesSince(mark));
       return $"[switch landed {switched}, English (US) before typing {english}, "
           + $"keys {keys.Count}, held {held}, unconfirmed {dropped}, "
           + $"Word keys before the end {wordKeys}, focus reports {moves.Count} "
-          + $"({string.Join("; ", moves)}), Incidents [{incidents}]]";
+          + $"({string.Join("; ", moves)}), Incidents [{incidents}], "
+          + $"mismatch [{mismatches}]]";
     }
   }
 }

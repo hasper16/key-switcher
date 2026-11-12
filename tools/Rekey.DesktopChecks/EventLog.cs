@@ -11,6 +11,7 @@ namespace Rekey.DesktopChecks {
     private readonly List<IncidentType> _incidents = [];
     private readonly List<DateTimeOffset?> _selfPauses = [];
     private readonly List<ReplacementResult> _replacements = [];
+    private readonly List<MismatchKind> _mismatches = [];
     private int _undos;
 
     // Returns whether the condition held before the timeout.
@@ -30,7 +31,12 @@ namespace Rekey.DesktopChecks {
     public Position Mark() {
       lock (_gate) {
         return new Position(
-            _events.Count, _incidents.Count, _selfPauses.Count, _replacements.Count, _undos);
+            _events.Count,
+            _incidents.Count,
+            _selfPauses.Count,
+            _replacements.Count,
+            _undos,
+            _mismatches.Count);
       }
     }
 
@@ -43,6 +49,18 @@ namespace Rekey.DesktopChecks {
     public void AddIncident(Incident incident) {
       lock (_gate) {
         _incidents.Add(incident.Type);
+      }
+    }
+
+    public void AddMismatch(MismatchKind kind) {
+      lock (_gate) {
+        _mismatches.Add(kind);
+      }
+    }
+
+    public List<MismatchKind> MismatchesSince(Position mark) {
+      lock (_gate) {
+        return _mismatches[mark.Mismatches..];
       }
     }
 
@@ -100,7 +118,7 @@ namespace Rekey.DesktopChecks {
     }
 
     internal readonly record struct Position(
-        int Events, int Incidents, int SelfPauses, int Replacements, int Undos);
+        int Events, int Incidents, int SelfPauses, int Replacements, int Undos, int Mismatches);
 
     // Note: for a focus report, why focus counted as moved (codes and class names only).
     internal sealed record Seen(InputEvent Event, int WordKeys, string? Note = null);

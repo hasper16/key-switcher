@@ -129,6 +129,37 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void SameWordEarlierOnTheLineIsUnrelated() {
+      // Three Words typed alike on one line: an earlier copy says nothing about this one.
+      var control = new FakeControl("abcdef") { Context = "ghbdtn ghbdtn abcdef" };
+
+      Assert.Equal(ReplacementMethod.Unrelated, VerifiedReplacement.Prepare(control, "ghbdtn"));
+    }
+
+    [Fact]
+    public void WordFollowedBySpaceAndOtherTextIsUnrelated() {
+      var control = new FakeControl("tn xyz") { Context = "ghbdtn xyz" };
+
+      Assert.Equal(ReplacementMethod.Unrelated, VerifiedReplacement.Prepare(control, "ghbdtn"));
+    }
+
+    [Fact]
+    public void LongDocumentWithoutTheWordAtTheCaretIsUnrelated() {
+      // A full-length read with spaces near the caret cannot hide an attached completion.
+      string text = string.Concat(Enumerable.Repeat("lorem ipsum ", 10));
+      var control = new FakeControl("ipsum ") { Context = text };
+
+      Assert.Equal(ReplacementMethod.Unrelated, VerifiedReplacement.Prepare(control, "ghbdtn"));
+    }
+
+    [Fact]
+    public void EditedRunIsRecognisedByItsLastWord() {
+      var control = new FakeControl("yt pyf") { Context = "a yt pyf.xyz" };
+
+      Assert.Equal(ReplacementMethod.Cancel, VerifiedReplacement.Prepare(control, "yt pyf."));
+    }
+
+    [Fact]
     public void NoReaderMeansRetype() {
       Assert.Equal(ReplacementMethod.Retype, VerifiedReplacement.Prepare(null, "ghbdtn"));
     }
