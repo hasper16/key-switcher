@@ -376,6 +376,14 @@
       "capsLock": false,
       "deadNormal": false,
       "deadShifted": false
+    },
+    {
+      "scanCode": 86,
+      "normal": "ґ",
+      "shifted": "Ґ",
+      "capsLock": true,
+      "deadNormal": false,
+      "deadShifted": false
     }
   ]
 }

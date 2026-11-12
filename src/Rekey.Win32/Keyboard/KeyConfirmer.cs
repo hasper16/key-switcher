@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Rekey.Win32.Keyboard {
   /// <summary>
   /// Confirms that a character key went to a control that is not a Password Field.
@@ -13,6 +15,16 @@ namespace Rekey.Win32.Keyboard {
   internal sealed class KeyConfirmer {
     private readonly Func<bool> _isPasswordFocused;
     private readonly Func<long> _actionsWritten;
+
+    /// <summary>
+    /// Gets the keys not confirmed so far, by cause; read on the worker thread.
+    /// </summary>
+    public KeyRejects Rejects { get; private set; }
+
+    /// <summary>
+    /// Gets the longest Password Field check so far, in milliseconds; read on the worker thread.
+    /// </summary>
+    public double SlowestCheckMilliseconds { get; private set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="KeyConfirmer" /> class.
@@ -41,11 +53,25 @@ namespace Rekey.Win32.Keyboard {
     /// </returns>
     public bool Confirm(in RawInput key) {
       if (_actionsWritten() != key.Actions) {
+        Rejects = Rejects with { Queued = Rejects.Queued + 1 };
         return false;
       }
 
+      long started = Stopwatch.GetTimestamp();
       bool password = _isPasswordFocused();
-      return !password && _actionsWritten() == key.Actions;
+      double took = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+      SlowestCheckMilliseconds = Math.Max(SlowestCheckMilliseconds, took);
+      if (password) {
+        Rejects = Rejects with { Password = Rejects.Password + 1 };
+        return false;
+      }
+
+      if (_actionsWritten() != key.Actions) {
+        Rejects = Rejects with { DuringCheck = Rejects.DuringCheck + 1 };
+        return false;
+      }
+
+      return true;
     }
   }
 }

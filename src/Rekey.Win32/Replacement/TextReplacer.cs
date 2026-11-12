@@ -1,0 +1,193 @@
+using System.Globalization;
+using Rekey.Core;
+using Windows.Win32.UI.Input.KeyboardAndMouse;
+
+namespace Rekey.Win32.Replacement {
+  /// <summary>
+  /// Executes <see cref="ReplaceText" />: checks the text before the caret where it can, then
+  /// erases or selects it and types the replacement in one <c>SendInput</c> call.
+  /// </summary>
+  /// <remarks>
+  /// Not thread-safe: the worker thread owns it.
+  /// </remarks>
+  internal sealed class TextReplacer {
+    private readonly ITextBeforeCaret _reader;
+    private readonly bool _verify;
+    private readonly Func<IReadOnlyList<VIRTUAL_KEY>> _heldModifiers;
+    private readonly Func<INPUT[], bool> _send;
+    private readonly Func<TextTarget> _target;
+    private readonly AppStrikes _slowApps = new();
+    private readonly AppStrikes _unreadableApps = new();
+
+    // The text the latest replacement expected, when what was read differed from it.
+    private string? _mismatchExpected;
+    private MismatchKind _mismatchKind;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TextReplacer" /> class.
+    /// </summary>
+    /// <param name="reader">The focused control's text.</param>
+    /// <param name="verify">
+    /// <see langword="true" /> to check the text before replacing it (setting Verified
+    /// Replacement); otherwise, <see langword="false" />.
+    /// </param>
+    /// <param name="heldModifiers">Returns the modifier keys down now.</param>
+    /// <param name="send">
+    /// Sends inputs to Windows; returns <see langword="false" /> unless Windows took them all.
+    /// </param>
+    public TextReplacer(
+        ITextBeforeCaret reader,
+        bool verify,
+        Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
+        Func<INPUT[], bool> send)
+        : this(reader, verify, heldModifiers, send, () => TextTarget.Editable) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TextReplacer" /> class.
+    /// </summary>
+    /// <param name="reader">The focused control's text.</param>
+    /// <param name="verify">
+    /// <see langword="true" /> to check the text before replacing it (setting Verified
+    /// Replacement); otherwise, <see langword="false" />.
+    /// </param>
+    /// <param name="heldModifiers">Returns the modifier keys down now.</param>
+    /// <param name="send">
+    /// Sends inputs to Windows; returns <see langword="false" /> unless Windows took them all.
+    /// </param>
+    /// <param name="target">Returns how the focused window takes a replacement.</param>
+    public TextReplacer(
+        ITextBeforeCaret reader,
+        bool verify,
+        Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
+        Func<INPUT[], bool> send,
+        Func<TextTarget> target) {
+      _reader = reader;
+      _verify = verify;
+      _heldModifiers = heldModifiers;
+      _send = send;
+      _target = target;
+    }
+
+    /// <summary>
+    /// Replaces the text before the caret.
+    /// </summary>
+    /// <param name="replace">What to replace and with what.</param>
+    /// <param name="appId">The app that has focus.</param>
+    /// <returns>Whether and how the text was replaced.</returns>
+    public ReplacementResult Replace(ReplaceText replace, string appId) {
+      return Replace(replace, appId, () => null);
+    }
+
+    /// <summary>
+    /// Replaces the text before the caret, unless the request turned stale while the text was
+    /// checked.
+    /// </summary>
+    /// <param name="replace">What to replace and with what.</param>
+    /// <param name="appId">The app that has focus.</param>
+    /// <param name="recheck">
+    /// Called just before the input is sent; returns why the request is no longer valid, or
+    /// <see langword="null" /> when it still is.
+    /// </param>
+    /// <returns>Whether and how the text was replaced.</returns>
+    public ReplacementResult Replace(
+        ReplaceText replace, string appId, Func<ReplacementResult?> recheck) {
+      // Never erase where the typed Rendering is not proven to arrive: that deletes the Word.
+      TextTarget target = _target();
+      if (target == TextTarget.Unsupported) {
+        return ReplacementResult.Unsupported;
+      }
+
+      _mismatchExpected = null;
+      bool check = _verify
+          && !_slowApps.HasStruckOut(appId)
+          && !_unreadableApps.HasStruckOut(appId);
+      ITextBeforeCaret? reader = check ? _reader : null;
+      ReplacementResult? staleBeforeSelect = null;
+      Func<bool> stillValid = () => {
+        staleBeforeSelect = recheck();
+        return staleBeforeSelect is null;
+      };
+      ReplacementMethod method = VerifiedReplacement.Prepare(
+          reader,
+          replace.Expected,
+          stillValid,
+          canSelect: target == TextTarget.Editable,
+          out MismatchKind mismatch);
+      if (reader is { TimedOut: true }) {
+        _slowApps.Record(appId);
+      }
+
+      switch (method) {
+        case ReplacementMethod.Cancel:
+          (_mismatchExpected, _mismatchKind) = (replace.Expected, mismatch);
+          return ReplacementResult.Mismatch;
+        case ReplacementMethod.Unrelated:
+          (_mismatchExpected, _mismatchKind) = (replace.Expected, mismatch);
+          _unreadableApps.Record(appId);
+          return ReplacementResult.Mismatch;
+        case ReplacementMethod.Stale:
+          return staleBeforeSelect ?? ReplacementResult.TooLate;
+        case ReplacementMethod.Abandon:
+          // The app handles this request after the pending selection, in the control that was
+          // read, so no key can reach another control.
+          _reader.Deselect(Deselection.Always);
+          return ReplacementResult.TimedOut;
+        default:
+          break;
+      }
+
+      // Focus can move inside the window while the text is checked; Backspaces would then
+      // erase in another control.
+      ReplacementResult? stale = reader is not null && !reader.FocusUnchanged()
+          ? ReplacementResult.FocusMoved
+          : recheck();
+      if (stale is not null) {
+        if (method == ReplacementMethod.SelectAndType) {
+          Collapse(stale.Value);
+        }
+
+        return stale.Value;
+      }
+
+      // One character per Keystroke in the supported Layouts, so one Backspace each.
+      bool retype = method == ReplacementMethod.Retype;
+      int erase = retype ? new StringInfo(replace.Expected).LengthInTextElements : 0;
+      if (!_send(InputBuilder.Replacement(erase, replace.Replacement, _heldModifiers()))) {
+        // Windows refuses input to this window, so only UI Automation can clear the selection.
+        if (!retype) {
+          _reader.Deselect(Deselection.IfStillSelected);
+        }
+
+        return ReplacementResult.Blocked;
+      }
+
+      return retype ? ReplacementResult.Retyped : ReplacementResult.Verified;
+    }
+
+    /// <summary>
+    /// Describes how the text read in the latest replacement differed from the Word, without
+    /// either text; call it after the held keys went on, as it asks the app for more.
+    /// </summary>
+    /// <returns>
+    /// The comparison, or <see langword="null" /> when the latest replacement did not differ.
+    /// </returns>
+    public ReplacementTrace? DescribeMismatch() {
+      return _mismatchExpected is { } expected
+          ? _reader.Describe(expected) with { Kind = _mismatchKind }
+          : null;
+    }
+
+    // Collapses a selection so neither a re-injected Space nor later typing replaces the Word.
+    // After a click or a focus move, Right would land elsewhere, so the control that was read
+    // is collapsed through UI Automation, and only while its selection is still the Word: a
+    // caret the click placed stays where it is.
+    private void Collapse(ReplacementResult why) {
+      if (why is ReplacementResult.Interrupted or ReplacementResult.FocusMoved) {
+        _reader.Deselect(Deselection.IfStillSelected);
+      } else {
+        _send(InputBuilder.CollapseSelection(_heldModifiers()));
+      }
+    }
+  }
+}

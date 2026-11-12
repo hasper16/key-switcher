@@ -25,5 +25,14 @@ namespace Rekey.Win32.Tests.Layouts {
       KeyMapEntry key = russian.Entries.Single(entry => entry.ScanCode == 0x21);
       Assert.Equal(("а", "А"), (key.Normal, key.Shifted));
     }
+
+    [Fact]
+    public void IsoKeyOfUnitedKingdomTypesBackslashAndBar() {
+      // Spec layout-management: "ISO key".
+      KeyMap unitedKingdom = KeyMapReader.Read(new LayoutId(0x00000809));
+
+      KeyMapEntry key = unitedKingdom.Entries.Single(entry => entry.ScanCode == 0x56);
+      Assert.Equal(("\\", "|"), (key.Normal, key.Shifted));
+    }
   }
 }

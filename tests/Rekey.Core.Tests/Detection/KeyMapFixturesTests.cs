@@ -11,7 +11,7 @@ namespace Rekey.Core.Tests.Detection {
       KeyMap map = KeyMapFixtures.Load(klid);
 
       Assert.Equal(KeyMapFixtures.Id(klid), map.Layout);
-      Assert.Equal(47, map.Entries.Count);
+      Assert.Equal(48, map.Entries.Count);
       Assert.All(map.Entries, entry => {
         Assert.NotEmpty(entry.Normal);
         Assert.NotEmpty(entry.Shifted);

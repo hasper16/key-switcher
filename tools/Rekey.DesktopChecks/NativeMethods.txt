@@ -1,12 +1,16 @@
 EnumWindows
+GetClassName
+GetClipboardSequenceNumber
 GetCursorPos
 GetForegroundWindow
 GetKeyState
 GetWindowRect
 GetWindowText
 GetWindowTextLength
+GetWindowThreadProcessId
 INPUT
 IsWindowVisible
+MoveWindow
 SendInput
 SetCursorPos
 SystemParametersInfo

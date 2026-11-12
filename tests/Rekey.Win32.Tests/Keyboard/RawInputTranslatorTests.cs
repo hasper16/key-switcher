@@ -20,6 +20,22 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void HeldKeyIsReportedAsHeld() {
+      IReadOnlyList<InputEvent> events =
+          Translate(Down(0x20, 0x39) with { Holding = Holding.Held });
+
+      Assert.True(Assert.IsType<KeyDown>(Assert.Single(events)).Held);
+    }
+
+    [Fact]
+    public void HeldUndoRequestBecomesUndoRequested() {
+      IReadOnlyList<InputEvent> events =
+          Translate(Down(0x5A, 0x2C) with { Holding = Holding.UndoRequest });
+
+      Assert.Equal([new UndoRequested(At(1001))], events);
+    }
+
+    [Fact]
     public void ShiftIsReportedOnTheKeystroke() {
       IReadOnlyList<InputEvent> events = Translate(
           Down(_vkShiftLeft, 0x2A), Down(0x47, 0x22), Up(_vkShiftLeft, 0x2A), Down(0x47, 0x22));

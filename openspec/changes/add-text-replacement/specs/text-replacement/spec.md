@@ -7,7 +7,7 @@ Defines how a Correction changes the text on screen, keeps the user's keys in or
 ## ADDED Requirements
 
 ### Requirement: Replace the Word with its Rendering
-A Correction SHALL replace exactly the characters of the corrected Word(s) with the target Rendering and then switch to the target Layout.
+A Correction SHALL replace exactly the characters of the corrected Word(s) with the target Rendering and then switch to the target Layout. In a window where typed text is not known to arrive, a Correction MUST leave the Word untouched rather than erase it.
 
 #### Scenario: Single Word
 - **WHEN** a Correction changes "ghbdtn" to "привет" in Notepad
@@ -17,6 +17,14 @@ A Correction SHALL replace exactly the characters of the corrected Word(s) with 
 #### Scenario: Deferred run
 - **WHEN** a Correction covers "yt pyf." with target "не знаю"
 - **THEN** the text shows "не знаю" where "yt pyf." was
+
+#### Scenario: Console
+- **WHEN** a Correction changes "ghbdtn" to "привет" at a command prompt in Windows Terminal or a classic console window
+- **THEN** the prompt line shows "привет" where "ghbdtn" was, followed by the Space
+
+#### Scenario: Window that does not take typed text
+- **WHEN** a Correction would apply in a window where typed text is not known to arrive
+- **THEN** Rekey erases nothing and leaves the Word as typed
 
 ### Requirement: Key order is preserved
 The Trigger Key that caused a Correction, and any keys the user presses while the Correction is being applied, SHALL reach the application after the corrected text and in the order they were pressed.
@@ -41,7 +49,7 @@ A Correction or Undo MUST NOT read or change the clipboard.
 - **THEN** the clipboard still holds "secret"
 
 ### Requirement: Verified replacement
-When the focused control exposes its text, Rekey SHALL check that the text immediately before the caret equals the Word's current Rendering before changing it. On mismatch, the Correction MUST be cancelled, the text left untouched, and the cancellation recorded. Verified replacement SHALL be on by default and can be turned off in settings.
+When the focused control exposes its text, Rekey SHALL check that the text immediately before the caret equals the Word's current Rendering before changing it. When the text shows the Word changed (the Word sits just before the caret with other characters attached after it, as an autocomplete leaves it), the Correction MUST be cancelled, the text left untouched, and the cancellation recorded. Verified replacement SHALL be on by default and can be turned off in settings.
 
 #### Scenario: Matching text
 - **WHEN** the focused editor exposes its text and it ends with "ghbdtn" before the caret
@@ -54,6 +62,22 @@ When the focused control exposes its text, Rekey SHALL check that the text immed
 #### Scenario: Control does not expose text
 - **WHEN** the focused control does not expose its text
 - **THEN** Rekey replaces the Word by erasing and retyping it
+
+### Requirement: Unreliable text readback
+When the text a control returns before the caret ends with the Word but is longer than asked, Rekey SHALL replace by retyping, never by selecting. When an app twice returns text that shows no Word at the caret, Rekey SHALL cancel those Corrections and then replace by retyping, without the check, in that app until Rekey restarts (design decision; the original also falls back to retyping where its in-place path does not work).
+
+#### Scenario: Control returns more than the Word
+- **WHEN** the focused control returns "x ghbdtn" when asked for the text just before the caret, which ends with "ghbdtn"
+- **THEN** Rekey replaces the Word by erasing and retyping it, never by selecting
+
+#### Scenario: App whose text readback is unreliable
+- **WHEN** an editor twice returns text before the caret that shows no Word at the caret
+- **THEN** those two Corrections are cancelled
+- **AND** later Corrections in that app replace the Word by erasing and retyping it, without the check, until Rekey restarts
+
+#### Scenario: Same Word earlier on the line
+- **WHEN** "ghbdtn" was typed earlier on the line and the editor returns text before the caret in which that earlier copy is the only "ghbdtn"
+- **THEN** the read counts as showing no Word at the caret
 
 ### Requirement: Undo within 5 seconds
 If the user presses Ctrl+Z within the Undo Window (5 seconds, as in the original) of a Correction and before any other key, Rekey SHALL restore the text as originally typed and the previous Layout, and SHALL NOT pass that Ctrl+Z to the application.

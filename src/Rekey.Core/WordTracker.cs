@@ -52,7 +52,7 @@ namespace Rekey.Core {
       _spoiled = true;
     }
 
-    private static bool EndsWord(KeyDown keyDown) {
+    internal static bool EndsWord(KeyDown keyDown) {
       return keyDown.Kind switch {
         KeyKind.Space or KeyKind.Enter or KeyKind.Tab or KeyKind.Navigation => true,
         KeyKind.Modifier => false,

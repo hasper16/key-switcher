@@ -51,6 +51,8 @@ namespace Rekey.DesktopChecks {
         Point? user = FindBox(window.Value, "check-user", "Nickname");
         Point? secret = FindBox(window.Value, "check-pass", "Secret");
         if (user is not null && secret is not null) {
+          _page = window.Value;
+          _chatBox = FindBox(window.Value, "check-chat", "Chat");
           _report.Add(
               "3.3 test page boxes found",
               true,

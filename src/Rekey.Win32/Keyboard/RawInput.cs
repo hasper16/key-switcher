@@ -17,6 +17,10 @@ namespace Rekey.Win32.Keyboard {
   /// The number of key-downs and mouse-button presses written up to and including this input;
   /// <see cref="InputRing" /> sets it. Only those inputs can move focus.
   /// </param>
+  /// <param name="Holding">
+  /// One of the enumeration values that specifies whether the hook held the key back from the
+  /// application; the worker then re-injects it.
+  /// </param>
   internal readonly record struct RawInput(
       RawInputKind Kind,
       ushort VirtualKey,
@@ -24,5 +28,6 @@ namespace Rekey.Win32.Keyboard {
       bool Extended,
       long Tick,
       long Sequence = 0,
-      long Actions = 0);
+      long Actions = 0,
+      Holding Holding = Holding.None);
 }

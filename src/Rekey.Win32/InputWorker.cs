@@ -1,11 +1,13 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using Rekey.Core;
 using Rekey.Core.Detection;
 using Rekey.Core.Languages;
 using Rekey.Win32.Focus;
 using Rekey.Win32.Keyboard;
 using Rekey.Win32.Layouts;
+using Rekey.Win32.Replacement;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
@@ -31,13 +33,33 @@ namespace Rekey.Win32 {
     // Design D6: a pending Layout Switch is checked every 25 ms.
     private const uint _switchWaitMilliseconds = 25;
 
+    // Design D1 of add-text-replacement: a replacement starts only while the key that asked for
+    // it is this fresh, so with UI Automation's 50 ms budget it lands before the hook's 150 ms
+    // valve could have let later keys through.
+    private const long _freshMilliseconds = 50;
+
+    // Checked again just before the input is sent, after UI Automation: 50 ms below the valve.
+    private const long _landMilliseconds = 100;
+
     // Design D5: Windows does not tell other processes about added Layouts, so poll.
     private static readonly TimeSpan _layoutPollPeriod = TimeSpan.FromSeconds(2);
 
     // How long quitting waits for the worker thread; see Dispose.
     private static readonly TimeSpan _stopWait = TimeSpan.FromSeconds(2);
 
+    // Design D1 of add-text-replacement: the Trigger Keys held while a Word Evaluator is set.
+    private static readonly ushort[] _triggerKeys = [
+        (ushort)VIRTUAL_KEY.VK_SPACE, (ushort)VIRTUAL_KEY.VK_RETURN];
+
+    // Released around injected keys, which they would otherwise change: Ctrl+Backspace deletes
+    // a word, Shift+Right extends a selection.
+    private static readonly VIRTUAL_KEY[] _modifierKeys = [
+        VIRTUAL_KEY.VK_LSHIFT, VIRTUAL_KEY.VK_RSHIFT, VIRTUAL_KEY.VK_LCONTROL,
+        VIRTUAL_KEY.VK_RCONTROL, VIRTUAL_KEY.VK_LMENU, VIRTUAL_KEY.VK_RMENU,
+        VIRTUAL_KEY.VK_LWIN, VIRTUAL_KEY.VK_RWIN];
+
     private readonly InputRing _ring = new(_ringCapacity);
+    private readonly HoldGate _gate = new();
     private readonly AutoResetEvent _signal = new(initialState: false);
     private readonly SlowCallbackMeter _meter;
     private readonly InputHook _hook;
@@ -51,6 +73,9 @@ namespace Rekey.Win32 {
     private readonly HookWatchdog _hookWatchdog;
     private readonly ModifierSync _modifierSync;
     private readonly KeyConfirmer _keyConfirmer;
+    private readonly TypingState _typing = new();
+    private readonly WordEvaluator? _evaluate;
+    private readonly bool _verifiedReplacement;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
     private Engine _engine = new();
@@ -60,6 +85,15 @@ namespace Rekey.Win32 {
     private long _lastLayoutPoll;
     private bool _quitting;
     private FocusTracker? _focus;
+    private TextReplacer? _replacer;
+    private long _seenHoldTimeouts;
+
+    // The held key the worker is handling, and whether a replacement it asked for was applied.
+    private RawInput? _held;
+    private bool _heldReplaced;
+
+    // A cancelled replacement waiting to be described once the held keys went on.
+    private bool _mismatchToReport;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InputWorker" /> class.
@@ -69,11 +103,35 @@ namespace Rekey.Win32 {
     /// The sink that records Incidents; it is called on the worker thread.
     /// </param>
     /// <param name="time">The clock; <see cref="TimeProvider.System" /> outside tests.</param>
-    public InputWorker(Settings settings, Action<Incident> recordIncident, TimeProvider time) {
+    public InputWorker(Settings settings, Action<Incident> recordIncident, TimeProvider time)
+        : this(settings, recordIncident, time, null) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InputWorker" /> class that corrects Words.
+    /// </summary>
+    /// <param name="settings">
+    /// The settings that turn the keyboard watchdog and Verified Replacement on or off.
+    /// </param>
+    /// <param name="recordIncident">
+    /// The sink that records Incidents; it is called on the worker thread.
+    /// </param>
+    /// <param name="time">The clock; <see cref="TimeProvider.System" /> outside tests.</param>
+    /// <param name="evaluate">
+    /// The evaluator of Words a Trigger Key ends, called on the worker thread; with
+    /// <see langword="null" />, no key is held and nothing is corrected.
+    /// </param>
+    public InputWorker(
+        Settings settings,
+        Action<Incident> recordIncident,
+        TimeProvider time,
+        WordEvaluator? evaluate) {
       _recordIncident = recordIncident;
       _time = time;
+      _evaluate = evaluate;
+      _verifiedReplacement = settings.VerifiedReplacement;
       _meter = new SlowCallbackMeter(time);
-      _hook = new InputHook(_ring, _signal, _meter, time);
+      _hook = new InputHook(_ring, _gate, _signal, _meter, time);
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
       _translator = new RawInputTranslator(capsLockOn);
       _modifierSync = new ModifierSync(
@@ -108,6 +166,26 @@ namespace Rekey.Win32 {
     public event Action<DateTimeOffset?>? SelfPauseChanged;
 
     /// <summary>
+    /// Occurs on the worker thread after Rekey replaced text or cancelled a replacement, with
+    /// how it went; it carries no text.
+    /// </summary>
+    public event Action<ReplacementResult>? Replaced;
+
+    /// <summary>
+    /// Occurs on the worker thread when the text before the caret differed from the Word, with
+    /// how it differed and which control was read; it carries no text.
+    /// </summary>
+    public event Action<ReplacementTrace>? Mismatched;
+
+    /// <summary>
+    /// Occurs on the worker thread after an Undo, for the features that learn from it.
+    /// </summary>
+    /// <remarks>
+    /// It carries typed text: never log it.
+    /// </remarks>
+    public event Action<UndoPerformed>? Undone;
+
+    /// <summary>
     /// Gets the number of Keystrokes in the engine's current Word; read it only on the worker
     /// thread, as from <see cref="Observed" />.
     /// </summary>
@@ -115,6 +193,30 @@ namespace Rekey.Win32 {
     /// A count only, for checking by hand that a Password Field leaves the Word empty.
     /// </remarks>
     public int WordLength => _engine.Word.Count;
+
+    /// <summary>
+    /// Gets the character keys not confirmed outside a Password Field so far, by cause; read it
+    /// only on the worker thread, as from <see cref="Observed" />.
+    /// </summary>
+    public KeyRejects KeyRejects => _keyConfirmer.Rejects;
+
+    /// <summary>
+    /// Gets why focus last counted as moved, for diagnostics: codes and class names, never
+    /// text; read it only on the worker thread, as from <see cref="Observed" />.
+    /// </summary>
+    public string LastFocusMove => _focus?.LastMove ?? "none";
+
+    /// <summary>
+    /// Gets how many focus moves to an element that takes no text kept the Word so far (design
+    /// D7); read it only on the worker thread, as from <see cref="Observed" />.
+    /// </summary>
+    public int FocusMovesKeptWord => _focus?.SetAsideMoves ?? 0;
+
+    /// <summary>
+    /// Gets the longest Password Field check so far, in milliseconds; read it only on the
+    /// worker thread, as from <see cref="Observed" />.
+    /// </summary>
+    public double SlowestKeyCheckMilliseconds => _keyConfirmer.SlowestCheckMilliseconds;
 
     /// <summary>
     /// Gets the number of input batches the worker finished; only the worker thread writes it.
@@ -209,6 +311,23 @@ namespace Rekey.Win32 {
       return layout.Value >> 28 == 0xE;
     }
 
+    private static IReadOnlyList<VIRTUAL_KEY> HeldModifiers() {
+      return [.. _modifierKeys.Where(IsKeyDown)];
+    }
+
+    // Returns whether Windows took every input; it refuses input to a window of higher
+    // integrity.
+    private static bool SendKeys(INPUT[] inputs) {
+      return PInvoke.SendInput(inputs, Marshal.SizeOf<INPUT>()) == inputs.Length;
+    }
+
+    // A key-down that is not a KeyDown, such as an Undo request, is not typing.
+    private static (KeyKind Kind, KeyModifiers Modifiers) KindOf(InputEvent? inputEvent) {
+      return inputEvent is KeyDown key
+          ? (key.Kind, key.Modifiers)
+          : (KeyKind.Other, KeyModifiers.None);
+    }
+
     [SuppressMessage(
         "Reliability",
         "S3869:SafeHandle.DangerousGetHandle should not be called",
@@ -226,8 +345,15 @@ namespace Rekey.Win32 {
       }
 
       _started.Set();
+      _replacer = new TextReplacer(
+          new UiaTextBeforeCaret(() => _focus?.TypingElement),
+          _verifiedReplacement,
+          HeldModifiers,
+          SendKeys,
+          ConsoleWindows.ForegroundTarget);
       RefreshLayouts();
-      using var focus = new FocusTracker(OnFocusChanged);
+      using var focus = new FocusTracker(
+          OnFocusChanged, () => _typing.Now(_ring.ActionsWritten));
       _focus = focus;
       focus.Start();
       HANDLE[] handles = [(HANDLE)_signal.SafeWaitHandle.DangerousGetHandle()];
@@ -249,7 +375,7 @@ namespace Rekey.Win32 {
         _recordIncident(incident);
       }
 
-      _engine = new Engine(load.Languages);
+      _engine = new Engine(load.Languages, _evaluate);
     }
 
     private void DrainInput() {
@@ -265,24 +391,34 @@ namespace Rekey.Win32 {
           Send(new InputLost(TimeSpan.FromMilliseconds(raw.Tick)));
         }
 
+        InputEvent? inputEvent = _translator.Translate(raw);
+
         // WinEvents arrive asynchronously: a key typed into a new window can come first.
         if (raw.Kind == RawInputKind.KeyDown) {
-          _focus?.CatchUp(TimeSpan.FromMilliseconds(raw.Tick));
+          _focus?.CatchUp(TimeSpan.FromMilliseconds(raw.Tick), TypingFor(raw, inputEvent));
         }
 
-        InputEvent? inputEvent = _translator.Translate(raw);
+        RecordTyping(raw, inputEvent);
         if (inputEvent is KeyDown { Kind: KeyKind.Character } keyDown) {
           // Focus may have moved inside the window before its WinEvent arrived.
           inputEvent = keyDown with { FocusConfirmed = _keyConfirmer.Confirm(raw) };
         }
 
+        _held = raw.Holding == Holding.None ? null : raw;
+        _heldReplaced = false;
         if (inputEvent is not null) {
           Send(inputEvent);
+        }
+
+        if (raw.Holding != Holding.None) {
+          FinishHeld(raw);
         }
 
         // Progress per input, so a pass that stays busy is not taken for a freeze.
         Volatile.Write(ref _heartbeat, _heartbeat + 1);
       }
+
+      ReportMismatch();
 
       // The user may have switched Layout with the keys just read.
       if (any) {
@@ -290,9 +426,62 @@ namespace Rekey.Win32 {
       }
     }
 
+    // Design D7: whether only typing could have moved focus by the time this key is handled.
+    private Typing TypingFor(in RawInput raw, InputEvent? inputEvent) {
+      (KeyKind kind, KeyModifiers modifiers) = KindOf(inputEvent);
+      return _typing.ForKey(
+          kind, modifiers, raw.Holding == Holding.None, raw.Actions, _ring.ActionsWritten);
+    }
+
+    private void RecordTyping(in RawInput raw, InputEvent? inputEvent) {
+      if (raw.Kind == RawInputKind.MouseDown) {
+        _typing.ClickRead(raw.Actions);
+      } else if (raw.Kind == RawInputKind.KeyDown) {
+        (KeyKind kind, KeyModifiers modifiers) = KindOf(inputEvent);
+        _typing.KeyRead(kind, modifiers, raw.Actions);
+      }
+    }
+
+    // Sends a held key on to the application once its replacement, if any, is done, and lets
+    // the hook stop holding once every held key has gone on. An applied Undo consumes its
+    // Ctrl+Z; an applied Correction makes a Ctrl+Z right after its Trigger Key an Undo.
+    private void FinishHeld(in RawInput raw) {
+      if (raw.Holding == Holding.Held && _heldReplaced) {
+        _gate.ArmUndo(raw.Sequence);
+      }
+
+      // Released even if Windows refuses the key: holding on would only block typing until
+      // the valve opens, and the key cannot be sent any other way.
+      if (raw.Holding != Holding.UndoRequest || !_heldReplaced) {
+        _ = SendKeys([InputBuilder.Reinject(raw)]);
+      }
+
+      _gate.Release(raw.Sequence);
+      _held = null;
+    }
+
+    // Describing a mismatch asks the app for more, so it waits until no key is held back, and
+    // happens only when someone listens.
+    private void ReportMismatch() {
+      if (!_mismatchToReport) {
+        return;
+      }
+
+      _mismatchToReport = false;
+      if (Mismatched is not null && _replacer?.DescribeMismatch() is { } trace) {
+        Mismatched.Invoke(trace);
+      }
+    }
+
     private void Poll() {
       if (_meter.TakeIncident() is { } slow) {
         _recordIncident(slow);
+      }
+
+      long holdTimeouts = _gate.Timeouts;
+      if (holdTimeouts != _seenHoldTimeouts) {
+        _seenHoldTimeouts = holdTimeouts;
+        _recordIncident(new Incident(_time.GetUtcNow(), IncidentType.HoldTimeout, []));
       }
 
       if (_switcher.Check() is { } result) {
@@ -339,8 +528,12 @@ namespace Rekey.Win32 {
         return;
       }
 
-      _translator.UseKeyMaps(_layouts.Layouts.Select(KeyMapOf).OfType<KeyMap>());
-      Send(new LayoutsInstalledChanged(Now(), _layouts.Layouts));
+      List<KeyMap> keyMaps = [.. _layouts.Layouts.Select(KeyMapOf).OfType<KeyMap>()];
+      _translator.UseKeyMaps(keyMaps);
+      _gate.UsePolicy(_evaluate is null
+          ? HookPolicy.HoldNothing
+          : new HookPolicy(_triggerKeys, RawInputTranslator.CharacterScanCodes(keyMaps)));
+      Send(new LayoutsInstalledChanged(Now(), _layouts.Layouts, keyMaps));
       FollowForegroundLayout();
     }
 
@@ -434,9 +627,55 @@ namespace Rekey.Win32 {
         case SwitchLayout switchLayout:
           _switcher.Switch(switchLayout.Target);
           break;
+        case ReplaceText replace:
+          Replace(replace);
+          break;
+        case UndoPerformed undone:
+          Undone?.Invoke(undone);
+          break;
         default:
           break;
       }
+    }
+
+    private void Replace(ReplaceText replace) {
+      ReplacementResult result = TryReplace(replace);
+      _heldReplaced = result is ReplacementResult.Verified or ReplacementResult.Retyped;
+      if (result == ReplacementResult.Mismatch) {
+        _recordIncident(new Incident(_time.GetUtcNow(), IncidentType.CorrectionCancelled, []));
+        _mismatchToReport = true;
+      }
+
+      Replaced?.Invoke(result);
+      Send(new ReplacementFinished(Now(), _heldReplaced));
+    }
+
+    private ReplacementResult TryReplace(ReplaceText replace) {
+      if (_held is not { } held || _replacer is null || _engine.Focus?.AppId is not { } app) {
+        return ReplacementResult.TooLate;
+      }
+
+      if (Stale(held, _freshMilliseconds) is { } stale) {
+        return stale;
+      }
+
+      return _replacer.Replace(replace, app, () => Stale(held, _landMilliseconds));
+    }
+
+    // Why the held key can no longer be replaced before, or null if it still can: a click,
+    // which is never held, may have moved the caret, the app may have moved focus, or the
+    // valve may have let later keys through. A move is reported first, since what is cleaned
+    // up depends on where the caret went.
+    private ReplacementResult? Stale(in RawInput held, long maxAge) {
+      if (_gate.ClickedAfter(held.Sequence)) {
+        return ReplacementResult.Interrupted;
+      }
+
+      if (_focus?.WindowChanged() ?? true) {
+        return ReplacementResult.FocusMoved;
+      }
+
+      return Environment.TickCount64 - held.Tick >= maxAge ? ReplacementResult.TooLate : null;
     }
   }
 }
