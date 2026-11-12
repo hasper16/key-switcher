@@ -23,6 +23,8 @@ Do not touch the mouse or keyboard for about 3 minutes. The tool runs Rekey's wo
 
 `dotnet run --project tools/Rekey.DesktopChecks -- console-probe` (about two minutes, no Rekey corrections) types into the default console and into a classic conhost window, seven ways each, and reports per way whether the corrected Word shows, after proving the buffer read by digits typed first, plus each window's class: Backspaces then Unicode characters in one call, Unicode alone, one call per key, a 150 ms pause after the Backspaces, the keys typed in the Russian Layout, the keys by scan code alone, and erase, verified switch to Russian, retype the keys. It decides how Rekey replaces text in consoles.
 
+Last run: 18 of 18 at f9b57f7 (owner's desktop: Windows Terminal as default console, classic conhost, English (US) and Russian Layouts), with the change-4 run 35 of 35; nothing left running.
+
 If the browser does not expose the page's boxes to UI Automation, the browser lines fail with that reason; make Edge or Chrome the default browser and run again.
 
 ## By hand
