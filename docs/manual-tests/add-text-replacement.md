@@ -24,7 +24,7 @@ Do not touch the mouse or keyboard for about 3 minutes. The tool runs Rekey's wo
 
 `dotnet run --project tools/Rekey.DesktopChecks -- console-probe` (about two minutes, no Rekey corrections) types into the default console and into a classic conhost window, seven ways each, and reports per way whether the corrected Word shows, after proving the buffer read by digits typed first, plus each window's class: Backspaces then Unicode characters in one call, Unicode alone, one call per key, a 150 ms pause after the Backspaces, the keys typed in the Russian Layout, the keys by scan code alone, and erase, verified switch to Russian, retype the keys. It decides how Rekey replaces text in consoles.
 
-Last run: 18 of 18 at f9b57f7 (owner's desktop: Windows Terminal as default console, classic conhost, English (US) and Russian Layouts), with the change-4 run 35 of 35; nothing left running.
+Last run: 19 of 19 three times in a row at 67d97a1 (owner's desktop: Windows Terminal as default console, classic conhost, English (US) and Russian Layouts, VS Code installed; 5.4 gave Mismatch/Mismatch/Retyped, the suggestion row focused in 11 samples and 2 focus moves that kept the Word), with the change-4 run 35 of 35; Layout list unchanged; nothing left running.
 
 If the browser does not expose the page's boxes to UI Automation, the browser lines fail with that reason; make Edge or Chrome the default browser and run again.
 
@@ -38,7 +38,9 @@ dotnet run --project tools/Rekey.DesktopChecks -- try-corrections
 
 It prints one line per replacement (`Verified`, `Retyped`, `Mismatch` or `TooLate`), Undo and Incident, never text. Press Enter in its window to stop it. Use English (US) as the starting Layout.
 
-- [ ] **Electron editor (4.1, 5.4, 5.5).** In your own VS Code, in a plain-text file, type "ghbdtn" and Space three times on one line, letting the suggestion list open.
+- [x] **Electron editor (4.1, 5.4, 5.5).** In your own VS Code, in a plain-text file, type "ghbdtn" and Space three times on one line, letting the suggestion list open.
   Expected: the first two times `try-corrections` prints `Replacement Mismatch` (VS Code's readback is unreliable) and nothing changes; from the third time the line reads "привет " (`Replacement Retyped`) and the Layout is Russian; nothing else in the file changed. Ctrl+Z right away gives back "ghbdtn " and English (US).
-- [ ] **Chat app with Enter (4.2).** In Telegram Desktop, in Saved Messages, copy some text first, then type "ghbdtn" and press Enter.
+- [x] **Chat app with Enter (4.2).** In Telegram Desktop, in Saved Messages, copy some text first, then type "ghbdtn" and press Enter.
   Expected: the sent message reads "привет"; pasting afterwards gives the text copied before.
+
+By hand, last run: both items passed at 08c60c4 on the owner's desktop (VS Code: Mismatch twice, then Retyped, and Ctrl+Z restored the Word; Telegram: the corrected message was sent and the clipboard kept its text). The owner waived running them again at 79f43b2 and 67d97a1, which added only a diagnostic counter to src/ after 08c60c4.
