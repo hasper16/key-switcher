@@ -27,6 +27,26 @@ namespace Rekey.DesktopChecks {
       return candidates.FirstOrDefault(File.Exists);
     }
 
+    // As in a default install, spelled out so the owner's case does not hang on VS Code's
+    // defaults: word-based suggestions pop up while a Word is typed, and the popup's selected row
+    // takes UI Automation focus while keys still go to the editor.
+    private static void WriteVsCodeSettings(string folder) {
+      string user = Path.Join(folder, "profile", "User");
+      Directory.CreateDirectory(user);
+      File.WriteAllText(
+          Path.Join(user, "settings.json"),
+          """
+          {
+            "editor.quickSuggestions": { "other": "on", "comments": "on", "strings": "on" },
+            "editor.quickSuggestionsDelay": 10,
+            "editor.wordBasedSuggestions": "matchingDocuments",
+            "editor.suggest.showWords": true,
+            "workbench.startupEditor": "none",
+            "update.mode": "none"
+          }
+          """);
+    }
+
     private static Process StartVsCode(string code, string folder, string file) {
       var start = new ProcessStartInfo(code) { UseShellExecute = false };
       foreach (string argument in new[] {
@@ -53,6 +73,7 @@ namespace Rekey.DesktopChecks {
       string file = Path.Join(folder, fileName);
       File.WriteAllText(file, string.Empty);
       _restorer.Defer("VS Code test folder", () => Directory.Delete(folder, recursive: true));
+      WriteVsCodeSettings(folder);
       Process vsCode = StartVsCode(code, folder, file);
       _restorer.Defer("VS Code", () => {
         if (!vsCode.HasExited) {
@@ -73,9 +94,15 @@ namespace Rekey.DesktopChecks {
       Thread.Sleep(TimeSpan.FromSeconds(2));
       Point editor = Desktop.Center(found);
 
-      // As the owner tried it: one click, then three Words on one line, no click between.
+      // As the owner tried it: one click, then three Words on one line, no click between, at
+      // a person's pace, so the suggestion popup opens while the second and third Words are
+      // typed.
       Action word = () => {
-        Input.Type("ghbdtn");
+        foreach (char letter in "ghbdtn") {
+          Input.Type(letter.ToString());
+          Thread.Sleep(TimeSpan.FromMilliseconds(150));
+        }
+
         Input.Space();
       };
       var results = new List<ReplacementResult?> { CorrectIn(editor, word, clear: false) };
