@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using Rekey.Core;
 using Rekey.Win32;
@@ -50,6 +51,15 @@ namespace Rekey.DesktopChecks {
           new SpecWords().Evaluate);
       worker.Replaced += result => Console.WriteLine($"Replacement {result}");
       worker.Mismatched += trace => Console.WriteLine($"Mismatch {trace}");
+      var tracer = new WordEndTracer();
+      worker.Observed += inputEvent => {
+        if (tracer.Add(inputEvent, worker.WordLength) is { } line) {
+          string slowest = worker.SlowestKeyCheckMilliseconds.ToString(
+              "F0", CultureInfo.InvariantCulture);
+          Console.WriteLine($"{line}; keys rejected so far {worker.KeyRejects}, slowest "
+              + $"Password Field check {slowest} ms");
+        }
+      };
       worker.Undone += _ => Console.WriteLine("Undo");
       worker.Start();
       Console.WriteLine("Rekey now corrects the spec's example Words typed in English (US).");

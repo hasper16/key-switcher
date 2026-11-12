@@ -54,6 +54,23 @@ namespace Rekey.Win32.Tests.Keyboard {
       Assert.False(NewConfirmer().Confirm(key));
     }
 
+    [Fact]
+    public void RejectionsAreCountedByCause() {
+      KeyConfirmer confirmer = NewConfirmer();
+      RawInput queued = Read(Write(RawInputKind.KeyDown));
+      Write(RawInputKind.KeyDown);
+      confirmer.Confirm(queued);
+      RawInput during = Read(RawInputKind.KeyDown);
+      _duringCheck = () => Write(RawInputKind.KeyDown);
+      confirmer.Confirm(during);
+      _duringCheck = () => { };
+      RawInput password = Read(RawInputKind.KeyDown);
+      _passwordFocused = true;
+      confirmer.Confirm(password);
+
+      Assert.Equal(new KeyRejects(Queued: 1, DuringCheck: 1, Password: 1), confirmer.Rejects);
+    }
+
     private KeyConfirmer NewConfirmer() {
       return new KeyConfirmer(
           () => {

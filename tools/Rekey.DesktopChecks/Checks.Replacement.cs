@@ -365,6 +365,13 @@ namespace Rekey.DesktopChecks {
         Input.ClearBox();
       }
 
+      return TypeAndWait(type, before, switched);
+    }
+
+    // Types where the caret is, without a click or a switch, and waits for the worker to
+    // replace text or decide not to.
+    private ReplacementResult? TypeAndWait(
+        Action type, EventLog.Position before, bool switched) {
       bool english = CurrentLayout() == SpecWords.EnglishUs;
       EventLog.Position mark = _log.Mark();
       type();

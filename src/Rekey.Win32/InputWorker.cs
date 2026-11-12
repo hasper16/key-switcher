@@ -194,6 +194,18 @@ namespace Rekey.Win32 {
     public int WordLength => _engine.Word.Count;
 
     /// <summary>
+    /// Gets the character keys not confirmed outside a Password Field so far, by cause; read it
+    /// only on the worker thread, as from <see cref="Observed" />.
+    /// </summary>
+    public KeyRejects KeyRejects => _keyConfirmer.Rejects;
+
+    /// <summary>
+    /// Gets the longest Password Field check so far, in milliseconds; read it only on the
+    /// worker thread, as from <see cref="Observed" />.
+    /// </summary>
+    public double SlowestKeyCheckMilliseconds => _keyConfirmer.SlowestCheckMilliseconds;
+
+    /// <summary>
     /// Gets the number of input batches the worker finished; only the worker thread writes it.
     /// </summary>
     public long Heartbeat => Volatile.Read(ref _heartbeat);

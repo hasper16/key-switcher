@@ -72,16 +72,20 @@ namespace Rekey.DesktopChecks {
       PInvoke.MoveWindow(found, 80, 320, 900, 500, true);
       Thread.Sleep(TimeSpan.FromSeconds(2));
       Point editor = Desktop.Center(found);
-      var results = new List<ReplacementResult?>();
-      for (int attempt = 0; attempt < 3; attempt++) {
-        results.Add(CorrectIn(
-            editor,
-            () => {
-              Input.Type("ghbdtn");
-              Input.Space();
-            },
-            clear: false));
+
+      // As the owner tried it: one click, then three Words on one line, no click between.
+      Action word = () => {
+        Input.Type("ghbdtn");
+        Input.Space();
+      };
+      var results = new List<ReplacementResult?> { CorrectIn(editor, word, clear: false) };
+      var traces = new List<string> { _trace };
+      for (int attempt = 1; attempt < 3; attempt++) {
+        results.Add(TypeAndWait(word, _log.Mark(), switched: true));
+        traces.Add(_trace);
       }
+
+      _trace = string.Join(' ', traces);
 
       Input.Control('s');
       Thread.Sleep(TimeSpan.FromSeconds(1));

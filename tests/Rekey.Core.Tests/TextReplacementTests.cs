@@ -68,6 +68,20 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void WordsAfterACancelledReplacementOnTheSameLineAreStillReplaced() {
+      // The owner's VS Code check: three Words, Space after each, the first one cancelled.
+      Typist typist = Corrector().Type("ghbdtn").Hold(KeyKind.Space).Finish(applied: false);
+      typist.Actions.Clear();
+
+      typist.Type("ghbdtn").Hold(KeyKind.Space).Finish(applied: false)
+          .Type("ghbdtn").Hold(KeyKind.Space);
+
+      Assert.Equal(
+          [new ReplaceText("ghbdtn", "привет"), new ReplaceText("ghbdtn", "привет")],
+          typist.Actions);
+    }
+
+    [Fact]
     public void TriggerKeyThatWasNotHeldReplacesNothing() {
       Typist typist = Corrector().Type("ghbdtn").Press(KeyKind.Space);
 
