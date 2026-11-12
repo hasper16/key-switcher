@@ -72,10 +72,14 @@ namespace Rekey.Win32.Replacement {
         return ReplacementMethod.Retype;
       }
 
-      string? context = reader.ReadContext(expected.Length + _contextLength);
-      return context?.Contains(expected, StringComparison.Ordinal) == true
-          ? ReplacementMethod.Cancel
-          : ReplacementMethod.Unrelated;
+      // A wider read that fails or hits the requested limit cannot rule out a longer
+      // autocomplete, so it cancels without blaming the app.
+      int limit = expected.Length + _contextLength;
+      string? context = reader.ReadContext(limit);
+      bool keepChecking = context is null
+          || context.Length >= limit
+          || context.Contains(expected, StringComparison.Ordinal);
+      return keepChecking ? ReplacementMethod.Cancel : ReplacementMethod.Unrelated;
     }
   }
 }

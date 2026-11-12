@@ -89,7 +89,7 @@ namespace Rekey.Win32.Replacement {
 
     /// <inheritdoc />
     public string? ReadContext(int length) {
-      if (_caret is null) {
+      if (_caret is null || OverBudget()) {
         return null;
       }
 
@@ -99,8 +99,10 @@ namespace Rekey.Win32.Replacement {
             TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start,
             TextUnit.TextUnit_Character,
             -length);
-        return TextOf(range, length);
-      } catch (COMException) {
+        string text = TextOf(range, length);
+        return OverBudget() ? null : text;
+      } catch (COMException e) {
+        TimedOut = e.HResult == _timeoutResult;
         return null;
       }
     }

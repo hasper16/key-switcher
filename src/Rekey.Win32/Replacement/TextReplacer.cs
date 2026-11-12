@@ -19,6 +19,9 @@ namespace Rekey.Win32.Replacement {
     private readonly AppStrikes _slowApps = new();
     private readonly AppStrikes _unreadableApps = new();
 
+    // The text the latest replacement expected, when what was read differed from it.
+    private string? _mismatchExpected;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="TextReplacer" /> class.
     /// </summary>
@@ -66,12 +69,6 @@ namespace Rekey.Win32.Replacement {
     }
 
     /// <summary>
-    /// Gets how the text read before the caret differed from the Word in the latest
-    /// replacement, or <see langword="null" /> when it did not differ; it carries no text.
-    /// </summary>
-    public ReplacementTrace? LastMismatch { get; private set; }
-
-    /// <summary>
     /// Replaces the text before the caret.
     /// </summary>
     /// <param name="replace">What to replace and with what.</param>
@@ -100,7 +97,7 @@ namespace Rekey.Win32.Replacement {
         return ReplacementResult.Unsupported;
       }
 
-      LastMismatch = null;
+      _mismatchExpected = null;
       bool check = _verify
           && !_slowApps.HasStruckOut(appId)
           && !_unreadableApps.HasStruckOut(appId);
@@ -118,10 +115,10 @@ namespace Rekey.Win32.Replacement {
 
       switch (method) {
         case ReplacementMethod.Cancel:
-          LastMismatch = _reader.Describe(replace.Expected);
+          _mismatchExpected = replace.Expected;
           return ReplacementResult.Mismatch;
         case ReplacementMethod.Unrelated:
-          LastMismatch = _reader.Describe(replace.Expected);
+          _mismatchExpected = replace.Expected;
           _unreadableApps.Record(appId);
           return ReplacementResult.Mismatch;
         case ReplacementMethod.Stale:
@@ -161,6 +158,17 @@ namespace Rekey.Win32.Replacement {
       }
 
       return retype ? ReplacementResult.Retyped : ReplacementResult.Verified;
+    }
+
+    /// <summary>
+    /// Describes how the text read in the latest replacement differed from the Word, without
+    /// either text; call it after the held keys went on, as it asks the app for more.
+    /// </summary>
+    /// <returns>
+    /// The comparison, or <see langword="null" /> when the latest replacement did not differ.
+    /// </returns>
+    public ReplacementTrace? DescribeMismatch() {
+      return _mismatchExpected is { } expected ? _reader.Describe(expected) : null;
     }
 
     // Collapses a selection so neither a re-injected Space nor later typing replaces the Word.

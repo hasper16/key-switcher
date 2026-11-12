@@ -114,6 +114,21 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void FailedContextReadCancels() {
+      var control = new FakeControl("dtnxyz") { ContextUnavailable = true };
+
+      Assert.Equal(ReplacementMethod.Cancel, VerifiedReplacement.Prepare(control, "ghbdtn"));
+    }
+
+    [Fact]
+    public void ContextReadThatReachesTheLimitCancelsRatherThanCountingAsUnrelated() {
+      string longCompletion = "ghbdtn" + new string('x', 40);
+      var control = new FakeControl("xxxxxx") { Context = longCompletion };
+
+      Assert.Equal(ReplacementMethod.Cancel, VerifiedReplacement.Prepare(control, "ghbdtn"));
+    }
+
+    [Fact]
     public void NoReaderMeansRetype() {
       Assert.Equal(ReplacementMethod.Retype, VerifiedReplacement.Prepare(null, "ghbdtn"));
     }
@@ -152,9 +167,17 @@ namespace Rekey.Win32.Tests.Replacement {
 
       public int AskedContextLength { get; private set; }
 
+      public bool ContextUnavailable { get; init; }
+
+      public int Describes { get; private set; }
+
       public string? ReadContext(int length) {
         AskedContextLength = length;
-        return Context ?? _text;
+        if (ContextUnavailable || (Context ?? _text) is not { } full) {
+          return null;
+        }
+
+        return full.Length <= length ? full : full[^length..];
       }
 
       public bool FocusUnchanged() {
@@ -166,6 +189,7 @@ namespace Rekey.Win32.Tests.Replacement {
       }
 
       public ReplacementTrace Describe(string expected) {
+        Describes++;
         return ReplacementTrace.Of(
             _text ?? string.Empty, expected, new ReaderFacts("Fake", "Fake", 0, 0));
       }

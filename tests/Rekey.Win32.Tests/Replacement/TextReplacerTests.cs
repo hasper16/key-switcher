@@ -221,8 +221,8 @@ namespace Rekey.Win32.Tests.Replacement {
 
       replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
 
-      Assert.Equal(6, replacer.LastMismatch?.ExpectedLength);
-      Assert.Equal(3, replacer.LastMismatch?.SameStart);
+      Assert.Equal(6, replacer.DescribeMismatch()?.ExpectedLength);
+      Assert.Equal(3, replacer.DescribeMismatch()?.SameStart);
     }
 
     [Fact]
@@ -231,7 +231,7 @@ namespace Rekey.Win32.Tests.Replacement {
 
       replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
 
-      Assert.Null(replacer.LastMismatch);
+      Assert.Null(replacer.DescribeMismatch());
     }
 
     [Fact]
@@ -261,6 +261,45 @@ namespace Rekey.Win32.Tests.Replacement {
 
       Assert.Equal(ReplacementResult.Mismatch, third);
       Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void FailedContextReadNeverMarksTheAppUnreadable() {
+      // Without the wider read Rekey cannot tell an edited Word from unrelated text.
+      var control = new FakeControl("dtnxyz") { ContextUnavailable = true };
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      ReplacementResult third = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.Mismatch, third);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void LongAutocompleteThatFillsTheContextWindowNeverMarksTheAppUnreadable() {
+      var control = new FakeControl("xxxxxx") { Context = "ghbdtn" + new string('x', 40) };
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+      ReplacementResult third = replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(ReplacementResult.Mismatch, third);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void MismatchIsDescribedOnlyWhenAskedSoTypingIsNotDelayed() {
+      var control = new FakeControl("ghbxyz");
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      replacer.Replace(new ReplaceText("ghbdtn", "привет"), _editor);
+
+      Assert.Equal(0, control.Describes);
+      Assert.NotNull(replacer.DescribeMismatch());
+      Assert.Equal(1, control.Describes);
     }
 
     [Fact]

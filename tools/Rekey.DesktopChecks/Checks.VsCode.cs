@@ -12,8 +12,6 @@ namespace Rekey.DesktopChecks {
   // result from the saved file, since VS Code's UI Automation text cannot be trusted. Reports
   // counts only.
   internal sealed partial class Checks {
-    private const string _vsCodeFile = "rekey-check.txt";
-
     private static string? VsCodePath() {
       string[] candidates = [
           Path.Join(
@@ -51,7 +49,8 @@ namespace Rekey.DesktopChecks {
 
       string folder = Path.Join(Path.GetTempPath(), $"rekey-desktop-check-{Guid.NewGuid():N}");
       Directory.CreateDirectory(folder);
-      string file = Path.Join(folder, _vsCodeFile);
+      string fileName = $"rekey-check-{Guid.NewGuid():N}.txt";
+      string file = Path.Join(folder, fileName);
       File.WriteAllText(file, string.Empty);
       _restorer.Defer("VS Code test folder", () => Directory.Delete(folder, recursive: true));
       Process vsCode = StartVsCode(code, folder, file);
@@ -63,7 +62,7 @@ namespace Rekey.DesktopChecks {
 
         vsCode.Dispose();
       });
-      HWND? window = Desktop.FindWindow(_vsCodeFile, TimeSpan.FromSeconds(40));
+      HWND? window = Desktop.FindWindow(fileName, TimeSpan.FromSeconds(40));
       if (window is not { } found) {
         Expect("5.4 VS Code", false, "the VS Code window did not appear");
         return;

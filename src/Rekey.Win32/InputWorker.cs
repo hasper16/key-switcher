@@ -91,6 +91,9 @@ namespace Rekey.Win32 {
     private RawInput? _held;
     private bool _heldReplaced;
 
+    // A cancelled replacement waiting to be described once the held keys went on.
+    private bool _mismatchToReport;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="InputWorker" /> class.
     /// </summary>
@@ -376,6 +379,8 @@ namespace Rekey.Win32 {
           FinishHeld(raw);
         }
 
+        ReportMismatch();
+
         // Progress per input, so a pass that stays busy is not taken for a freeze.
         Volatile.Write(ref _heartbeat, _heartbeat + 1);
       }
@@ -402,6 +407,19 @@ namespace Rekey.Win32 {
 
       _gate.Release(raw.Sequence);
       _held = null;
+    }
+
+    // Describing a mismatch asks the app for more, so it waits until no key is held back, and
+    // happens only when someone listens.
+    private void ReportMismatch() {
+      if (!_mismatchToReport) {
+        return;
+      }
+
+      _mismatchToReport = false;
+      if (Mismatched is not null && _replacer?.DescribeMismatch() is { } trace) {
+        Mismatched.Invoke(trace);
+      }
     }
 
     private void Poll() {
@@ -574,9 +592,7 @@ namespace Rekey.Win32 {
       _heldReplaced = result is ReplacementResult.Verified or ReplacementResult.Retyped;
       if (result == ReplacementResult.Mismatch) {
         _recordIncident(new Incident(_time.GetUtcNow(), IncidentType.CorrectionCancelled, []));
-        if (_replacer?.LastMismatch is { } trace) {
-          Mismatched?.Invoke(trace);
-        }
+        _mismatchToReport = true;
       }
 
       Replaced?.Invoke(result);
