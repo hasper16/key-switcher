@@ -96,11 +96,14 @@ namespace Rekey.DesktopChecks {
       string[] words = text.Split([' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
       bool damaged = words.Any(word => word is not ("ghbdtn" or "привет"));
       bool lastCorrected = words.Length > 0 && words[^1] == "привет";
+
+      // The text alone cannot show a replacement: a Word typed in Russian reads the same.
+      bool replaced = results[^1] is ReplacementResult.Verified or ReplacementResult.Retyped;
       string detail = $"words {words.Length} of 3, damaged {damaged}, last corrected "
           + $"{lastCorrected}, replacements {string.Join('/', results)} {_trace}";
       Expect(
-          "5.4 VS Code: no Word damaged, and the third Word corrected",
-          words.Length == 3 && !damaged && lastCorrected,
+          "5.4 VS Code: no Word damaged, and the third Word corrected by a replacement",
+          words.Length == 3 && !damaged && lastCorrected && replaced,
           detail);
     }
   }
