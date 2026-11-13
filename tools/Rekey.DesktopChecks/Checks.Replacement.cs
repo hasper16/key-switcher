@@ -129,7 +129,7 @@ namespace Rekey.DesktopChecks {
           .Where(s => s.Event is FocusChanged or FocusLost)
           .Select(s => s.Note ?? "?")];
       return $"[now: foreground {ClassOf(PInvoke.GetForegroundWindow())}, control {control}; "
-          + $"since Ctrl+Z: focus reports {moves.Count} ({string.Join("; ", moves)}), "
+          + $"since the mark: focus reports {moves.Count} ({string.Join("; ", moves)}), "
           + $"Incidents [{string.Join('/', _log.IncidentsSince(mark))}]]";
     }
 
@@ -280,12 +280,16 @@ namespace Rekey.DesktopChecks {
       _restorer.Defer("Notepad", () => {
         // Saved empty first, so closing asks nothing and the session keeps no draft; a
         // Notepad the user had open keeps running; the one this run started is closed.
+        // The keys go to whatever is in front, so only when that is this Notepad window.
         Focus(editor);
-        Input.ClearBox();
-        Input.Control('s');
-        Thread.Sleep(_settle);
-        Input.CloseTab();
-        Thread.Sleep(_settle);
+        if (PInvoke.GetForegroundWindow() == notepad) {
+          Input.ClearBox();
+          Input.Control('s');
+          Thread.Sleep(_settle);
+          Input.CloseTab();
+          Thread.Sleep(_settle);
+        }
+
         CloseNotepadIfStartedHere(ownerId, before);
       });
       return editor;
