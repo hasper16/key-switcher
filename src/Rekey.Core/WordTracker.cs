@@ -15,6 +15,9 @@ namespace Rekey.Core {
 
     public IReadOnlyList<Keystroke> Keystrokes => _keystrokes;
 
+    // Whether a Word has begun: it has Keystrokes, or lost them and is no longer kept.
+    public bool IsUnderway => _keystrokes.Count > 0 || _spoiled;
+
     // Whether the user switched Layout themselves since the Word began.
     public bool LayoutSwitchedByUser { get; private set; }
 

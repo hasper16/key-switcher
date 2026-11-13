@@ -262,6 +262,18 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void UserLayoutSwitchInADroppedWordDoesNotExtendTheTypingGap() {
+      // The dropped Word keeps no Keystrokes but is still underway until the gap ends it.
+      Typist typist = Default().TypeUnconfirmed('g')
+          .Wait(TimeSpan.FromSeconds(1.5))
+          .SwitchLayout(KeyMapFixtures.EnglishUs, byUser: true)
+          .Wait(TimeSpan.FromSeconds(1.5))
+          .Type("dtn");
+
+      Assert.Equal("dtn", typist.Word);
+    }
+
+    [Fact]
     public void TypingGapAfterAUserLayoutSwitchStartsAnUnmarkedWord() {
       Typist typist = Default().SwitchLayout(KeyMapFixtures.Russian, byUser: false)
           .SwitchLayout(KeyMapFixtures.EnglishUs, byUser: true)

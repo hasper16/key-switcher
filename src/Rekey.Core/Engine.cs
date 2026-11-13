@@ -374,7 +374,7 @@ namespace Rekey.Core {
       // A switch before the Word's first key covers the Word typed right after it, so the
       // pause that ends that cover counts from the switch. Mid-Word, the typing gap still
       // counts from the last key.
-      if (_word.Keystrokes.Count == 0) {
+      if (!_word.IsUnderway) {
         _lastKeyDown = layout.Timestamp;
       }
     }
