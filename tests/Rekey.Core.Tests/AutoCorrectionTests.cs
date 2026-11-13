@@ -219,6 +219,49 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void UserLayoutSwitchLongAfterTheLastKeyStillCoversTheWordTypedAtOnce() {
+      // The pause that matters is the one after the switch, not the one before it.
+      Typist typist = Default().SwitchLayout(KeyMapFixtures.Russian, byUser: false)
+          .Type("hello").Press(KeyKind.Space).Wait(TimeSpan.FromSeconds(10))
+          .SwitchLayout(KeyMapFixtures.EnglishUs, byUser: true)
+          .Type("ghbdtn").Hold(KeyKind.Space);
+
+      Assert.Empty(typist.Actions);
+    }
+
+    [Fact]
+    public void PauseAfterAUserLayoutSwitchBeforeAnyKeyStartsAnUnmarkedWord() {
+      Typist typist = Default().SwitchLayout(KeyMapFixtures.Russian, byUser: false)
+          .SwitchLayout(KeyMapFixtures.EnglishUs, byUser: true)
+          .Wait(TimeSpan.FromSeconds(3))
+          .Type("ghbdtn").Hold(KeyKind.Space);
+
+      Assert.Equal([_correction], typist.Actions);
+    }
+
+    [Fact]
+    public void UserLayoutSwitchAfterAPauseMidWordEndsThatWord() {
+      // The pause already ended "ghb"; the keys after the switch are a new, marked Word.
+      Typist typist = new Typist(new Settings(SkipAfterManualLayoutSwitch: false))
+          .Type("ghb").Wait(TimeSpan.FromSeconds(3))
+          .SwitchLayout(KeyMapFixtures.EnglishUs, byUser: true)
+          .Type("dtn");
+
+      Assert.Equal("dtn", typist.Word);
+    }
+
+    [Fact]
+    public void UserLayoutSwitchMidWordDoesNotExtendTheTypingGap() {
+      Typist typist = Default().Type("ghb")
+          .Wait(TimeSpan.FromSeconds(1.5))
+          .SwitchLayout(KeyMapFixtures.EnglishUs, byUser: true)
+          .Wait(TimeSpan.FromSeconds(1.5))
+          .Type("dtn");
+
+      Assert.Equal("dtn", typist.Word);
+    }
+
+    [Fact]
     public void TypingGapAfterAUserLayoutSwitchStartsAnUnmarkedWord() {
       Typist typist = Default().SwitchLayout(KeyMapFixtures.Russian, byUser: false)
           .SwitchLayout(KeyMapFixtures.EnglishUs, byUser: true)

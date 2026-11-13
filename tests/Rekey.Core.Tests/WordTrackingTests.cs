@@ -1,8 +1,22 @@
+using Rekey.Core.Detection;
 using Xunit;
 
 namespace Rekey.Core.Tests {
   // Spec keyboard-capture: "Keys that build a Word" and "Keys and events that end a Word".
   public sealed class WordTrackingTests {
+    [Fact]
+    public void WordStaysUnconfirmedWhenALaterKeyOfItIsDroppedForAnotherReason() {
+      var word = new WordTracker();
+      var keystroke = new Keystroke(0x22, false, false);
+      var unconfirmed = new KeyDown(
+          TimeSpan.Zero, keystroke, KeyKind.Character, KeyModifiers.None, FocusConfirmed: false);
+
+      word.Drop(unconfirmed);
+      word.Drop(unconfirmed with { FocusConfirmed = true });
+
+      Assert.True(word.Unconfirmed);
+    }
+
     [Fact]
     public void LettersBuildTheWord() {
       Assert.Equal("hello", new Typist().Type("hello").Word);

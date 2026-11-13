@@ -55,9 +55,12 @@ namespace Rekey.Core {
     // Drops a key whose focus is unknown. A key that ends the Word still ends it; any other key
     // spoils the Word, because keeping the rest would leave a Word missing a Keystroke.
     public void Drop(KeyDown keyDown) {
+      bool wasUnconfirmed = Unconfirmed;
       Clear();
       _spoiled = !EndsWord(keyDown);
-      Unconfirmed = _spoiled && !keyDown.FocusConfirmed;
+
+      // An earlier unconfirmed key of the same Word still explains why it is not kept.
+      Unconfirmed = _spoiled && (wasUnconfirmed || !keyDown.FocusConfirmed);
     }
 
     // Keystrokes were lost somewhere in the current Word, so none of it is kept until it ends.

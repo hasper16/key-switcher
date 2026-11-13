@@ -22,7 +22,8 @@ namespace Rekey.Core {
     /// Returns an application identity in the form it is compared in.
     /// </summary>
     /// <remarks>
-    /// An image path loses surrounding quotes and the <c>\\?\</c> prefix, gets <c>\</c>
+    /// An image path loses surrounding quotes and the <c>\\?\</c> prefix (<c>\\?\UNC\</c>
+    /// becomes <c>\\</c>), gets <c>\</c>
     /// separators and has its <c>.</c> and <c>..</c> segments resolved; anything else is only
     /// trimmed. Identities compare without case; see <see cref="ExcludedAppList" />.
     /// </remarks>
@@ -30,9 +31,15 @@ namespace Rekey.Core {
     /// <returns>The identity in its compared form.</returns>
     public static string Normalise(string identity) {
       const string longPathPrefix = @"\\?\";
+      const string longNetworkPrefix = @"\\?\UNC\";
       string path = identity.Trim().Trim('"').Trim().Replace('/', '\\');
-      if (path.StartsWith(longPathPrefix, StringComparison.Ordinal)) {
+      if (path.StartsWith(longNetworkPrefix, StringComparison.OrdinalIgnoreCase)) {
+        // "\\?\UNC\server\share" is the long form of "\\server\share".
+        path = @"\\" + path[longNetworkPrefix.Length..];
+      } else if (path.StartsWith(longPathPrefix, StringComparison.Ordinal)) {
         path = path[longPathPrefix.Length..];
+      } else {
+        // Already in its ordinary form.
       }
 
       return IsDrivePath(path) ? ResolveSegments(path) : path;

@@ -358,10 +358,24 @@ namespace Rekey.Core {
 
     private void OnLayoutChanged(LayoutChanged layout) {
       CurrentLayout = layout.Layout;
-      if (layout.ByUser) {
-        // The user chose the Layout, so the Deferred Words stay as typed in the old one.
-        _word.MarkLayoutSwitchedByUser();
-        EndRun();
+      if (!layout.ByUser) {
+        return;
+      }
+
+      // A pause before the switch has already ended the Word typed before it.
+      if (layout.Timestamp - _lastKeyDown > _typingGap) {
+        _word.Clear();
+      }
+
+      // The user chose the Layout, so the Deferred Words stay as typed in the old one.
+      EndRun();
+      _word.MarkLayoutSwitchedByUser();
+
+      // A switch before the Word's first key covers the Word typed right after it, so the
+      // pause that ends that cover counts from the switch. Mid-Word, the typing gap still
+      // counts from the last key.
+      if (_word.Keystrokes.Count == 0) {
+        _lastKeyDown = layout.Timestamp;
       }
     }
 

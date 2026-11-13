@@ -437,7 +437,10 @@ namespace Rekey.DesktopChecks {
       List<ReplacementResult> results = _log.ReplacementsSince(mark);
       int held = _log.KeyDownsSince(mark).Count(
           key => key.Held && key.Kind is KeyKind.Space or KeyKind.Enter or KeyKind.Tab);
-      return new Attempt(results.Count == 0 ? null : results[^1], held, FocusedText());
+
+      // A Tab may have moved focus to the masked box, whose text must not be asked for.
+      string? text = PasswordBoxHasFocus() ? null : FocusedText();
+      return new Attempt(results.Count == 0 ? null : results[^1], held, text);
     }
 
     // Gives the worker new settings and waits until its engine has them.

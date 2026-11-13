@@ -38,6 +38,14 @@ namespace Rekey.Core.Tests {
       Assert.True(list.Contains(new AppId(@"\\?\c:\APPS\Zorbit\Editor.exe")));
     }
 
+    [Theory]
+    [InlineData(@"\\?\UNC\zorbit-server\apps\Editor.exe", @"\\zorbit-server\apps\Editor.exe")]
+    [InlineData(@"\\zorbit-server\apps\Editor.exe", @"\\?\UNC\zorbit-server\apps\Editor.exe")]
+    [InlineData(@"\\?\unc\zorbit-server\apps\Editor.exe", @"\\ZORBIT-SERVER\apps\editor.exe")]
+    public void NetworkPathMatchesInItsExtendedAndOrdinaryForm(string entry, string focused) {
+      Assert.True(new ExcludedAppList([entry]).Contains(new AppId(focused)));
+    }
+
     [Fact]
     public void PackagedAppMatchesByItsAumidWithoutCase() {
       var list = new ExcludedAppList(["zorbit.calc_8ABC!app"]);
