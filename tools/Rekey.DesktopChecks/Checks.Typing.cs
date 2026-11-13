@@ -151,6 +151,7 @@ namespace Rekey.DesktopChecks {
 
       var userWords = new List<int>();
       var secretKeys = new List<int>();
+      EventLog.Position start = _log.Mark();
       for (int round = 0; round < _rounds; round++) {
         Input.Click(user);
         userWords.Add(TypeTwoWords("qwe", "rty"));
@@ -158,11 +159,12 @@ namespace Rekey.DesktopChecks {
         secretKeys.Add(TypeTwoWords("asd", "fgh"));
       }
 
-      ExpectRounds("3.3 click", userWords, secretKeys);
+      ExpectRounds("3.3 click", userWords, secretKeys, start);
 
       userWords.Clear();
       secretKeys.Clear();
       Input.Click(user);
+      start = _log.Mark();
       for (int round = 0; round < _rounds; round++) {
         Input.Tab();
         secretKeys.Add(TypeTwoWords("asd", "fgh"));
@@ -170,7 +172,22 @@ namespace Rekey.DesktopChecks {
         userWords.Add(TypeTwoWords("qwe", "rty"));
       }
 
-      ExpectRounds("3.3 Tab and Shift+Tab", userWords, secretKeys);
+      ExpectRounds("3.3 Tab and Shift+Tab", userWords, secretKeys, start);
+    }
+
+    // What the worker saw of focus during the rounds, to tell why a password box kept keys:
+    // counts, and the class and control type of the last focus moves, never text.
+    private string FocusTrace(EventLog.Position start) {
+      List<EventLog.Seen> seen = _log.EventsSince(start);
+      List<FocusChanged> reports = [.. seen.Select(s => s.Event).OfType<FocusChanged>()];
+      int lost = seen.Count(s => s.Event is FocusLost);
+      int secret = reports.Count(report => report.IsPassword);
+      int unconfirmed = seen.Select(s => s.Event).OfType<KeyDown>()
+          .Count(key => key.Kind == KeyKind.Character && !key.FocusConfirmed);
+      IEnumerable<string> moves = seen.Where(s => s.Event is FocusChanged)
+          .Select(s => s.Note ?? "?").Distinct().Take(4);
+      return $"focus reports {reports.Count} (Password Field {secret}, lost {lost}), "
+          + $"character keys unconfirmed {unconfirmed}, focus moves [{string.Join("; ", moves)}]";
     }
 
     // Types two Words at once and returns the most Word keys the worker held meanwhile.
@@ -195,7 +212,8 @@ namespace Rekey.DesktopChecks {
       return _log.EventsSince(mark).Select(seen => seen.WordKeys).DefaultIfEmpty(0).Max();
     }
 
-    private void ExpectRounds(string path, List<int> userWords, List<int> secretKeys) {
+    private void ExpectRounds(
+        string path, List<int> userWords, List<int> secretKeys, EventLog.Position start) {
       int unseen = userWords.Concat(secretKeys).Count(keys => keys < 0);
       Expect(
           $"{path}: every typed key reached the worker",
@@ -210,7 +228,7 @@ namespace Rekey.DesktopChecks {
       Expect(
           $"{path}: the password box keeps nothing",
           kept == 0,
-          $"Word keys above 0 in {kept} of {secretKeys.Count} rounds");
+          $"Word keys above 0 in {kept} of {secretKeys.Count} rounds; {FocusTrace(start)}");
     }
 
     private void ExpectNothingKept(string item, EventLog.Position mark) {
