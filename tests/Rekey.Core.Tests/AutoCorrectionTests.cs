@@ -188,6 +188,18 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void WordTypedAfterRekeysOwnSwitchIsCorrectedBackWhenItIsEnglish() {
+      // After the Correction the Layout is Russian; an English Word typed there reads "руддщ".
+      Typist typist = Default().Type("ghbdtn").Hold(KeyKind.Space).Finish()
+          .SwitchLayout(KeyMapFixtures.Russian, byUser: false);
+      typist.Actions.Clear();
+
+      typist.Type("hello").Hold(KeyKind.Space);
+
+      Assert.Equal([new ReplaceText("руддщ", "hello")], typist.Actions);
+    }
+
+    [Fact]
     public void UserLayoutSwitchBeforeTheFirstKeyCoversTheWordTypedNext() {
       Typist typist = Default().SwitchLayout(KeyMapFixtures.Russian, byUser: false)
           .SwitchLayout(KeyMapFixtures.EnglishUs, byUser: true)

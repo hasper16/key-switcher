@@ -24,7 +24,7 @@ namespace Rekey.DesktopChecks {
       }
 
       if (args is ["text-replacement"]) {
-        using var replacement = new Checks(new SpecWords().Evaluate);
+        using var replacement = new Checks(new Settings(), new SpecWords().Evaluate);
         return replacement.RunTextReplacement();
       }
 

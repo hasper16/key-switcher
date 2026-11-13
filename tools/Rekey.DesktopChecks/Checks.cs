@@ -28,15 +28,16 @@ namespace Rekey.DesktopChecks {
     // Written on the worker thread, read by the checks.
     private int _focusMovesKeptWord;
 
+    // The checks of typing and Layouts only watch: nothing is held and nothing is corrected.
     public Checks()
-        : this(null) {
+        : this(new Settings(AutoCorrectionEnabled: false)) {
     }
 
-    // With an evaluator, the worker holds Trigger Keys and corrects what it is told to.
-    public Checks(WordEvaluator? evaluate) {
+    // With an evaluator the worker corrects what it is told to; without one it evaluates Words
+    // itself, as the app does.
+    public Checks(Settings settings, WordEvaluator? evaluate = null) {
       _restorer = new Restorer(_report);
-      _worker = new InputWorker(
-          new Settings(), _log.AddIncident, TimeProvider.System, evaluate);
+      _worker = new InputWorker(settings, _log.AddIncident, TimeProvider.System, evaluate);
       _worker.Observed += inputEvent => {
         _log.Add(
             inputEvent,

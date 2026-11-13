@@ -201,9 +201,13 @@ namespace Rekey.Win32.Focus {
 
       _reportedWindow = target.Window;
       _reportedElement = _passwords.FocusedElement();
-      (string imagePath, bool isElevated) = ProcessFacts.Read(target.ProcessId);
+      (AppId owner, bool isElevated) = ProcessFacts.Read(target.ProcessId);
+      AppId app = AppIdentity.Resolve(
+          target.ProcessId,
+          id => id == target.ProcessId ? owner : ProcessFacts.Read(id).App,
+          () => AppIdentity.HostedProcess(target.Foreground));
       bool isPassword = !isElevated && _passwords.IsPassword(target.Window);
-      _report(new FocusChanged(time, new AppId(imagePath), isPassword, isElevated));
+      _report(new FocusChanged(time, app, isPassword, isElevated));
     }
   }
 }

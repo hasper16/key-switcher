@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -12,6 +13,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.WindowsAndMessaging;
+using CoreSelfPauseChanged = Rekey.Core.SelfPauseChanged;
 
 namespace Rekey.Win32 {
   /// <summary>
@@ -28,6 +30,7 @@ namespace Rekey.Win32 {
     private const uint _switchMessage = PInvoke.WM_APP + 1;
     private const uint _resumeMessage = PInvoke.WM_APP + 2;
     private const uint _freezeMessage = PInvoke.WM_APP + 3;
+    private const uint _settingsMessage = PInvoke.WM_APP + 4;
     private const uint _idleWaitMilliseconds = 250;
 
     // Design D6: a pending Layout Switch is checked every 25 ms.
@@ -46,10 +49,6 @@ namespace Rekey.Win32 {
 
     // How long quitting waits for the worker thread; see Dispose.
     private static readonly TimeSpan _stopWait = TimeSpan.FromSeconds(2);
-
-    // Design D1 of add-text-replacement: the Trigger Keys held while a Word Evaluator is set.
-    private static readonly ushort[] _triggerKeys = [
-        (ushort)VIRTUAL_KEY.VK_SPACE, (ushort)VIRTUAL_KEY.VK_RETURN];
 
     // Released around injected keys, which they would otherwise change: Ctrl+Backspace deletes
     // a word, Shift+Right extends a selection.
@@ -75,7 +74,6 @@ namespace Rekey.Win32 {
     private readonly KeyConfirmer _keyConfirmer;
     private readonly TypingState _typing = new();
     private readonly WordEvaluator? _evaluate;
-    private readonly Settings _settings;
     private readonly bool _verifiedReplacement;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _started = new();
@@ -89,6 +87,15 @@ namespace Rekey.Win32 {
     private TextReplacer? _replacer;
     private long _seenHoldTimeouts;
 
+    // Written by the constructor and then only by the thread that calls UseSettings; the
+    // worker reads it.
+    private Settings _latestSettings;
+
+    // What the hook's policy was last built from (design D2 of add-auto-correction).
+    private FrozenSet<ushort> _characterScanCodes = FrozenSet<ushort>.Empty;
+    private FrozenSet<ushort>? _publishedScanCodes;
+    private TriggerKeys _publishedTriggerKeys;
+
     // The held key the worker is handling, and whether a replacement it asked for was applied.
     private RawInput? _held;
     private bool _heldReplaced;
@@ -99,7 +106,9 @@ namespace Rekey.Win32 {
     /// <summary>
     /// Initializes a new instance of the <see cref="InputWorker" /> class.
     /// </summary>
-    /// <param name="settings">The settings that turn the keyboard watchdog on or off.</param>
+    /// <param name="settings">
+    /// The user's settings: Auto Correction, the keyboard watchdog and Verified Replacement.
+    /// </param>
     /// <param name="recordIncident">
     /// The sink that records Incidents; it is called on the worker thread.
     /// </param>
@@ -109,10 +118,11 @@ namespace Rekey.Win32 {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="InputWorker" /> class that corrects Words.
+    /// Initializes a new instance of the <see cref="InputWorker" /> class that evaluates Words
+    /// with the given evaluator.
     /// </summary>
     /// <param name="settings">
-    /// The settings that turn the keyboard watchdog and Verified Replacement on or off.
+    /// The user's settings: Auto Correction, the keyboard watchdog and Verified Replacement.
     /// </param>
     /// <param name="recordIncident">
     /// The sink that records Incidents; it is called on the worker thread.
@@ -120,7 +130,8 @@ namespace Rekey.Win32 {
     /// <param name="time">The clock; <see cref="TimeProvider.System" /> outside tests.</param>
     /// <param name="evaluate">
     /// The evaluator of Words a Trigger Key ends, called on the worker thread; with
-    /// <see langword="null" />, no key is held and nothing is corrected.
+    /// <see langword="null" />, Words are evaluated against the Language Profiles of the
+    /// installed Layouts.
     /// </param>
     public InputWorker(
         Settings settings,
@@ -130,7 +141,7 @@ namespace Rekey.Win32 {
       _recordIncident = recordIncident;
       _time = time;
       _evaluate = evaluate;
-      _settings = settings;
+      _latestSettings = settings;
       _verifiedReplacement = settings.VerifiedReplacement;
       _meter = new SlowCallbackMeter(time);
       _hook = new InputHook(_ring, _gate, _signal, _meter, time);
@@ -221,6 +232,20 @@ namespace Rekey.Win32 {
     public double SlowestKeyCheckMilliseconds => _keyConfirmer.SlowestCheckMilliseconds;
 
     /// <summary>
+    /// Gets the counts of the Words ended by a Trigger Key so far; read it only on the worker
+    /// thread, as from <see cref="Observed" />.
+    /// </summary>
+    public WordCounts WordCounts => _engine.WordCounts;
+
+    /// <summary>
+    /// Gets a value indicating whether Auto Correction applies to the Word being typed now, or
+    /// the reason it does not; read it only on the worker thread, as from
+    /// <see cref="Observed" />.
+    /// </summary>
+    /// <value>One of the enumeration values that specifies the answer.</value>
+    public GateResult Gate => _engine.Gate;
+
+    /// <summary>
     /// Gets the number of input batches the worker finished; only the worker thread writes it.
     /// </summary>
     public long Heartbeat => Volatile.Read(ref _heartbeat);
@@ -254,6 +279,20 @@ namespace Rekey.Win32 {
     /// </summary>
     public void ResumeSelfPause() {
       PInvoke.PostThreadMessage(_threadId, _resumeMessage, default, default);
+    }
+
+    /// <summary>
+    /// Replaces the settings Auto Correction follows: the switch, the Trigger Keys, the
+    /// Excluded Apps, the Pause, the Layout Switch rule and the Sensitivity.
+    /// </summary>
+    /// <remarks>
+    /// Call it after <see cref="Start" />, always from the same thread. The keyboard watchdog
+    /// and Verified Replacement keep the settings the worker was created with.
+    /// </remarks>
+    /// <param name="settings">The settings now in effect.</param>
+    public void UseSettings(Settings settings) {
+      Volatile.Write(ref _latestSettings, settings);
+      PInvoke.PostThreadMessage(_threadId, _settingsMessage, default, default);
     }
 
 #if DEBUG
@@ -377,7 +416,7 @@ namespace Rekey.Win32 {
         _recordIncident(incident);
       }
 
-      _engine = new Engine(load.Languages, _settings, _time, _evaluate);
+      _engine = new Engine(load.Languages, Volatile.Read(ref _latestSettings), _time, _evaluate);
     }
 
     private void DrainInput() {
@@ -424,7 +463,7 @@ namespace Rekey.Win32 {
 
       // The user may have switched Layout with the keys just read.
       if (any) {
-        FollowForegroundLayout();
+        FollowForegroundLayout(userMaySwitch: true);
       }
     }
 
@@ -501,13 +540,16 @@ namespace Rekey.Win32 {
       }
 
       // A switch by Win+Space or the language bar lands after the input that asked for it.
-      FollowForegroundLayout();
+      FollowForegroundLayout(userMaySwitch: true);
 
       DateTimeOffset? pausedBefore = _hookWatchdog.SelfPausedUntil;
 
       // Windows hides input aimed at an elevated window or the secure desktop from the hooks.
       bool inputHidden = (_engine.Focus?.IsElevated ?? false) || InputDesktop.HidesInputNow();
       Apply(_hookWatchdog.Check(inputHidden), pausedBefore);
+
+      // A Pause ends with the clock, not with an event.
+      PublishPolicy();
     }
 
     private void Apply(WatchdogOutcome outcome, DateTimeOffset? pausedBefore) {
@@ -520,8 +562,28 @@ namespace Rekey.Win32 {
       }
 
       if (_hookWatchdog.SelfPausedUntil != pausedBefore) {
-        SelfPauseChanged?.Invoke(_hookWatchdog.SelfPausedUntil);
+        ReportSelfPause(_hookWatchdog.SelfPausedUntil);
       }
+    }
+
+    private void ReportSelfPause(DateTimeOffset? until) {
+      Send(new CoreSelfPauseChanged(Now(), until is not null));
+      SelfPauseChanged?.Invoke(until);
+    }
+
+    // Design D2 of add-auto-correction: the hook holds the Trigger Keys the engine's gate
+    // names. Called after everything that can change the answer; a new snapshot is built only
+    // when it does.
+    private void PublishPolicy() {
+      TriggerKeys held = _engine.HeldTriggerKeys;
+      if (held == _publishedTriggerKeys
+          && ReferenceEquals(_publishedScanCodes, _characterScanCodes)) {
+        return;
+      }
+
+      _publishedTriggerKeys = held;
+      _publishedScanCodes = _characterScanCodes;
+      _gate.UsePolicy(HookPolicy.Holding(held, _characterScanCodes));
     }
 
     private void RefreshLayouts() {
@@ -532,11 +594,9 @@ namespace Rekey.Win32 {
 
       List<KeyMap> keyMaps = [.. _layouts.Layouts.Select(KeyMapOf).OfType<KeyMap>()];
       _translator.UseKeyMaps(keyMaps);
-      _gate.UsePolicy(_evaluate is null
-          ? HookPolicy.HoldNothing
-          : new HookPolicy(_triggerKeys, RawInputTranslator.CharacterScanCodes(keyMaps)));
+      _characterScanCodes = RawInputTranslator.CharacterScanCodes(keyMaps);
       Send(new LayoutsInstalledChanged(Now(), _layouts.Layouts, keyMaps));
-      FollowForegroundLayout();
+      FollowForegroundLayout(userMaySwitch: false);
     }
 
     private KeyMap? KeyMapOf(LayoutId layout) {
@@ -563,17 +623,25 @@ namespace Rekey.Win32 {
       // Key-ups on the secure desktop or in an elevated window never reach the hook.
       _modifierSync.Resync();
       Send(focus);
-      FollowForegroundLayout();
+
+      // Another window may keep its own Layout: not a switch by the user.
+      FollowForegroundLayout(userMaySwitch: false);
     }
 
-    private void FollowForegroundLayout() {
+    // Design D3 of add-auto-correction: a Layout that changed under the reported window, with
+    // no switch of Rekey's own pending, was switched by the user. When the focused window is
+    // no longer the reported one, its focus report is still on the way and explains the change.
+    private void FollowForegroundLayout(bool userMaySwitch) {
       if (_switcher.IsPending) {
         return;
       }
 
       LayoutId? current = _foregroundLayout.CurrentLayout();
       if (current is { } layout && layout != _engine.CurrentLayout) {
-        Send(new LayoutChanged(Now(), layout));
+        bool byUser = userMaySwitch
+            && _engine.CurrentLayout is not null
+            && _focus?.WindowChanged() == false;
+        Send(new LayoutChanged(Now(), layout, byUser));
       }
     }
 
@@ -582,6 +650,7 @@ namespace Rekey.Win32 {
         Execute(action);
       }
 
+      PublishPolicy();
       Observed?.Invoke(inputEvent);
     }
 
@@ -611,7 +680,10 @@ namespace Rekey.Win32 {
           return true;
         case _resumeMessage:
           Apply(_hookWatchdog.Resume(), _hookWatchdog.SelfPausedUntil);
-          SelfPauseChanged?.Invoke(null);
+          ReportSelfPause(null);
+          return true;
+        case _settingsMessage:
+          Send(new SettingsChanged(Now(), Volatile.Read(ref _latestSettings)));
           return true;
         case _freezeMessage:
           Thread.Sleep(TimeSpan.FromMilliseconds(message.lParam.Value));
