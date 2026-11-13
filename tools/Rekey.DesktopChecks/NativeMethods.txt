@@ -3,6 +3,11 @@ GetClassName
 GetClipboardSequenceNumber
 GetCursorPos
 GetForegroundWindow
+GetGUIThreadInfo
+GetKeyboardLayoutList
+PostMessage
+WM_CLOSE
+WM_INPUTLANGCHANGEREQUEST
 GetKeyState
 GetWindowRect
 GetWindowText

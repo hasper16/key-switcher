@@ -246,6 +246,16 @@ namespace Rekey.DesktopChecks {
     }
 
     private void CheckNotepad() {
+      if (OpenNotepad() is { } editor) {
+        ExpectCorrected("4.1 Notepad", editor);
+      } else {
+        Expect("4.1 Notepad", false, "Notepad did not open the test file");
+      }
+    }
+
+    // Opens Notepad on an empty file of this run's own and returns where to click to type in
+    // it, or null when it did not open; the run closes what it opened.
+    private Point? OpenNotepad() {
       // A new file of this run's own, so nothing that exists is overwritten or deleted.
       string name = $"rekey-desktop-check-{Guid.NewGuid():N}.txt";
       string file = Path.Join(Path.GetTempPath(), name);
@@ -259,8 +269,7 @@ namespace Rekey.DesktopChecks {
       })?.Dispose();
       HWND? window = Desktop.FindWindow(name, TimeSpan.FromSeconds(15));
       if (window is not { } notepad) {
-        Expect("4.1 Notepad", false, "Notepad did not open the test file");
-        return;
+        return null;
       }
 
       // Below the always-on-top test windows, so clicks meant for Notepad reach it.
@@ -279,7 +288,7 @@ namespace Rekey.DesktopChecks {
         Thread.Sleep(_settle);
         CloseNotepadIfStartedHere(ownerId, before);
       });
-      ExpectCorrected("4.1 Notepad", editor);
+      return editor;
     }
 
     private void CheckBrowserReplacement() {

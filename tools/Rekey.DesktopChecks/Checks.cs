@@ -27,6 +27,8 @@ namespace Rekey.DesktopChecks {
 
     // Written on the worker thread, read by the checks.
     private int _focusMovesKeptWord;
+    private int _gate;
+    private Counts? _counts;
 
     // The checks of typing and Layouts only watch: nothing is held and nothing is corrected.
     public Checks()
@@ -44,6 +46,8 @@ namespace Rekey.DesktopChecks {
             _worker.WordLength,
             inputEvent is FocusChanged or FocusLost ? _worker.LastFocusMove : null);
         Volatile.Write(ref _focusMovesKeptWord, _worker.FocusMovesKeptWord);
+        Volatile.Write(ref _gate, (int)_worker.Gate);
+        Volatile.Write(ref _counts, new Counts(_worker.WordCounts, _worker.KeyRejects));
       };
       _worker.SelfPauseChanged += _log.AddSelfPause;
       _worker.Replaced += _log.AddReplacement;
