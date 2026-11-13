@@ -13,6 +13,8 @@ namespace Rekey.DesktopChecks {
   internal sealed partial class Checks {
     private const string _pageTitle = "Rekey desktop check";
     private const int _rounds = 10;
+    private const string _tabLeftOpen = "the test page was not in front, so its tab was left "
+        + "open; close the browser tab titled \"" + _pageTitle + "\" by hand";
 
     // Finds a page box by its HTML id or its label, retrying while the browser builds its
     // accessibility tree (Firefox starts it on the first UI Automation request).
@@ -84,16 +86,19 @@ namespace Rekey.DesktopChecks {
           HWND shown = window.Value;
           _restorer.Defer("test page tab", () => {
             if (!ClosePageTab(shown, user.Value)) {
-              throw new RecoveryException(
-                  "the test page was not in front, so its tab was left open; close the "
-                  + $"browser tab titled \"{_pageTitle}\" by hand");
+              throw new RecoveryException(_tabLeftOpen);
             }
           });
           return (user.Value, secret.Value);
         }
 
-        // Close this browser's test tab before trying the next one.
-        ClosePageTab(window.Value, Desktop.Center(window.Value));
+        // Close this browser's test tab before trying the next one. A tab left open would be
+        // found again in place of the next browser's page, so the search stops there.
+        if (!ClosePageTab(window.Value, Desktop.Center(window.Value))) {
+          _report.Add("3.3 the test page tab is closed", false, _tabLeftOpen);
+          return null;
+        }
+
         Thread.Sleep(_settle);
       }
 
