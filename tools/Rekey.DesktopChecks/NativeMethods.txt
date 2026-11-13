@@ -1,5 +1,7 @@
 EnumWindows
+GetAncestor
 GetClassName
+WindowFromPoint
 GetClipboardSequenceNumber
 GetCursorPos
 GetForegroundWindow

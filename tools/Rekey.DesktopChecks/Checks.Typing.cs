@@ -152,8 +152,15 @@ namespace Rekey.DesktopChecks {
       List<KeyDown> keys = WaitForKeys(typed, 3);
       int wordKeys = _log.EventsSince(typed).LastOrDefault()?.WordKeys ?? 0;
       int unconfirmed = keys.Count(key => !key.FocusConfirmed);
-      string detail = $"{keys.Count} KeyDowns, Word keys {wordKeys}, unconfirmed {unconfirmed} "
-          + FocusSince(tagged);
+
+      // A focus report stamped with a key's own time was made when that key arrived: the
+      // worker had not yet heard of the focus move, and drops the key and its Word.
+      List<KeyDown> all = _log.KeyDownsSince(tagged);
+      int reportedAtKey = _log.EventsSince(start).Select(seen => seen.Event)
+          .OfType<FocusChanged>()
+          .Count(report => all.Exists(key => key.Timestamp == report.Timestamp));
+      string detail = $"{keys.Count} KeyDowns, Word keys {wordKeys}, unconfirmed {unconfirmed}, "
+          + $"focus reports made only when a key arrived {reportedAtKey} {FocusSince(start)}";
       Expect("2.1 typed keys build the Word", keys.Count == 3 && wordKeys >= 3, detail);
 
       EventLog.Position click = _log.Mark();

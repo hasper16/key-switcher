@@ -281,8 +281,7 @@ namespace Rekey.DesktopChecks {
         // Saved empty first, so closing asks nothing and the session keeps no draft; a
         // Notepad the user had open keeps running; the one this run started is closed.
         // The keys go to whatever is in front, so only when that is this Notepad window.
-        Focus(editor);
-        if (PInvoke.GetForegroundWindow() == notepad) {
+        if (TryFocus(editor) && PInvoke.GetForegroundWindow() == notepad) {
           Input.ClearBox();
           Input.Control('s');
           Thread.Sleep(_settle);

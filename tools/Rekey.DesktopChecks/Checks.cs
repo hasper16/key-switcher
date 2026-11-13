@@ -6,6 +6,7 @@ using Rekey.Core.Languages;
 using Rekey.Win32;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Rekey.DesktopChecks {
   // Runs every desktop check against the real hooks, windows and settings of this session.
@@ -90,9 +91,31 @@ namespace Rekey.DesktopChecks {
           ?? throw new InvalidOperationException("Run the checks from the repository.");
     }
 
+    // Clicks a point to give its window the keyboard. A check that types without that window
+    // in front would type somewhere else, so this stops the check instead.
     private static void Focus(Point at) {
+      bool inFront = TryFocus(at);
+      if (!inFront) {
+        // Once more: the first click may only have dismissed something in the way.
+        inFront = TryFocus(at);
+      }
+
+      if (!inFront) {
+        string front = ClassOf(PInvoke.GetForegroundWindow());
+        throw new RecoveryException(
+            $"a click did not bring its window to the front (in front: {front}); a window "
+            + "running as administrator in front blocks injected clicks: minimise such "
+            + "windows and run again");
+      }
+    }
+
+    // Returns whether the click brought the window under the point to the front.
+    private static bool TryFocus(Point at) {
       Input.Click(at);
       Thread.Sleep(_settle);
+      HWND clicked = PInvoke.GetAncestor(
+          PInvoke.WindowFromPoint(at), GET_ANCESTOR_FLAGS.GA_ROOT);
+      return !clicked.IsNull && clicked == PInvoke.GetForegroundWindow();
     }
 
     private static void Kill(Process process) {
