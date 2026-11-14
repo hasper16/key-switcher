@@ -21,6 +21,10 @@ namespace Rekey.Core {
     // Whether the user switched Layout themselves since the Word began.
     public bool LayoutSwitchedByUser { get; private set; }
 
+    // Whether the user switched Layout after the Word began, so its Keystrokes are not all in
+    // one Layout.
+    public bool LayoutSwitchedInside { get; private set; }
+
     // Whether the Word is not kept because one of its keys could not be confirmed outside a
     // Password Field.
     public bool Unconfirmed { get; private set; }
@@ -48,11 +52,13 @@ namespace Rekey.Core {
       _keystrokes.Clear();
       _spoiled = false;
       LayoutSwitchedByUser = false;
+      LayoutSwitchedInside = false;
       Unconfirmed = false;
     }
 
     public void MarkLayoutSwitchedByUser() {
       LayoutSwitchedByUser = true;
+      LayoutSwitchedInside |= IsUnderway;
     }
 
     // Drops a key whose focus is unknown. A key that ends the Word still ends it; any other key

@@ -65,6 +65,12 @@ namespace Rekey.Core.Detection {
       };
     }
 
+    // Punctuation at the edges is typed with the Correction but says nothing about the Language.
+    internal static string TrimToLetters(string rendering, LanguageProfile profile) {
+      string normalised = WordNormaliser.Normalise(rendering);
+      return normalised.Trim([.. normalised.Where(c => !profile.Alphabet.Contains(c))]);
+    }
+
     // Two Languages with the same word give the same text, so only distinct words conflict.
     private static bool IsAmbiguous(IEnumerable<Candidate> words) {
       return words.Select(candidate => candidate.Letters).Distinct().Skip(1).Any();
@@ -76,12 +82,6 @@ namespace Rekey.Core.Detection {
       bool sharesScript =
           typedIn.Profile.Alphabet.AsSpan().ContainsAny(candidate.Layout.Profile.Alphabet);
       return !sharesScript || (candidate.Score.IsWord && candidate.Text != typed);
-    }
-
-    // Punctuation at the edges is typed with the Correction but says nothing about the Language.
-    private static string TrimToLetters(string rendering, LanguageProfile profile) {
-      string normalised = WordNormaliser.Normalise(rendering);
-      return normalised.Trim([.. normalised.Where(c => !profile.Alphabet.Contains(c))]);
     }
 
     private static bool LooksLikeCode(string text) {

@@ -37,6 +37,56 @@ namespace Rekey.Win32.Replacement {
     private long _started;
 
     /// <summary>
+    /// Returns the text selected in the focused control, within the same 50 ms budget as a
+    /// read.
+    /// </summary>
+    /// <param name="maxLength">
+    /// The most characters to return; a longer selection comes back cut to this length.
+    /// </param>
+    /// <param name="unreadable">
+    /// When this method returns, <see langword="true" /> if the control exposes text but its
+    /// selection could not be read: several selections, an error or no answer in time;
+    /// otherwise, <see langword="false" />.
+    /// </param>
+    /// <returns>
+    /// The selected text, or <see langword="null" /> when nothing is selected, the control
+    /// exposes no text, or the selection is unreadable.
+    /// </returns>
+    public string? ReadSelection(int maxLength, out bool unreadable) {
+      TimedOut = false;
+      unreadable = false;
+      _element = null;
+      if (_automation is null) {
+        return null;
+      }
+
+      _started = Stopwatch.GetTimestamp();
+      try {
+        // Kept, so typing over the selection can check focus is still there.
+        _element = Target(_automation);
+        if (_element.GetCurrentPattern(UIA_PATTERN_ID.UIA_TextPatternId)
+            is not IUIAutomationTextPattern text) {
+          return null;
+        }
+
+        // An answer that came too late may describe an older selection.
+        IUIAutomationTextRangeArray selections = text.GetSelection();
+        if (selections.Length != 1) {
+          unreadable = selections.Length > 1 || OverBudget();
+          return null;
+        }
+
+        string selected = TextOf(selections.GetElement(0), maxLength);
+        unreadable = OverBudget();
+        return unreadable || selected.Length == 0 ? null : selected;
+      } catch (COMException e) {
+        TimedOut = e.HResult == _timeoutResult;
+        unreadable = true;
+        return null;
+      }
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="UiaTextBeforeCaret" /> class.
     /// </summary>
     /// <param name="typingElement">
@@ -182,6 +232,12 @@ namespace Rekey.Win32.Replacement {
       }
 
       return ReplacementTrace.Of(_lastText, expected, facts);
+    }
+
+    /// <inheritdoc />
+    public bool SelectionIs(string selected) {
+      return _automation is null
+          || (ReadSelection(selected.Length + 1, out bool unreadable) == selected && !unreadable);
     }
 
     /// <inheritdoc />

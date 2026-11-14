@@ -47,5 +47,11 @@ namespace Rekey.Win32.Replacement {
     /// window of a pseudo console; nothing was changed.
     /// </summary>
     Unsupported,
+
+    /// <summary>
+    /// Typing stopped part-way, after a space, because focus moved or a click came; the text
+    /// may be partly changed, so nothing is switched or made undoable.
+    /// </summary>
+    Cut,
   }
 }

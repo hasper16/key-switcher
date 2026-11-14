@@ -36,6 +36,40 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void ComboHotkeyBecomesAManualCorrectionRequest() {
+      IReadOnlyList<InputEvent> events = Translate(
+          Down(_vkControlLeft, 0x1D), Down(0x20, 0x39) with { Holding = Holding.Hotkey });
+
+      Assert.Equal(new ManualCorrectionRequested(At(1002)), events[^1]);
+    }
+
+    [Fact]
+    public void DoubleTapReleaseBecomesAManualCorrectionRequest() {
+      IReadOnlyList<InputEvent> events = Translate(
+          Down(_vkShiftLeft, 0x2A), Up(_vkShiftLeft, 0x2A) with { Holding = Holding.HotkeyTap });
+
+      Assert.Equal(new ManualCorrectionRequested(At(1002)), events[^1]);
+    }
+
+    [Fact]
+    public void SwallowedRepeatIsNoKey() {
+      IReadOnlyList<InputEvent> events =
+          Translate(Down(0x20, 0x39) with { Holding = Holding.Swallowed });
+
+      Assert.Empty(events);
+    }
+
+    [Fact]
+    public void WindowsHeldFollowsTheWinKey() {
+      RawInputTranslator translator = NewTranslator();
+
+      translator.Translate(Down(0x5B, 0x5B, extended: true));
+      Assert.True(translator.WindowsHeld);
+      translator.Translate(Up(0x5B, 0x5B));
+      Assert.False(translator.WindowsHeld);
+    }
+
+    [Fact]
     public void ShiftIsReportedOnTheKeystroke() {
       IReadOnlyList<InputEvent> events = Translate(
           Down(_vkShiftLeft, 0x2A), Down(0x47, 0x22), Up(_vkShiftLeft, 0x2A), Down(0x47, 0x22));

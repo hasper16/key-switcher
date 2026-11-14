@@ -85,6 +85,7 @@ namespace Rekey.Win32 {
     private bool _quitting;
     private FocusTracker? _focus;
     private TextReplacer? _replacer;
+    private UiaTextBeforeCaret? _uia;
     private long _seenHoldTimeouts;
 
     // Written by the constructor and then only by the thread that calls UseSettings; the
@@ -145,6 +146,7 @@ namespace Rekey.Win32 {
       _verifiedReplacement = settings.VerifiedReplacement;
       _meter = new SlowCallbackMeter(time);
       _hook = new InputHook(_ring, _gate, _signal, _meter, time);
+      UseHotkey(settings.Hotkey);
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
       _translator = new RawInputTranslator(capsLockOn);
       _modifierSync = new ModifierSync(
@@ -386,8 +388,9 @@ namespace Rekey.Win32 {
       }
 
       _started.Set();
+      _uia = new UiaTextBeforeCaret(() => _focus?.TypingElement);
       _replacer = new TextReplacer(
-          new UiaTextBeforeCaret(() => _focus?.TypingElement),
+          _uia,
           _verifiedReplacement,
           HeldModifiers,
           SendKeys,
@@ -443,15 +446,27 @@ namespace Rekey.Win32 {
         if (inputEvent is KeyDown { Kind: KeyKind.Character } keyDown) {
           // Focus may have moved inside the window before its WinEvent arrived.
           inputEvent = keyDown with { FocusConfirmed = _keyConfirmer.Confirm(raw) };
+        } else if (inputEvent is ManualCorrectionRequested request) {
+          string? selection = ReadSelection(out bool unreadable);
+          inputEvent = request with { Selection = selection, SelectionUnreadable = unreadable };
+        } else {
+          // Other inputs go to the engine as translated.
         }
 
-        _held = raw.Holding == Holding.None ? null : raw;
+        // Design D0 of add-manual-correction: before anything Rekey types releases Win, so the
+        // shell never sees a lone Win press and opens Start.
+        if (raw.Holding == Holding.Hotkey && _translator.WindowsHeld) {
+          _ = SendKeys(InputBuilder.MaskWin());
+        }
+
+        bool held = raw.Holding is not (Holding.None or Holding.Swallowed);
+        _held = held ? raw : null;
         _heldReplaced = false;
         if (inputEvent is not null) {
           Send(inputEvent);
         }
 
-        if (raw.Holding != Holding.None) {
+        if (held) {
           FinishHeld(raw);
         }
 
@@ -485,15 +500,17 @@ namespace Rekey.Win32 {
 
     // Sends a held key on to the application once its replacement, if any, is done, and lets
     // the hook stop holding once every held key has gone on. An applied Undo consumes its
-    // Ctrl+Z; an applied Correction makes a Ctrl+Z right after its Trigger Key an Undo.
+    // Ctrl+Z, and a combination Hotkey never reaches the application; an applied Correction
+    // makes a Ctrl+Z right after the key that asked for it an Undo.
     private void FinishHeld(in RawInput raw) {
-      if (raw.Holding == Holding.Held && _heldReplaced) {
+      if (raw.Holding != Holding.UndoRequest && _heldReplaced) {
         _gate.ArmUndo(raw.Sequence);
       }
 
       // Released even if Windows refuses the key: holding on would only block typing until
       // the valve opens, and the key cannot be sent any other way.
-      if (raw.Holding != Holding.UndoRequest || !_heldReplaced) {
+      if (raw.Holding is Holding.Held or Holding.HotkeyTap
+          || (raw.Holding == Holding.UndoRequest && !_heldReplaced)) {
         _ = SendKeys([InputBuilder.Reinject(raw)]);
       }
 
@@ -654,6 +671,11 @@ namespace Rekey.Win32 {
       Observed?.Invoke(inputEvent);
     }
 
+    // The hook thread alone uses each detector, so every setting gets a new one.
+    private void UseHotkey(Hotkey hotkey) {
+      _gate.UseHotkey(new HotkeyDetector(hotkey, IsKeyDown));
+    }
+
     // Dispatches waiting messages; returns false once WM_QUIT arrives.
     private bool PumpMessages() {
       while (PInvoke.PeekMessage(
@@ -683,7 +705,9 @@ namespace Rekey.Win32 {
           ReportSelfPause(null);
           return true;
         case _settingsMessage:
-          Send(new SettingsChanged(Now(), Volatile.Read(ref _latestSettings)));
+          Settings settings = Volatile.Read(ref _latestSettings);
+          UseHotkey(settings.Hotkey);
+          Send(new SettingsChanged(Now(), settings));
           return true;
         case _freezeMessage:
           Thread.Sleep(TimeSpan.FromMilliseconds(message.lParam.Value));
@@ -704,6 +728,9 @@ namespace Rekey.Win32 {
         case ReplaceText replace:
           Replace(replace);
           break;
+        case TypeOverSelection typeOver:
+          TypeOver(typeOver);
+          break;
         case UndoPerformed undone:
           Undone?.Invoke(undone);
           break;
@@ -713,7 +740,10 @@ namespace Rekey.Win32 {
     }
 
     private void Replace(ReplaceText replace) {
-      ReplacementResult result = TryReplace(replace);
+      Finish(TryReplace(replace));
+    }
+
+    private void Finish(ReplacementResult result) {
       _heldReplaced = result is ReplacementResult.Verified or ReplacementResult.Retyped;
       if (result == ReplacementResult.Mismatch) {
         _recordIncident(new Incident(_time.GetUtcNow(), IncidentType.CorrectionCancelled, []));
@@ -722,6 +752,25 @@ namespace Rekey.Win32 {
 
       Replaced?.Invoke(result);
       Send(new ReplacementFinished(Now(), _heldReplaced));
+    }
+
+    private void TypeOver(TypeOverSelection typeOver) {
+      ReplacementResult result = _held is { } held && _replacer is not null
+          ? _replacer.TypeOver(
+              typeOver, () => Stale(held, _landMilliseconds), () => Moved(held))
+          : ReplacementResult.TooLate;
+      Finish(result);
+    }
+
+    // Design D4 of add-manual-correction: a Password Field never has its selection read; text
+    // longer than the engine converts is cut one past that length, so the engine still sees it
+    // is too long.
+    private string? ReadSelection(out bool unreadable) {
+      const int maxSelection = 501;
+      unreadable = false;
+      return _engine.Focus is { IsPasswordField: false, IsElevated: false }
+          ? _uia?.ReadSelection(maxSelection, out unreadable)
+          : null;
     }
 
     private ReplacementResult TryReplace(ReplaceText replace) {
@@ -733,13 +782,20 @@ namespace Rekey.Win32 {
         return stale;
       }
 
-      return _replacer.Replace(replace, app, () => Stale(held, _landMilliseconds));
+      return _replacer.Replace(
+          replace, app, () => Stale(held, _landMilliseconds), () => Moved(held));
     }
 
     // Why the held key can no longer be replaced before, or null if it still can: a click,
     // which is never held, may have moved the caret, the app may have moved focus, or the
     // valve may have let later keys through. A move is reported first, since what is cleaned
     // up depends on where the caret went.
+    // A click or a window change while a text with spaces is typed in parts; the time does not
+    // count there, as stopping half-way would leave a half-typed Word.
+    private ReplacementResult? Moved(in RawInput held) {
+      return Stale(held, long.MaxValue);
+    }
+
     private ReplacementResult? Stale(in RawInput held, long maxAge) {
       if (_gate.ClickedAfter(held.Sequence)) {
         return ReplacementResult.Interrupted;

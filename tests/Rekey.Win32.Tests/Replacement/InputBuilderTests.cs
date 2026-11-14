@@ -35,6 +35,58 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void ReplacementWithWinHeldMasksWinAfterPressingItAgain() {
+      // Design D0 of add-manual-correction: the user's own Win release comes after the
+      // re-press, so a key must stand between them or the shell opens Start.
+      INPUT[] inputs = InputBuilder.Replacement(erase: 0, "a", [VIRTUAL_KEY.VK_LWIN]);
+
+      Assert.Equal(
+          [
+            Key(VIRTUAL_KEY.VK_LWIN, up: true),
+            Unicode('a', up: false), Unicode('a', up: true),
+            Key(VIRTUAL_KEY.VK_LWIN, up: false),
+            Key((VIRTUAL_KEY)0xE8, up: false), Key((VIRTUAL_KEY)0xE8, up: true),
+          ],
+          inputs.Select(Describe));
+    }
+
+    [Fact]
+    public void CollapseWithWinHeldMasksWinToo() {
+      INPUT[] inputs = InputBuilder.CollapseSelection([VIRTUAL_KEY.VK_RWIN]);
+
+      Assert.Equal(
+          [Key((VIRTUAL_KEY)0xE8, up: false), Key((VIRTUAL_KEY)0xE8, up: true)],
+          inputs.Select(Describe).TakeLast(2));
+    }
+
+    [Fact]
+    public void ReplacementPartsEndAfterEachSpace() {
+      IReadOnlyList<INPUT[]> parts = InputBuilder.ReplacementParts(
+          erase: 1, "a b c", [VIRTUAL_KEY.VK_LSHIFT]);
+
+      Assert.Equal(3, parts.Count);
+      Assert.Equal(
+          Unicode(' ', up: true), Describe(parts[0][^1]));
+      Assert.Equal(
+          InputBuilder.Replacement(1, "a b c", [VIRTUAL_KEY.VK_LSHIFT]).Select(Describe),
+          parts.SelectMany(part => part).Select(Describe));
+    }
+
+    [Fact]
+    public void TextEndingInASpaceIsOnePart() {
+      Assert.Single(InputBuilder.ReplacementParts(erase: 0, "yt ", []));
+    }
+
+    [Fact]
+    public void MaskIsAPressAndReleaseOfAnUnassignedKey() {
+      // Design D0 of add-manual-correction: a key between Win's press and release keeps the
+      // shell from opening Start.
+      Assert.Equal(
+          [Key((VIRTUAL_KEY)0xE8, up: false), Key((VIRTUAL_KEY)0xE8, up: true)],
+          InputBuilder.MaskWin().Select(Describe));
+    }
+
+    [Fact]
     public void CollapseReleasesHeldModifiersAroundRight() {
       INPUT[] inputs = InputBuilder.CollapseSelection([VIRTUAL_KEY.VK_LSHIFT]);
 

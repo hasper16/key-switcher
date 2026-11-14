@@ -8,6 +8,35 @@ namespace Rekey.Win32.Replacement {
   /// </summary>
   internal static class InputBuilder {
     /// <summary>
+    /// Returns the inputs of <see cref="Replacement" /> in parts, each but the last ending
+    /// right after a space, so the parts can be sent with a pause between them.
+    /// </summary>
+    /// <remarks>
+    /// Notepad garbles or drops what follows a space typed in the same burst (design D4 of
+    /// add-manual-correction).
+    /// </remarks>
+    /// <param name="erase">The number of Backspaces to send first.</param>
+    /// <param name="text">The text to type.</param>
+    /// <param name="heldModifiers">The modifier keys down now, as for Replacement.</param>
+    /// <returns>The parts, in order.</returns>
+    public static IReadOnlyList<INPUT[]> ReplacementParts(
+        int erase, string text, IReadOnlyList<VIRTUAL_KEY> heldModifiers) {
+      INPUT[] inputs = Replacement(erase, text, heldModifiers);
+      int start = 0;
+      var parts = new List<INPUT[]>();
+      for (int i = 0; i < text.Length - 1; i++) {
+        if (text[i] == ' ') {
+          int end = heldModifiers.Count + (2 * (erase + i + 1));
+          parts.Add(inputs[start..end]);
+          start = end;
+        }
+      }
+
+      parts.Add(inputs[start..]);
+      return parts;
+    }
+
+    /// <summary>
     /// Returns the inputs that erase text before the caret and type a replacement.
     /// </summary>
     /// <param name="erase">The number of characters to erase with Backspace.</param>
@@ -33,7 +62,7 @@ namespace Rekey.Win32.Replacement {
             0, unit, KEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE | KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP));
       }
 
-      inputs.AddRange(heldModifiers.Select(key => Key(key, 0, 0)));
+      inputs.AddRange(Repress(heldModifiers));
       return [.. inputs];
     }
 
@@ -54,8 +83,28 @@ namespace Rekey.Win32.Replacement {
               VIRTUAL_KEY.VK_RIGHT,
               0,
               KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY | KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP),
-          .. heldModifiers.Select(key => Key(key, 0, 0)),
+          .. Repress(heldModifiers),
       ];
+    }
+
+    /// <summary>
+    /// Returns a press and release of an unassigned key, which keeps the shell from opening
+    /// Start when Win is released after a swallowed key.
+    /// </summary>
+    /// <returns>The inputs to send.</returns>
+    public static INPUT[] MaskWin() {
+      const VIRTUAL_KEY unassigned = (VIRTUAL_KEY)0xE8;
+      return [Key(unassigned, 0, 0), Key(unassigned, 0, KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP)];
+    }
+
+    /// <summary>
+    /// Returns the inputs that press the held modifiers again after a replacement stopped
+    /// part-way, with the masking key after Win.
+    /// </summary>
+    /// <param name="heldModifiers">The modifier keys the replacement released.</param>
+    /// <returns>The inputs, in order.</returns>
+    public static INPUT[] Restore(IReadOnlyList<VIRTUAL_KEY> heldModifiers) {
+      return [.. Repress(heldModifiers)];
     }
 
     /// <summary>
@@ -81,6 +130,15 @@ namespace Rekey.Win32.Replacement {
       }
 
       return Key(0, held.ScanCode, flags);
+    }
+
+    // Design D0 of add-manual-correction: the user's own Win release follows the re-press, so a
+    // key between them keeps the shell from opening Start.
+    private static IEnumerable<INPUT> Repress(IReadOnlyList<VIRTUAL_KEY> heldModifiers) {
+      IEnumerable<INPUT> again = heldModifiers.Select(key => Key(key, 0, 0));
+      return heldModifiers.Any(key => key is VIRTUAL_KEY.VK_LWIN or VIRTUAL_KEY.VK_RWIN)
+          ? again.Concat(MaskWin())
+          : again;
     }
 
     private static INPUT Key(VIRTUAL_KEY key, ushort scanCode, KEYBD_EVENT_FLAGS flags) {
