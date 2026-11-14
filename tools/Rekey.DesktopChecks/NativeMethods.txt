@@ -22,3 +22,5 @@ SendInput
 SetCursorPos
 SystemParametersInfo
 VIRTUAL_KEY
+RegisterHotKey
+UnregisterHotKey

@@ -35,6 +35,12 @@ namespace Rekey.DesktopChecks {
         return autoCorrection.RunAutoCorrection();
       }
 
+      if (args is ["manual-correction"]) {
+        // No evaluator: the worker evaluates Words itself, as the app does.
+        using var manualCorrection = new Checks(new Settings());
+        return manualCorrection.RunManualCorrection();
+      }
+
       if (args is ["console-probe"]) {
         using var probe = new Checks();
         return probe.RunConsoleProbe();

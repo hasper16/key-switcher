@@ -28,6 +28,8 @@ namespace Rekey.DesktopChecks {
       ['h'] = (VIRTUAL_KEY.VK_H, 0x23),
       ['z'] = (VIRTUAL_KEY.VK_Z, 0x2C),
       ['x'] = (VIRTUAL_KEY.VK_X, 0x2D),
+      ['k'] = (VIRTUAL_KEY.VK_K, 0x25),
+      ['v'] = (VIRTUAL_KEY.VK_V, 0x2F),
       ['b'] = (VIRTUAL_KEY.VK_B, 0x30),
       ['n'] = (VIRTUAL_KEY.VK_N, 0x31),
       ['.'] = (VIRTUAL_KEY.VK_OEM_PERIOD, 0x34),
