@@ -12,6 +12,26 @@ namespace Rekey.Core.Languages {
     public ushort LanguageId => (ushort)(Value & 0xFFFF);
 
     /// <summary>
+    /// Gets the two-letter code of the Layout's language in capitals, such as <c>RU</c>, as
+    /// the tray icon and the cursor indicator show it.
+    /// </summary>
+    /// <value>The code, or <c>??</c> when the language id names no known culture.</value>
+    public string LanguageCode {
+      get {
+        if (LanguageId == 0) {
+          return "??";
+        }
+
+        try {
+          string code = CultureInfo.GetCultureInfo(LanguageId).TwoLetterISOLanguageName;
+          return code.Length == 0 || code == "iv" ? "??" : code.ToUpperInvariant();
+        } catch (CultureNotFoundException) {
+          return "??";
+        }
+      }
+    }
+
+    /// <summary>
     /// Converts the 8-digit hexadecimal text of a KLID to a Layout id.
     /// </summary>
     /// <param name="text">The KLID text, such as <c>00000419</c>.</param>

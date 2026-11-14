@@ -6,10 +6,14 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using H.NotifyIcon;
+using Rekey.App.Tray;
+using Rekey.App.ViewModels;
 using Rekey.Core;
 using Rekey.Core.Words;
 using Rekey.Win32;
+using Rekey.Win32.Focus;
 
 namespace Rekey.App {
   [SuppressMessage(
@@ -24,9 +28,9 @@ namespace Rekey.App {
     private const string _checkAutoResume = "--check-auto-resume";
     private const string _checkQuit = "--check-quit";
 #endif
-    private const string _toolTip = "Rekey";
-    private const string _selfPausedToolTip =
-        "Rekey paused itself: it lost the keyboard twice. It retries in 10 minutes.";
+
+    // The tray says how many minutes of a Pause remain and notices its end.
+    private static readonly TimeSpan _trayRefreshPeriod = TimeSpan.FromSeconds(20);
 
     // How long a restarted Rekey waits for the frozen one to exit before it starts anyway.
     private static readonly TimeSpan _oldProcessExitWait = TimeSpan.FromSeconds(10);
@@ -42,9 +46,11 @@ namespace Rekey.App {
         new(_wordsStore, TimeProvider.System, ReportWordsNotSaved);
 
     private SingleInstanceGuard? _guard;
-    private Settings? _settings;
-    private TaskbarIcon? _trayIcon;
-    private MenuItem? _resumeItem;
+    private SettingsHub? _hub;
+    private TrayViewModel? _tray;
+    private TrayIconView? _trayView;
+    private ForegroundApps? _foregroundApps;
+    private DispatcherTimer? _trayTimer;
 #if DEBUG
     private bool _checkingTray;
     private bool _autoResume;
@@ -68,17 +74,22 @@ namespace Rekey.App {
         return;
       }
 
-      _settings = _settingsStore.Load();
-
-      _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
-      CreateResumeItem();
+      _hub = new SettingsHub(
+          _settingsStore.Load().ForNewSession(), _settingsStore.Save, TimeProvider.System);
+      _tray = new TrayViewModel(_hub, TimeProvider.System, () => _worker?.ResumeSelfPause());
+      var trayIcon = (TaskbarIcon)FindResource("TrayIcon");
+      _trayView = new TrayIconView(
+          trayIcon, _tray, new TrayCommands(OpenSettings, OpenAbout, () => Shutdown()));
 #if DEBUG
-      AddDebugMenuItems(_trayIcon);
+      AddDebugMenuItems(_trayView);
 #endif
+      _trayView.Refresh();
 
       // Efficiency Mode throttles the process; the keyboard hook must stay fast.
-      _trayIcon.ForceCreate(enablesEfficiencyMode: false);
-      StartInput(_settings);
+      trayIcon.ForceCreate(enablesEfficiencyMode: false);
+      StartInput(_hub.Current);
+      _hub.Changed += OnSettingsChanged;
+      StartTrayFollowers();
 #if DEBUG
       if (e.Args.Contains(_checkFreeze)) {
         FreezeTwiceForCheck();
@@ -112,7 +123,10 @@ namespace Rekey.App {
         // After the worker, so its last change is saved too.
         _wordsSaver.Flush();
         _wordsSaver.Dispose();
-        _trayIcon?.Dispose();
+        _trayTimer?.Stop();
+        _foregroundApps?.Dispose();
+        _trayView?.Dispose();
+        _hub?.Dispose();
         _guard?.Dispose();
         base.OnExit(e);
       }
@@ -163,6 +177,7 @@ namespace Rekey.App {
 
       _worker.SelfPauseChanged += until => Dispatcher.BeginInvoke(() => ShowSelfPause(until));
       _worker.Observed += RememberWordCounts;
+      _worker.Observed += FollowLayout;
       try {
         _worker.Start();
       } catch (Win32Exception) {
@@ -224,7 +239,7 @@ namespace Rekey.App {
         return;
       }
 
-      Dispatcher.Invoke(() => _trayIcon?.Dispose(), TimeSpan.FromSeconds(1));
+      Dispatcher.Invoke(() => _trayView?.Dispose(), TimeSpan.FromSeconds(1));
       FlushSettings();
       _wordsSaver.Flush();
       Environment.Exit(0);
@@ -258,45 +273,76 @@ namespace Rekey.App {
 
     // For tools/Rekey.DesktopChecks: what the tray shows, written after every change.
     private void WriteTrayState() {
-      if (!_checkingTray || _trayIcon is null || _resumeItem is null) {
+      if (!_checkingTray || _tray is null || _trayView is null) {
         return;
       }
 
-      bool paused = _trayIcon.ToolTipText == _selfPausedToolTip;
-      bool resume = _trayIcon.ContextMenu.Items.Contains(_resumeItem);
+      bool paused = _tray.State == TrayState.SelfPaused;
+      bool resume = _trayView.FindItem(Strings.MenuResume) is not null;
       Directory.CreateDirectory(_dataFolder);
       File.WriteAllText(
           Path.Join(_dataFolder, "check-tray.txt"),
           $"tooltip-self-paused={paused} resume-item={resume}");
     }
 
-    private void AddDebugMenuItems(TaskbarIcon trayIcon) {
+    private void AddDebugMenuItems(TrayIconView trayView) {
       var freeze = new MenuItem { Header = "Debug: freeze input for 7 s" };
       freeze.Click += (_, _) => _worker?.FreezeForCheck(TimeSpan.FromSeconds(7));
-      trayIcon.ContextMenu.Items.Insert(0, freeze);
+      trayView.ExtraItems.Add(freeze);
     }
 
 #endif
-    private void CreateResumeItem() {
-      // Added to the menu only while Rekey paused itself.
-      _resumeItem = new MenuItem { Header = "Resume" };
-      _resumeItem.Click += (_, _) => _worker?.ResumeSelfPause();
+    private void StartTrayFollowers() {
+      _foregroundApps = new ForegroundApps();
+      _foregroundApps.Changed += app => {
+        _tray!.CurrentApp = new CurrentApp(app, AppNames.Of(app));
+        RefreshTray();
+      };
+      _foregroundApps.Start();
+      _trayTimer = new DispatcherTimer(
+          _trayRefreshPeriod, DispatcherPriority.Background, (_, _) => RefreshTray(), Dispatcher);
+      _trayTimer.Start();
+    }
+
+    private void RefreshTray() {
+      _trayView?.Refresh();
+#if DEBUG
+      WriteTrayState();
+#endif
+    }
+
+    // Runs on the worker thread after each input event; only Layout changes reach the UI.
+    private void FollowLayout(InputEvent inputEvent) {
+      if (inputEvent is LayoutChanged changed) {
+        string code = changed.Layout.LanguageCode;
+        Dispatcher.BeginInvoke(() => {
+          _tray!.LanguageCode = code;
+          RefreshTray();
+        });
+      }
+    }
+
+    private void OnSettingsChanged(Settings settings) {
+      _worker?.UseSettings(settings);
+      RefreshTray();
+    }
+
+    private void OpenSettings() {
+      // The settings window arrives with task group 3 of add-tray-and-settings-ui.
+    }
+
+    private void OpenAbout() {
+      // The About page arrives with task group 3 of add-tray-and-settings-ui.
     }
 
     private void ShowSelfPause(DateTimeOffset? until) {
-      if (_trayIcon is null || _resumeItem is null) {
+      if (_tray is null) {
         return;
       }
 
-      _trayIcon.ToolTipText = until is null ? _toolTip : _selfPausedToolTip;
-      ItemCollection items = _trayIcon.ContextMenu.Items;
-      if (until is null) {
-        items.Remove(_resumeItem);
-      } else if (!items.Contains(_resumeItem)) {
-        items.Insert(0, _resumeItem);
-      }
+      _tray.SelfPausedUntil = until;
+      RefreshTray();
 #if DEBUG
-      WriteTrayState();
       if (until is null && _autoQuit) {
         // For the desktop checks: quit the way the tray's Quit does, 1 s after resuming.
         _ = Task.Delay(TimeSpan.FromSeconds(1)).ContinueWith(
@@ -305,23 +351,17 @@ namespace Rekey.App {
 
       if (until is not null && _autoResume) {
         // For the desktop checks: choose Resume as a person would, 2 s later.
-        MenuItem resume = _resumeItem;
         _ = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(
             _ => Dispatcher.BeginInvoke(
-                () => resume.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent))),
+                () => _trayView?.FindItem(Strings.MenuResume)
+                    ?.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent))),
             TaskScheduler.Default);
       }
 #endif
     }
 
     private void FlushSettings() {
-      if (_settings is not null) {
-        _settingsStore.Save(_settings);
-      }
-    }
-
-    private void OnQuitClick(object sender, RoutedEventArgs e) {
-      Shutdown();
+      _hub?.Flush();
     }
   }
 }

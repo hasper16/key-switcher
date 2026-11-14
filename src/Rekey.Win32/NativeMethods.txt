@@ -18,6 +18,7 @@ GetKeyState
 GetKeyboardLayout
 GetKeyboardLayoutList
 GetLastInputInfo
+GetSystemMetrics
 GetMessage
 GetModuleHandle
 GetTokenInformation

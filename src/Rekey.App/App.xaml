@@ -5,25 +5,7 @@
              xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
              ShutdownMode="OnExplicitShutdown">
   <Application.Resources>
-    <tb:TaskbarIcon x:Key="TrayIcon" ToolTipText="Rekey">
-      <tb:TaskbarIcon.IconSource>
-        <!-- H.NotifyIcon 2.4.1 draws the text from the top-left corner of TextMargin and drops a
-             line taller than that area, so this margin centers the letter by hand. -->
-        <tb:GeneratedIconSource Text="R"
-                                Foreground="White"
-                                Background="#2D6CDF"
-                                FontSize="80"
-                                FontWeight="Bold"
-                                Size="128"
-                                TextMargin="24,-15,0,-24"
-                                BackgroundType="RoundedRectangle"
-                                CornerRadius="24" />
-      </tb:TaskbarIcon.IconSource>
-      <tb:TaskbarIcon.ContextMenu>
-        <ContextMenu>
-          <MenuItem Header="Quit" Click="OnQuitClick" />
-        </ContextMenu>
-      </tb:TaskbarIcon.ContextMenu>
-    </tb:TaskbarIcon>
+    <!-- Its icon and menu are built at run time from the tray view-model (Tray/TrayIconView). -->
+    <tb:TaskbarIcon x:Key="TrayIcon" ToolTipText="Rekey" />
   </Application.Resources>
 </Application>

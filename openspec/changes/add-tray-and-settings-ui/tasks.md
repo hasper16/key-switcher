@@ -8,8 +8,8 @@
 
 ## 2. Keycap mark and tray
 
-- [ ] 2.1 Implement the keycap renderer (light/dark, paused/off/self-paused variants, 16–32 px); verify visually with a test page rendering all variants at 100/150/200% scale
-- [ ] 2.2 Implement the tray icon and menu (Auto Correction, Pause presets/Resume, exclude current app, Settings, Statistics, Check for updates, About, Quit); verify manually each item works and the icon shows "RU" after switching to Russian
+- [x] 2.1 Implement the keycap renderer (light/dark, paused/off/self-paused variants, 16–32 px); verify visually with a test page rendering all variants at 100/150/200% scale (`KeycapTests` checks sizes, states and colors and writes `keycap-sheet.png`; the look by hand is deferred to `docs/manual-tests/deferred-by-hand.md`)
+- [ ] 2.2 Implement the tray icon and menu (Auto Correction, Pause presets/Resume, exclude current app, Settings, Statistics, Check for updates, About, Quit); verify manually each item works and the icon shows "RU" after switching to Russian (the "RU" part is the desktop-check set `tray-and-settings`; the menu items by hand are deferred to `docs/manual-tests/deferred-by-hand.md`)
 
 ## 3. Settings window
 
