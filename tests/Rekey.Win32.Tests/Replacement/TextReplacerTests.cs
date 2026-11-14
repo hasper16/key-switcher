@@ -313,7 +313,8 @@ namespace Rekey.Win32.Tests.Replacement {
 
     [Fact]
     public void SelectionIsTypedOverWithoutErasing() {
-      TextReplacer replacer = Replacer(new FakeControl(null), verify: true);
+      TextReplacer replacer =
+          Replacer(new FakeControl(null) { Selection = "ghbdtn vbh" }, verify: true);
 
       ReplacementResult result =
           replacer.TypeOver(new TypeOverSelection("ghbdtn vbh", "привет мир"), () => null);
@@ -334,8 +335,20 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void SelectionChangedInsideTheControlIsLeftAlone() {
+      var control = new FakeControl(null) { Selection = "vb" };
+      TextReplacer replacer = Replacer(control, verify: true);
+
+      ReplacementResult result =
+          replacer.TypeOver(new TypeOverSelection("vbh", "мир"), () => null);
+
+      Assert.Equal(ReplacementResult.Mismatch, result);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
     public void StaleSelectionIsLeftAlone() {
-      TextReplacer replacer = Replacer(new FakeControl(null), verify: true);
+      TextReplacer replacer = Replacer(new FakeControl(null) { Selection = "vbh" }, verify: true);
 
       ReplacementResult result = replacer.TypeOver(
           new TypeOverSelection("vbh", "мир"), () => ReplacementResult.Interrupted);
@@ -346,7 +359,8 @@ namespace Rekey.Win32.Tests.Replacement {
 
     [Fact]
     public void RefusedTypingOverIsReportedAsBlocked() {
-      var replacer = new TextReplacer(new FakeControl(null), true, () => [], _ => false);
+      var control = new FakeControl(null) { Selection = "vbh" };
+      var replacer = new TextReplacer(control, true, () => [], _ => false);
 
       ReplacementResult result =
           replacer.TypeOver(new TypeOverSelection("vbh", "мир"), () => null);
@@ -358,8 +372,9 @@ namespace Rekey.Win32.Tests.Replacement {
     public void TextWithASpaceIsTypedInPartsWithAPauseBetween() {
       // Design D4 of add-manual-correction: Notepad garbles what follows a space in one burst.
       var pauses = new List<TimeSpan>();
-      var replacer = new TextReplacer(
-          new FakeControl(null), true, () => [], Send, () => TextTarget.Editable, pauses.Add);
+      var control = new FakeControl(null) { Selection = "ghbdtn vbh" };
+      var replacer =
+          new TextReplacer(control, true, () => [], Send, () => TextTarget.Editable, pauses.Add);
 
       ReplacementResult result =
           replacer.TypeOver(new TypeOverSelection("ghbdtn vbh", "привет мир"), () => null);

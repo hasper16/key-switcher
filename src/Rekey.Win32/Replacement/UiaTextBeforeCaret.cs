@@ -69,9 +69,10 @@ namespace Rekey.Win32.Replacement {
           return null;
         }
 
+        // An answer that came too late may describe an older selection.
         IUIAutomationTextRangeArray selections = text.GetSelection();
         if (selections.Length != 1) {
-          unreadable = selections.Length > 1;
+          unreadable = selections.Length > 1 || OverBudget();
           return null;
         }
 
@@ -231,6 +232,12 @@ namespace Rekey.Win32.Replacement {
       }
 
       return ReplacementTrace.Of(_lastText, expected, facts);
+    }
+
+    /// <inheritdoc />
+    public bool SelectionIs(string selected) {
+      return _automation is null
+          || (ReadSelection(selected.Length + 1, out bool unreadable) == selected && !unreadable);
     }
 
     /// <inheritdoc />

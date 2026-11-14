@@ -194,9 +194,14 @@ namespace Rekey.Win32.Replacement {
         return ReplacementResult.Unsupported;
       }
 
-      // The app may have moved focus inside the window since the selection was read.
+      // The app may have moved focus inside the window since the selection was read, or the
+      // selection may have changed in the same control.
       if (!_reader.FocusUnchanged()) {
         return ReplacementResult.FocusMoved;
+      }
+
+      if (!_reader.SelectionIs(typeOver.Selected)) {
+        return ReplacementResult.Mismatch;
       }
 
       if (recheck() is { } stale) {
