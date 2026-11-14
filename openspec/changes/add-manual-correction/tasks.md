@@ -21,5 +21,5 @@
 
 ## 4. Conflicts
 
-- [ ] 4.1 Write failing tests for reading the Windows Toggle registry values into a shortcut set (fake registry reader); implement; verify they pass
+- [x] 4.1 Write failing tests for reading the Windows Toggle registry values into a shortcut set (fake registry reader); implement; verify they pass
 - [ ] 4.2 Implement the `RegisterHotKey` probe for custom combos; verify manually that Win+Space is reported as used by Windows and that a combo registered in another tool is reported as taken
