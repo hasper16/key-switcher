@@ -54,7 +54,7 @@ When the Hotkey is performed after a Word (with at most one Space or Tab typed a
 - **THEN** the text becomes "привет" and the Layout is Russian
 
 ### Requirement: Correct the selected text
-When text is selected and the focused control exposes the selection, the Hotkey SHALL replace the selection with its Rendering in the best other active Layout, character by character, and switch to that Layout.
+When text is selected and the focused control exposes the selection, the Hotkey SHALL replace the selection with its Rendering in the best other active Layout, character by character, and switch to that Layout. A selection with a line break or longer than 500 characters (design decision) SHALL NOT be replaced; the Hotkey then performs only a Layout Switch.
 
 #### Scenario: Selected sentence
 - **WHEN** the user selects "ghbdtn vbh" and performs the Hotkey
@@ -62,6 +62,10 @@ When text is selected and the focused control exposes the selection, the Hotkey 
 
 #### Scenario: Selection not readable
 - **WHEN** text is selected but the control does not expose the selection
+- **THEN** Rekey performs only a Layout Switch and leaves the text unchanged
+
+#### Scenario: Selection with a line break
+- **WHEN** the user selects two lines of text and performs the Hotkey
 - **THEN** Rekey performs only a Layout Switch and leaves the text unchanged
 
 ### Requirement: Nothing to correct
