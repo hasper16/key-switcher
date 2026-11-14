@@ -29,6 +29,15 @@ On `UndoPerformed(word)` with length ≥ 3 → add Protected (source auto). The 
 ### D4. Bounds
 10,000 entries per list; eviction picks the oldest `lastUsed` among `source: auto`. If all entries are user-added, adding a new one beyond the limit is refused with a message in the UI.
 
+### D5. Ownership and editing
+The engine owns the lists on the worker thread (one writer). It returns `WordListsChanged` after any change; the worker snapshots the lists and the app saves the latest snapshot 2 s after the last change and on exit. Settings edits reach the engine as a `WordListEdited` input event, so they take effect for the next Word; a refused add returns `WordListFull` for the UI's message. The editors themselves come with `add-tray-and-settings-ui`.
+
+### D6. What learns
+- Undo protects each Word of the undone Correction, so a run "yt ntcn" protects "ntcn" only (length rule); it also removes each Word of the Rendering that is a Learned Word of the target Language.
+- A Manual Correction of a Word (typed or the RecentWord) learns its Rendering. A converted selection neither learns nor protects: it can be a whole sentence, not a Word.
+- An applied Correction to a Learned Word refreshes its `lastUsed`, as does a Word kept because it is protected, so eviction drops entries unused the longest.
+- Protected and Learned keys are the normalised text without punctuation at its edges.
+
 ## Risks / Trade-offs
 
 - [Auto-protection hides a real wrong-layout word forever] → entries are visible and removable; statistics show "Words protected automatically".
