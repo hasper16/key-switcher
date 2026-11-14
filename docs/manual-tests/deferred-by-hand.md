@@ -25,7 +25,7 @@ The app has no settings window before `add-tray-and-settings-ui`, so the Hotkey 
 
 Written against the head of the `add-word-learning` PR. The rules are covered by unit tests; these steps check the app wiring. Use a Debug build of `src/Rekey.App` with English (US) and Russian installed and default settings. The app has no word list editors before `add-tray-and-settings-ui`; inspect `%LOCALAPPDATA%\Rekey\words.json` with Rekey closed.
 
-- [ ] **Undo protects, and survives a restart (3.1, 4.1).** Delete `words.json` if present. In Notepad, in English (US), type "ntcn" and Space: it becomes "тест ". Press Ctrl+Z within 5 s: it is "ntcn " again. Wait 3 s, then type "ntcn" and Space once more. Quit Rekey from the tray, start it, switch to English (US), type "ntcn" and Space.
+- [ ] **Undo protects, and survives a restart (3.1, 4.1).** Quit Rekey, delete `words.json` if present, and start Rekey. In Notepad, in English (US), type "ntcn" and Space: it becomes "тест ". Press Ctrl+Z within 5 s: it is "ntcn " again. Wait 3 s, then type "ntcn" and Space once more. Quit Rekey from the tray, start it, switch to English (US), type "ntcn" and Space.
   Expected: the second and third "ntcn" stay as typed; `words.json` lists "ntcn" under `protected` with `"source": "auto"`.
 - [ ] **Manual Correction learns (3.2).** In Notepad, in English (US), type "rhby;" and Space: it stays. Press the Hotkey: it becomes "кринж ". Switch to English (US) and type "rhby;" and Space.
   Expected: the second "rhby;" becomes "кринж" on its own; `words.json` lists "кринж" under `learned` with `"language": "ru"` once Rekey has quit.

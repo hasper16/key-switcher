@@ -176,6 +176,27 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void UndoCountsLettersNotDigitsForTheLengthRule() {
+      Typist typist = new Typist(new Settings(AutoCorrectionEnabled: false), new WordLists())
+          .Type("yt1").Hotkey().Finish().RequestUndo().Finish();
+
+      Assert.Contains(typist.Actions, action => action is UndoPerformed);
+      Assert.Empty(typist.Engine.Words.Snapshot().Protected);
+    }
+
+    [Fact]
+    public void UndoForgetsALearnedWordTypedWithADigit() {
+      var lists = new WordLists();
+      lists.Learn("кринж", Language.Russian, WordSource.User, _monday);
+
+      Typist typist = new Typist(new Settings(AutoCorrectionEnabled: false), lists)
+          .Type("rhby;1").Hotkey().Finish().RequestUndo().Finish();
+
+      Assert.Contains(new UndoPerformed("rhby;1", "кринж1"), typist.Actions);
+      Assert.Empty(typist.Engine.Words.LearnedIn(Language.Russian));
+    }
+
+    [Fact]
     public void UndoOfARunProtectsItsLongWordsOnly() {
       Typist typist = With(new WordLists())
           .Type("yt").Hold(KeyKind.Space).Type("ntcn").Hold(KeyKind.Space)

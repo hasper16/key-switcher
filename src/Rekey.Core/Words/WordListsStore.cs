@@ -29,13 +29,24 @@ namespace Rekey.Core.Words {
     /// renames it with a <c>.bak</c> suffix (a dated one when that backup is locked) and returns
     /// empty lists.
     /// </remarks>
-    /// <returns>The stored lists, or empty lists when there are none to read.</returns>
-    public WordListsDocument Load() {
-      if (!File.Exists(FilePath)) {
+    /// <returns>
+    /// The stored lists, empty lists when there are none to read, or <see langword="null" /> when
+    /// the file is there but locked or denied; the file is then left as it is, and the caller
+    /// must not save over it.
+    /// </returns>
+    public WordListsDocument? Load() {
+      byte[] json;
+      try {
+        json = File.ReadAllBytes(FilePath);
+      } catch (FileNotFoundException) {
         return WordListsDocument.Empty;
+      } catch (DirectoryNotFoundException) {
+        return WordListsDocument.Empty;
+      } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+        return null;
       }
 
-      WordListsDocument? lists = WordListsJson.Parse(File.ReadAllBytes(FilePath));
+      WordListsDocument? lists = WordListsJson.Parse(json);
       if (lists is not null) {
         return lists;
       }

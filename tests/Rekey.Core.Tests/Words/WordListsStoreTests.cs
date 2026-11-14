@@ -26,7 +26,7 @@ namespace Rekey.Core.Tests.Words {
     public void ListsSurviveARestart() {
       new WordListsStore(_folder).Save(_lists);
 
-      WordListsDocument reloaded = new WordListsStore(_folder).Load();
+      WordListsDocument reloaded = new WordListsStore(_folder).Load()!;
 
       Assert.Equal(_lists.Protected, reloaded.Protected);
       Assert.Equal(_lists.Learned, reloaded.Learned);
@@ -41,7 +41,7 @@ namespace Rekey.Core.Tests.Words {
 
     [Fact]
     public void MissingFileGivesEmptyLists() {
-      WordListsDocument lists = new WordListsStore(_folder).Load();
+      WordListsDocument lists = new WordListsStore(_folder).Load()!;
 
       Assert.Empty(lists.Protected);
       Assert.Empty(lists.Learned);
@@ -55,7 +55,23 @@ namespace Rekey.Core.Tests.Words {
       store.Save(_lists);
 
       Assert.Equal(["words.json"], Directory.GetFiles(_folder).Select(Path.GetFileName));
-      Assert.Equal(_lists.Protected, store.Load().Protected);
+      Assert.Equal(_lists.Protected, store.Load()!.Protected);
+    }
+
+    [Fact]
+    public void LockedFileGivesNoListsAndStaysIntact() {
+      var store = new WordListsStore(_folder);
+      store.Save(_lists);
+      string saved = File.ReadAllText(store.FilePath);
+
+      WordListsDocument? lists;
+      using (File.Open(store.FilePath, FileMode.Open, FileAccess.Read, FileShare.None)) {
+        lists = store.Load();
+      }
+
+      Assert.Null(lists);
+      Assert.Equal(saved, File.ReadAllText(store.FilePath));
+      Assert.False(File.Exists(store.FilePath + ".bak"));
     }
 
     [Theory]
@@ -68,7 +84,7 @@ namespace Rekey.Core.Tests.Words {
       Directory.CreateDirectory(_folder);
       File.WriteAllText(store.FilePath, corrupt);
 
-      WordListsDocument lists = store.Load();
+      WordListsDocument lists = store.Load()!;
 
       Assert.Empty(lists.Protected);
       Assert.Empty(lists.Learned);

@@ -537,13 +537,15 @@ namespace Rekey.Core {
       DateTimeOffset now = _time.GetUtcNow();
       bool changed = false;
       foreach (string typed in WordsOf(record.Typed)
-          .Where(typed => WordLists.Key(typed).Length >= _minProtectedLength)) {
+          .Where(typed => WordLists.Key(typed).Count(char.IsLetter) >= _minProtectedLength)) {
         changed |= Words.Protect(typed, WordSource.Auto, now);
       }
 
       if (_languages.ProfileFor(record.Target) is { } profile) {
+        // The same letters a Manual Correction learned.
         foreach (string rendering in WordsOf(record.Rendering)) {
-          changed |= Words.Unlearn(rendering, profile.Language);
+          changed |= Words.Unlearn(
+              WrongLayoutDetector.TrimToLetters(rendering, profile), profile.Language);
         }
       }
 

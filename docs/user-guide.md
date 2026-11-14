@@ -24,4 +24,4 @@ When you correct a word with the Hotkey and the result is not a word Rekey knows
 
 ### Managing the lists
 
-Settings show both lists, where you can add and remove words; a change takes effect for the next word you type. Each list holds up to 10,000 words. When a list is full, Rekey drops the word it learned on its own that was used least recently; words you added yourself are never dropped, and adding one more to a list full of your own words is refused.
+The settings window will show both lists, where you can add and remove words, with a change taking effect for the next word you type; until that window arrives, the lists are kept in `words.json` and change only through Undo and the Hotkey as described above. Each list holds up to 10,000 words. When a list is full, Rekey drops the word it learned on its own that was used least recently; words you added yourself are never dropped, and adding one more to a list full of your own words is refused.

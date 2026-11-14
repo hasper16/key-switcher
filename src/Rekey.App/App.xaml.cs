@@ -149,10 +149,18 @@ namespace Rekey.App {
     }
 
     private void StartInput(Settings settings) {
+      WordListsDocument? words = _wordsStore.Load();
       _worker = new InputWorker(settings, RecordIncident, TimeProvider.System) {
-        InitialWords = _wordsStore.Load(),
+        InitialWords = words ?? WordListsDocument.Empty,
       };
-      _worker.WordListsChanged += _wordsSaver.Changed;
+
+      // A file Rekey could not read stays as it is: this session learns but does not save.
+      if (words is null) {
+        Trace.WriteLine("Rekey could not read its word lists and will not save them.");
+      } else {
+        _worker.WordListsChanged += _wordsSaver.Changed;
+      }
+
       _worker.SelfPauseChanged += until => Dispatcher.BeginInvoke(() => ShowSelfPause(until));
       _worker.Observed += RememberWordCounts;
       try {

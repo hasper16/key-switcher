@@ -85,7 +85,7 @@ namespace Rekey.Core.Tests.Words {
     }
 
     private string[] SavedWords() {
-      return [.. _store.Load().Protected.Select(word => word.Text)];
+      return [.. _store.Load()!.Protected.Select(word => word.Text)];
     }
   }
 }
