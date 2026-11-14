@@ -8,6 +8,35 @@ namespace Rekey.Win32.Replacement {
   /// </summary>
   internal static class InputBuilder {
     /// <summary>
+    /// Returns the inputs of <see cref="Replacement" /> in parts, each but the last ending
+    /// right after a space, so the parts can be sent with a pause between them.
+    /// </summary>
+    /// <remarks>
+    /// Notepad garbles or drops what follows a space typed in the same burst (design D4 of
+    /// add-manual-correction).
+    /// </remarks>
+    /// <param name="erase">The number of Backspaces to send first.</param>
+    /// <param name="text">The text to type.</param>
+    /// <param name="heldModifiers">The modifier keys down now, as for Replacement.</param>
+    /// <returns>The parts, in order.</returns>
+    public static IReadOnlyList<INPUT[]> ReplacementParts(
+        int erase, string text, IReadOnlyList<VIRTUAL_KEY> heldModifiers) {
+      INPUT[] inputs = Replacement(erase, text, heldModifiers);
+      int start = 0;
+      var parts = new List<INPUT[]>();
+      for (int i = 0; i < text.Length - 1; i++) {
+        if (text[i] == ' ') {
+          int end = heldModifiers.Count + (2 * (erase + i + 1));
+          parts.Add(inputs[start..end]);
+          start = end;
+        }
+      }
+
+      parts.Add(inputs[start..]);
+      return parts;
+    }
+
+    /// <summary>
     /// Returns the inputs that erase text before the caret and type a replacement.
     /// </summary>
     /// <param name="erase">The number of characters to erase with Backspace.</param>

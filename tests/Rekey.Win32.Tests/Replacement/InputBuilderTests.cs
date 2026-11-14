@@ -60,6 +60,24 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void ReplacementPartsEndAfterEachSpace() {
+      IReadOnlyList<INPUT[]> parts = InputBuilder.ReplacementParts(
+          erase: 1, "a b c", [VIRTUAL_KEY.VK_LSHIFT]);
+
+      Assert.Equal(3, parts.Count);
+      Assert.Equal(
+          Unicode(' ', up: true), Describe(parts[0][^1]));
+      Assert.Equal(
+          InputBuilder.Replacement(1, "a b c", [VIRTUAL_KEY.VK_LSHIFT]).Select(Describe),
+          parts.SelectMany(part => part).Select(Describe));
+    }
+
+    [Fact]
+    public void TextEndingInASpaceIsOnePart() {
+      Assert.Single(InputBuilder.ReplacementParts(erase: 0, "yt ", []));
+    }
+
+    [Fact]
     public void MaskIsAPressAndReleaseOfAnUnassignedKey() {
       // Design D0 of add-manual-correction: a key between Win's press and release keeps the
       // shell from opening Start.

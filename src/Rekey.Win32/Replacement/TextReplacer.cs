@@ -11,7 +11,14 @@ namespace Rekey.Win32.Replacement {
   /// Not thread-safe: the worker thread owns it.
   /// </remarks>
   internal sealed class TextReplacer {
+    /// <summary>
+    /// The wait before each part of a text that follows a space (design D4 of
+    /// add-manual-correction).
+    /// </summary>
+    public static readonly TimeSpan PauseAfterSpace = TimeSpan.FromMilliseconds(50);
+
     private readonly ITextBeforeCaret _reader;
+    private readonly Action<TimeSpan> _pause;
     private readonly bool _verify;
     private readonly Func<IReadOnlyList<VIRTUAL_KEY>> _heldModifiers;
     private readonly Func<INPUT[], bool> _send;
@@ -56,17 +63,23 @@ namespace Rekey.Win32.Replacement {
     /// Sends inputs to Windows; returns <see langword="false" /> unless Windows took them all.
     /// </param>
     /// <param name="target">Returns how the focused window takes a replacement.</param>
+    /// <param name="pause">
+    /// Waits between the parts of a text with spaces, or <see langword="null" /> to sleep the
+    /// calling thread. The default is <see langword="null" />.
+    /// </param>
     public TextReplacer(
         ITextBeforeCaret reader,
         bool verify,
         Func<IReadOnlyList<VIRTUAL_KEY>> heldModifiers,
         Func<INPUT[], bool> send,
-        Func<TextTarget> target) {
+        Func<TextTarget> target,
+        Action<TimeSpan>? pause = null) {
       _reader = reader;
       _verify = verify;
       _heldModifiers = heldModifiers;
       _send = send;
       _target = target;
+      _pause = pause ?? Thread.Sleep;
     }
 
     /// <summary>
@@ -153,7 +166,7 @@ namespace Rekey.Win32.Replacement {
       // One character per Keystroke in the supported Layouts, so one Backspace each.
       bool retype = method == ReplacementMethod.Retype;
       int erase = retype ? new StringInfo(replace.Expected).LengthInTextElements : 0;
-      if (!_send(InputBuilder.Replacement(erase, replace.Replacement, _heldModifiers()))) {
+      if (!SendInParts(erase, replace.Replacement)) {
         // Windows refuses input to this window, so only UI Automation can clear the selection.
         if (!retype) {
           _reader.Deselect(Deselection.IfStillSelected);
@@ -190,7 +203,7 @@ namespace Rekey.Win32.Replacement {
         return stale;
       }
 
-      return _send(InputBuilder.Replacement(0, typeOver.Replacement, _heldModifiers()))
+      return SendInParts(0, typeOver.Replacement)
           ? ReplacementResult.Verified
           : ReplacementResult.Blocked;
     }
@@ -206,6 +219,23 @@ namespace Rekey.Win32.Replacement {
       return _mismatchExpected is { } expected
           ? _reader.Describe(expected) with { Kind = _mismatchKind }
           : null;
+    }
+
+    // Design D4 of add-manual-correction: each part after a space waits a moment, as Notepad
+    // garbles what follows a space in the same burst. Stops at the first part Windows refuses.
+    private bool SendInParts(int erase, string text) {
+      IReadOnlyList<INPUT[]> parts = InputBuilder.ReplacementParts(erase, text, _heldModifiers());
+      for (int i = 0; i < parts.Count; i++) {
+        if (i > 0) {
+          _pause(PauseAfterSpace);
+        }
+
+        if (!_send(parts[i])) {
+          return false;
+        }
+      }
+
+      return true;
     }
 
     // Collapses a selection so neither a re-injected Space nor later typing replaces the Word.

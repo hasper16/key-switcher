@@ -319,7 +319,7 @@ namespace Rekey.Win32.Tests.Replacement {
           replacer.TypeOver(new TypeOverSelection("ghbdtn vbh", "привет мир"), () => null);
 
       Assert.Equal(ReplacementResult.Verified, result);
-      Assert.Equal(20, Assert.Single(_sent).Length);
+      Assert.Equal(20, _sent.Sum(inputs => inputs.Length));
     }
 
     [Fact]
@@ -352,6 +352,32 @@ namespace Rekey.Win32.Tests.Replacement {
           replacer.TypeOver(new TypeOverSelection("vbh", "мир"), () => null);
 
       Assert.Equal(ReplacementResult.Blocked, result);
+    }
+
+    [Fact]
+    public void TextWithASpaceIsTypedInPartsWithAPauseBetween() {
+      // Design D4 of add-manual-correction: Notepad garbles what follows a space in one burst.
+      var pauses = new List<TimeSpan>();
+      var replacer = new TextReplacer(
+          new FakeControl(null), true, () => [], Send, () => TextTarget.Editable, pauses.Add);
+
+      ReplacementResult result =
+          replacer.TypeOver(new TypeOverSelection("ghbdtn vbh", "привет мир"), () => null);
+
+      Assert.Equal(ReplacementResult.Verified, result);
+      Assert.Equal(2, _sent.Count);
+      Assert.Equal([TextReplacer.PauseAfterSpace], pauses);
+    }
+
+    [Fact]
+    public void RunOfWordsIsRetypedInParts() {
+      var control = new FakeControl("ghbdtn vbh");
+      var replacer =
+          new TextReplacer(control, false, () => [], Send, () => TextTarget.Editable, _ => { });
+
+      replacer.Replace(new ReplaceText("ghbdtn vbh", "привет мир"), _editor);
+
+      Assert.Equal(2, _sent.Count);
     }
 
     private bool Send(INPUT[] inputs) {
