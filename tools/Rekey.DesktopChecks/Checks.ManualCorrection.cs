@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Globalization;
 using Rekey.Core;
 using Rekey.Core.Languages;
 using Rekey.Win32.Hotkeys;
@@ -72,6 +73,16 @@ namespace Rekey.DesktopChecks {
       Input.Press(VIRTUAL_KEY.VK_SPACE, _spaceScan);
       Thread.Sleep(_tapGap);
       Input.Key(VIRTUAL_KEY.VK_LWIN, _winScan, up: true);
+    }
+
+    private static int CommonPrefix(string? text, string expected) {
+      int same = 0;
+      while (text is not null && same < Math.Min(text.Length, expected.Length)
+          && text[same] == expected[same]) {
+        same++;
+      }
+
+      return same;
     }
 
     private void CheckDoubleShift() {
@@ -169,17 +180,33 @@ namespace Rekey.DesktopChecks {
     private void ExpectSelectionConverted(string item, Point at) {
       SwitchIn(at, SpecWords.EnglishUs);
       Input.ClearBox();
-      Input.Type("ghbdtn vbh");
+      const string typed = "ghbdtn vbh";
+      const string expected = "привет мир";
+      Input.Type(typed);
       Input.Control('a');
+      Thread.Sleep(_settle);
       EventLog.Position mark = _log.Mark();
       DoubleTapShift();
       EventLog.WaitFor(() => _log.ReplacementsSince(mark).Count > 0, _replaceWait);
-      Thread.Sleep(TimeSpan.FromMilliseconds(300));
+      Thread.Sleep(_settle);
       Attempt attempt = Read(mark);
+
+      // Where the texts part: whether the rest is still as typed, and how much the worker
+      // read as selected; lengths and booleans only.
+      int? read = _log.EventsSince(mark)
+          .Select(seen => seen.Event)
+          .OfType<ManualCorrectionRequested>()
+          .LastOrDefault()?.Selection?.Length;
+      int same = CommonPrefix(attempt.Text, expected);
+      bool restAsTyped = attempt.Text is { } text && text.Length == typed.Length
+          && text[same..] == typed[same..];
+      string detail = $"{attempt}, {Compare(attempt.Text, expected)}, selection read "
+          + $"{read?.ToString(CultureInfo.InvariantCulture) ?? "none"} of {typed.Length}, "
+          + $"rest still as typed {restAsTyped}";
       Expect(
-          $"{item}: \"ghbdtn vbh\" becomes \"привет мир\"",
-          attempt.Replaced && attempt.Text == "привет мир",
-          $"{attempt}, {Compare(attempt.Text, "привет мир")}");
+          $"{item}: \"{typed}\" becomes \"{expected}\"",
+          attempt.Replaced && attempt.Text == expected,
+          detail);
     }
 
     private void CheckConflicts() {
