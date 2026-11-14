@@ -39,8 +39,8 @@ namespace Rekey.Core.Detection {
         return Decision.Keep;
       }
 
-      RenderingScore typedScore =
-          RenderingScorer.Score(typedIn.Profile, TrimToLetters(typed, typedIn.Profile));
+      RenderingScore typedScore = RenderingScorer.Score(
+          typedIn.Profile, TrimToLetters(typed, typedIn.Profile), typedIn.Learned);
       List<Candidate> candidates = [.. Candidates(word, typedIn)
           .Where(candidate => candidate.Score.Value >= thresholds.GibberishCeiling
               && IsEvidence(candidate, typedIn, typed))
@@ -98,8 +98,8 @@ namespace Rekey.Core.Detection {
         string? text = layout.KeyMap.Render(word);
         if (text is not null) {
           string letters = TrimToLetters(text, layout.Profile);
-          yield return new Candidate(
-              layout, text, letters, RenderingScorer.Score(layout.Profile, letters));
+          RenderingScore score = RenderingScorer.Score(layout.Profile, letters, layout.Learned);
+          yield return new Candidate(layout, text, letters, score);
         }
       }
     }

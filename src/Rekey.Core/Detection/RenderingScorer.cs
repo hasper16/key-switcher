@@ -15,6 +15,9 @@ namespace Rekey.Core.Detection {
     private const double _nGramSlope = 1.5;
     private const double _nGramMidpoint = -10.5;
 
+    // A Learned Word scores as a mid-frequency common word (design D2 of add-word-learning).
+    private const int _learnedRank = 5_000;
+
     /// <summary>
     /// Returns the Score of a Rendering in a Language.
     /// </summary>
@@ -26,12 +29,29 @@ namespace Rekey.Core.Detection {
     /// <param name="letters">The Rendering without edge punctuation, in any case.</param>
     /// <returns>The Score.</returns>
     public static RenderingScore Score(LanguageProfile profile, string letters) {
+      return Score(profile, letters, FrozenSet<string>.Empty);
+    }
+
+    /// <summary>
+    /// Returns the Score of a Rendering in a Language, counting the user's Learned Words of that
+    /// Language as common words.
+    /// </summary>
+    /// <param name="profile">The Language Profile to score against.</param>
+    /// <param name="letters">The Rendering without edge punctuation, in any case.</param>
+    /// <param name="learned">The Learned Words of the Language, normalised.</param>
+    /// <returns>The Score.</returns>
+    public static RenderingScore Score(
+        LanguageProfile profile, string letters, IReadOnlySet<string> learned) {
       string word = WordNormaliser.Normalise(letters);
       bool isWord = word.Length <= 2
           ? profile.Words1.Contains(word) || profile.Words2.Contains(word)
           : profile.CommonWordRanks.ContainsKey(word) || IsSplitContraction(profile, word);
       if (isWord) {
         return new RenderingScore(true, 1 + RankBonus(profile, word));
+      }
+
+      if (learned.Contains(word)) {
+        return new RenderingScore(true, 1 + RankBonus(profile.CommonWordRanks.Count, _learnedRank));
       }
 
       double nGram = NGramScore(profile, word);
@@ -75,10 +95,13 @@ namespace Rekey.Core.Detection {
     }
 
     private static double RankBonus(LanguageProfile profile, string word) {
-      int count = profile.CommonWordRanks.Count;
-      return profile.CommonWordRanks.TryGetValue(word, out int rank) && count > 1
-          ? 1 - (Math.Log(rank + 1) / Math.Log(count))
+      return profile.CommonWordRanks.TryGetValue(word, out int rank)
+          ? RankBonus(profile.CommonWordRanks.Count, rank)
           : 0;
+    }
+
+    private static double RankBonus(int count, int rank) {
+      return count > 1 ? Math.Max(0, 1 - (Math.Log(rank + 1) / Math.Log(count))) : 0;
     }
 
     private static double Sigmoid(double x) {

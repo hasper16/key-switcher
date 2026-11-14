@@ -1,6 +1,7 @@
 using Rekey.Core.Detection;
 using Rekey.Core.Languages;
 using Rekey.Core.Tests.Detection;
+using Rekey.Core.Words;
 
 namespace Rekey.Core.Tests {
   // Feeds an Engine the events of a user typing in English (US), 100 ms apart unless told
@@ -30,6 +31,13 @@ namespace Rekey.Core.Tests {
     // Layouts.
     public Typist(Settings settings, TimeProvider? clock = null)
         : this(new Engine(DetectionWorld.Bundled, settings, clock ?? TimeProvider.System)) {
+      InstallLayouts();
+    }
+
+    // The same, with the user's word lists.
+    public Typist(Settings settings, WordLists words, TimeProvider? clock = null)
+        : this(new Engine(
+            DetectionWorld.Bundled, settings, clock ?? TimeProvider.System, words: words)) {
       InstallLayouts();
     }
 

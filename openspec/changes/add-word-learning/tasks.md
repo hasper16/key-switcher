@@ -8,9 +8,9 @@
 
 ## 2. Effect on Decisions
 
-- [ ] 2.1 Write failing engine tests: Protected Word kept; run containing a Protected Word kept; Hotkey still corrects it; implement; verify they pass
-- [ ] 2.2 Write failing tests that a Learned Word counts as a common word ("rhby;" → "кринж"); implement scorer integration; verify they pass
-- [ ] 2.3 Write failing engine tests: `WordListEdited` adds and removes entries for the next Word, a refused add returns `WordListFull`; implement; verify they pass
+- [x] 2.1 Write failing engine tests: Protected Word kept; run containing a Protected Word kept; Hotkey still corrects it; implement; verify they pass
+- [x] 2.2 Write failing tests that a Learned Word counts as a common word ("rhby;" → "кринж"); implement scorer integration; verify they pass
+- [x] 2.3 Write failing engine tests: `WordListEdited` adds and removes entries for the next Word, a refused add returns `WordListFull`; implement; verify they pass
 
 ## 3. Learning rules
 

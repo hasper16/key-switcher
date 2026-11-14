@@ -1,6 +1,7 @@
 using System.Buffers;
 using Rekey.Core.Detection;
 using Rekey.Core.Languages;
+using Rekey.Core.Words;
 
 namespace Rekey.Core {
   /// <summary>
@@ -93,12 +94,19 @@ namespace Rekey.Core {
     /// evaluate them against the Language Profiles of the installed Layouts. The default is
     /// <see langword="null" />.
     /// </param>
+    /// <param name="words">
+    /// The user's Protected Words and Learned Words, which the engine owns from now on, or
+    /// <see langword="null" /> to start with empty lists. The default is
+    /// <see langword="null" />.
+    /// </param>
     public Engine(
         LanguageSet languages,
         Settings settings,
         TimeProvider time,
-        WordEvaluator? evaluate = null) {
+        WordEvaluator? evaluate = null,
+        WordLists? words = null) {
       _languages = languages;
+      Words = words ?? new WordLists();
       _settings = settings;
       _time = time;
       _evaluate = evaluate;
@@ -148,6 +156,11 @@ namespace Rekey.Core {
         Gate == GateResult.Applies ? _settings.TriggerKeys : TriggerKeys.None;
 
     /// <summary>
+    /// Gets the user's Protected Words and Learned Words; only the engine's thread may use them.
+    /// </summary>
+    public WordLists Words { get; }
+
+    /// <summary>
     /// Gets the counts of the Words ended by a Trigger Key so far.
     /// </summary>
     public WordCounts WordCounts { get; private set; }
@@ -167,6 +180,8 @@ namespace Rekey.Core {
           return OnManualCorrection(manual);
         case ReplacementFinished finished:
           return OnReplacementFinished(finished);
+        case WordListEdited edit:
+          return OnWordListEdited(edit);
         case MouseClick:
           _word.Clear();
           Interrupt();
@@ -304,8 +319,12 @@ namespace Rekey.Core {
       }
 
       WordCounts = WordCounts with { Evaluated = WordCounts.Evaluated + 1 };
-      Decision decision = _evaluate?.Invoke(word, layout)
-          ?? _detector.Decide(word, layout, _settings.Sensitivity);
+
+      // Spec word-learning: a Protected Word is kept, and keeping it ends the run before it.
+      Decision decision = Words.IsProtected(typed)
+          ? Decision.Keep
+          : _evaluate?.Invoke(word, layout)
+              ?? _detector.Decide(word, layout, _settings.Sensitivity);
       Correction? correction = DeferredWords.Add(decision);
       if (correction is null) {
         ContinueOrEndRun(decision, trigger, typed);
@@ -474,6 +493,29 @@ namespace Rekey.Core {
       return [new SwitchLayout(record.Target)];
     }
 
+    private IReadOnlyList<EngineAction> OnWordListEdited(WordListEdited edit) {
+      if (Apply(edit)) {
+        return [new WordListsChanged()];
+      }
+
+      return edit.Remove ? [] : [new WordListFull()];
+    }
+
+    // True when the list changed; false when the word to remove was absent or the list refused
+    // the word to add.
+    private bool Apply(WordListEdited edit) {
+      DateTimeOffset now = _time.GetUtcNow();
+      if (edit.Language is not { } language) {
+        return edit.Remove
+            ? Words.Unprotect(edit.Text)
+            : Words.Protect(edit.Text, WordSource.User, now);
+      }
+
+      return edit.Remove
+          ? Words.Unlearn(edit.Text, language)
+          : Words.Learn(edit.Text, language, WordSource.User, now);
+    }
+
     private void OnLayoutChanged(LayoutChanged layout) {
       CurrentLayout = layout.Layout;
       if (!layout.ByUser) {
@@ -508,7 +550,7 @@ namespace Rekey.Core {
           .Select(layout => _keyMaps[layout])];
       _detector = new WrongLayoutDetector(keyMaps.SelectMany(map =>
           _languages.ProfileFor(map.Layout) is { } profile
-              ? [new DetectionLayout(map, profile)]
+              ? [new DetectionLayout(map, profile, Words.LearnedIn(profile.Language))]
               : Array.Empty<DetectionLayout>()));
     }
 
