@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 
 namespace Rekey.Core {
@@ -6,8 +5,6 @@ namespace Rekey.Core {
   /// Loads and saves the user's settings in a JSON file.
   /// </summary>
   public sealed class SettingsStore {
-    private readonly string _folder;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="SettingsStore" /> class.
     /// </summary>
@@ -15,7 +12,6 @@ namespace Rekey.Core {
     /// The folder that holds the settings file; it is created when missing.
     /// </param>
     public SettingsStore(string folder) {
-      _folder = folder;
       FilePath = Path.Combine(folder, "settings.json");
     }
 
@@ -43,7 +39,7 @@ namespace Rekey.Core {
         return settings;
       }
 
-      KeepUnreadableFile();
+      JsonFile.KeepUnreadable(FilePath);
       return SaveDefaults();
     }
 
@@ -52,20 +48,8 @@ namespace Rekey.Core {
     /// </summary>
     /// <param name="settings">The settings to write.</param>
     public void Save(Settings settings) {
-      Directory.CreateDirectory(_folder);
-      string tempPath = FilePath + ".tmp";
-      using (FileStream stream = File.Create(tempPath)) {
-        JsonSerializer.Serialize(stream, settings, SettingsJsonContext.Default.Settings);
-
-        // Reach the disk before the swap, so a power loss cannot leave an empty settings file.
-        stream.Flush(flushToDisk: true);
-      }
-
-      if (File.Exists(FilePath)) {
-        File.Replace(tempPath, FilePath, destinationBackupFileName: null);
-      } else {
-        File.Move(tempPath, FilePath);
-      }
+      JsonFile.WriteAtomically(FilePath, stream =>
+          JsonSerializer.Serialize(stream, settings, SettingsJsonContext.Default.Settings));
     }
 
     private Settings? TryRead() {
@@ -74,17 +58,6 @@ namespace Rekey.Core {
         return JsonSerializer.Deserialize(stream, SettingsJsonContext.Default.Settings);
       } catch (JsonException) {
         return null;
-      }
-    }
-
-    private void KeepUnreadableFile() {
-      try {
-        File.Move(FilePath, FilePath + ".bak", overwrite: true);
-      } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
-        // The usual backup can be locked or read-only; a dated name still keeps the file safe from
-        // the defaults written next.
-        string stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture);
-        File.Move(FilePath, $"{FilePath}.{stamp}.bak");
       }
     }
 

@@ -2,9 +2,9 @@
 
 ## 1. Word lists store (data shape first)
 
-- [ ] 1.1 Define `WordLists` model and `words.json` contract (version 1); verify a round-trip test passes
-- [ ] 1.2 Write failing store tests: persist across reload, atomic write, corrupt file → empty lists + `.bak`; implement; verify they pass
-- [ ] 1.3 Write failing tests for bounds and LRU eviction of auto entries, refusal when only user entries; implement; verify they pass
+- [x] 1.1 Define `WordLists` model and `words.json` contract (version 1); verify a round-trip test passes
+- [x] 1.2 Write failing store tests: persist across reload, atomic write, corrupt file → empty lists + `.bak`; implement; verify they pass
+- [x] 1.3 Write failing tests for bounds and LRU eviction of auto entries, refusal when only user entries; implement; verify they pass
 
 ## 2. Effect on Decisions
 
