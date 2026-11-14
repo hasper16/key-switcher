@@ -80,6 +80,20 @@ namespace Rekey.Core.Tests {
       return this;
     }
 
+    // The Hotkey, with the selected text the host read, if any.
+    public Typist Hotkey(string? selection = null) {
+      Send(new ManualCorrectionRequested(Next(), selection));
+      return this;
+    }
+
+    // Installs the Layouts in Windows' order, the first one current.
+    public Typist Install(params KeyMap[] layouts) {
+      Send(new LayoutsInstalledChanged(
+          Next(), [.. layouts.Select(layout => layout.Layout)], layouts));
+      Send(new LayoutChanged(Next(), layouts[0].Layout));
+      return this;
+    }
+
     // Ctrl+C and the like: a character key with a modifier held.
     public Typist Chord(KeyModifiers modifiers, char letter) {
       Keystroke keystroke = KeyMapFixtures.EnglishUs.Type(letter.ToString(), false)![0];

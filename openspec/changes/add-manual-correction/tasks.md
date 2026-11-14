@@ -10,9 +10,9 @@
 
 ## 2. Manual Correction in the engine
 
-- [ ] 2.1 Write failing engine tests for priorities: revert last Correction (only under Undo conditions; not after an Enter-triggered Correction); correct current Word; correct RecentWord after Space ("yt " → "не "); Layout Switch when nothing to correct; implement; verify they pass
-- [ ] 2.2 Write failing tests for target choice with three Layouts ("ghbdsn" → "привіт"); implement ranking; verify they pass
-- [ ] 2.3 Write failing tests that the Hotkey works when Auto Correction is off/paused/excluded and does nothing in a Password Field; implement; verify they pass
+- [x] 2.1 Write failing engine tests for priorities: revert last Correction (only under Undo conditions; not after an Enter-triggered Correction); correct current Word; correct RecentWord after Space ("yt " → "не "); Layout Switch when nothing to correct; implement; verify they pass
+- [x] 2.2 Write failing tests for target choice with three Layouts ("ghbdsn" → "привіт"); implement ranking; verify they pass
+- [x] 2.3 Write failing tests that the Hotkey works when Auto Correction is off/paused/excluded and does nothing in a Password Field; implement; verify they pass
 
 ## 3. Selection conversion
 

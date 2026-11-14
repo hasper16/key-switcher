@@ -21,6 +21,11 @@ namespace Rekey.Core {
 
     private sealed record PendingReplacement(CorrectionRecord Correction, bool IsUndo);
 
+    // A Word on screen as typed in a Layout, with the Space or Tab typed after it, if any
+    // (design D2 of add-manual-correction).
+    private sealed record RecentWord(
+        IReadOnlyList<Keystroke> Keystrokes, LayoutId Layout, string Trailer);
+
     // DeferredRun keeps at most three Words, so the run on screen never needs more.
     private const int _maxRunWords = 3;
 
@@ -39,11 +44,14 @@ namespace Rekey.Core {
     // joined by single spaces, so a Correction can find it.
     private readonly List<string> _run = [];
     private Dictionary<LayoutId, KeyMap> _keyMaps = [];
+    private IReadOnlyList<LayoutId> _layoutOrder = [];
+    private IReadOnlyList<KeyMap> _keyMapsInOrder = [];
     private WrongLayoutDetector _detector = new([]);
     private Settings _settings;
     private bool _selfPaused;
     private PendingReplacement? _pending;
     private CorrectionRecord? _lastCorrection;
+    private RecentWord? _recent;
     private TimeSpan? _lastKeyDown;
     private TimeSpan _focusSince = TimeSpan.MinValue;
 
@@ -148,6 +156,8 @@ namespace Rekey.Core {
           return OnKeyDown(keyDown);
         case UndoRequested undo:
           return OnUndoRequested(undo);
+        case ManualCorrectionRequested manual:
+          return OnManualCorrection(manual);
         case ReplacementFinished finished:
           return OnReplacementFinished(finished);
         case MouseClick:
@@ -204,16 +214,17 @@ namespace Rekey.Core {
     }
 
     private IReadOnlyList<EngineAction> OnKeyDown(KeyDown keyDown) {
-      if (keyDown.Timestamp - _lastKeyDown > _typingGap) {
-        _word.Clear();
-        EndRun();
-      }
-
-      _lastKeyDown = keyDown.Timestamp;
-
-      // Modifiers are pressed on the way to Ctrl+Z, so they keep the Correction undoable.
+      // Modifiers are pressed on the way to Ctrl+Z or as the Hotkey, so they keep the
+      // Correction undoable and neither end nor extend the typing gap.
       if (keyDown.Kind != KeyKind.Modifier) {
+        if (keyDown.Timestamp - _lastKeyDown > _typingGap) {
+          _word.Clear();
+          EndRun();
+        }
+
+        _lastKeyDown = keyDown.Timestamp;
         _lastCorrection = null;
+        _recent = RecentAfter(keyDown);
       }
 
       // A key stamped at or before the latest focus change may belong to the previous control,
@@ -222,12 +233,14 @@ namespace Rekey.Core {
       // a Password Field is dropped the same way.
       if (keyDown.Timestamp <= _focusSince || !keyDown.FocusConfirmed) {
         _word.Drop(keyDown);
+        _recent = null;
         EndRun();
         return [];
       }
 
       // An unknown focus may be a Password Field, so nothing is kept until it is known.
-      if (Focus is not { IsPasswordField: false, IsElevated: false }) {
+      if (!CanReadFocus()) {
+        _recent = null;
         EndRun();
         return [];
       }
@@ -324,19 +337,89 @@ namespace Rekey.Core {
     }
 
     private IReadOnlyList<EngineAction> OnUndoRequested(UndoRequested undo) {
-      CorrectionRecord? last = _lastCorrection;
-      _lastCorrection = null;
-      _word.Clear();
-      EndRun();
+      return CanUndo(undo.Timestamp) ? Undo() : ClearForUndo();
+    }
 
-      // Spec: after Enter the line may already have been submitted.
-      if (last is not { Undoable: true } || undo.Timestamp - last.Time >= _undoWindow) {
-        return [];
-      }
+    // Spec: after Enter the line may already have been submitted.
+    private bool CanUndo(TimeSpan now) {
+      return _lastCorrection is { Undoable: true } last && now - last.Time < _undoWindow;
+    }
 
+    private IReadOnlyList<EngineAction> Undo() {
+      CorrectionRecord last = _lastCorrection!;
+      ClearForUndo();
       _pending = new PendingReplacement(last, IsUndo: true);
       return [
           new ReplaceText(last.Rendering + last.TriggerText, last.Typed + last.TriggerText)];
+    }
+
+    private IReadOnlyList<EngineAction> ClearForUndo() {
+      _lastCorrection = null;
+      _recent = null;
+      _word.Clear();
+      EndRun();
+      return [];
+    }
+
+    // Spec manual-correction: revert the last Correction, else correct the selection, the
+    // current Word or the RecentWord, else switch to the next Layout.
+    private IReadOnlyList<EngineAction> OnManualCorrection(ManualCorrectionRequested request) {
+      if (!CanReadFocus() || CurrentLayout is not { } layout) {
+        return [];
+      }
+
+      if (CanUndo(request.Timestamp)) {
+        return Undo();
+      }
+
+      RecentWord? typed = WordOnScreen();
+      ClearForUndo();
+      if (typed is null
+          || !_keyMaps.TryGetValue(typed.Layout, out KeyMap? map)
+          || map.Render(typed.Keystrokes) is not { } text
+          || ManualTarget.Best(typed.Keystrokes, typed.Layout, _keyMapsInOrder,
+              _languages.ProfileFor) is not { } best) {
+        return NextLayout(layout);
+      }
+
+      var record = new CorrectionRecord(
+          text, best.Text, typed.Trailer, typed.Layout, best.Layout, request.Timestamp,
+          Undoable: true);
+      _pending = new PendingReplacement(record, IsUndo: false);
+      return [new ReplaceText(text + typed.Trailer, best.Text + typed.Trailer)];
+    }
+
+    // An unknown focus may be a Password Field.
+    private bool CanReadFocus() {
+      return Focus is { IsPasswordField: false, IsElevated: false };
+    }
+
+    // The Word being typed, or else the RecentWord, with the Layout it was typed in.
+    private RecentWord? WordOnScreen() {
+      if (_word.Keystrokes.Count > 0 && !_word.LayoutSwitchedInside
+          && CurrentLayout is { } layout) {
+        return new RecentWord([.. _word.Keystrokes], layout, string.Empty);
+      }
+
+      return _recent;
+    }
+
+    private IReadOnlyList<EngineAction> NextLayout(LayoutId current) {
+      LayoutId[] next = [.. ManualTarget.AfterCurrent(_layoutOrder, id => id, current).Take(1)];
+      return next.Length == 0 ? [] : [new SwitchLayout(next[0])];
+    }
+
+    // Design D2 of add-manual-correction: only a Space or Tab right after a Word keeps it.
+    private RecentWord? RecentAfter(KeyDown keyDown) {
+      const KeyModifiers shortcut = KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Windows;
+      bool endsWithBlank = keyDown.Kind is KeyKind.Space or KeyKind.Tab
+          && (keyDown.Modifiers & shortcut) == 0;
+      if (!endsWithBlank || _word.Keystrokes.Count == 0 || _word.LayoutSwitchedInside
+          || CurrentLayout is not { } layout) {
+        return null;
+      }
+
+      return new RecentWord([.. _word.Keystrokes], layout, TypedBy(keyDown.Kind));
     }
 
     private IReadOnlyList<EngineAction> OnReplacementFinished(ReplacementFinished finished) {
@@ -353,6 +436,8 @@ namespace Rekey.Core {
       }
 
       _lastCorrection = record;
+      _recent = null;
+      _word.Clear();
       return [new SwitchLayout(record.Target)];
     }
 
@@ -369,6 +454,7 @@ namespace Rekey.Core {
 
       // The user chose the Layout, so the Deferred Words stay as typed in the old one.
       EndRun();
+      _recent = null;
       _word.MarkLayoutSwitchedByUser();
 
       // A switch before the Word's first key covers the Word typed right after it, so the
@@ -383,6 +469,10 @@ namespace Rekey.Core {
       ActiveProfiles = _languages.Activate(installed.Layouts);
       KeyMap[] keyMaps = [.. installed.KeyMaps.DistinctBy(map => map.Layout)];
       _keyMaps = keyMaps.ToDictionary(map => map.Layout);
+      _layoutOrder = [.. installed.Layouts];
+      _keyMapsInOrder = [.. installed.Layouts
+          .Where(_keyMaps.ContainsKey)
+          .Select(layout => _keyMaps[layout])];
       _detector = new WrongLayoutDetector(keyMaps.SelectMany(map =>
           _languages.ProfileFor(map.Layout) is { } profile
               ? [new DetectionLayout(map, profile)]
@@ -406,6 +496,7 @@ namespace Rekey.Core {
     private void Interrupt() {
       EndRun();
       _lastCorrection = null;
+      _recent = null;
     }
   }
 }
