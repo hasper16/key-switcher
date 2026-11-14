@@ -34,6 +34,30 @@ namespace Rekey.Core.Detection {
       return best;
     }
 
+    // Converts a selection to every other Layout and takes the conversion whose words score
+    // best on average; null when no Layout changes the text.
+    public static TargetRendering? BestConversion(
+        string selection,
+        KeyMap source,
+        IReadOnlyList<KeyMap> keyMapsInOrder,
+        Func<LayoutId, LanguageProfile?> profileFor) {
+      TargetRendering? best = null;
+      double bestScore = double.NegativeInfinity;
+      foreach (KeyMap map in AfterCurrent(keyMapsInOrder, source.Layout)) {
+        string text = SelectionConversion.Convert(selection, source, map);
+        if (text == selection) {
+          continue;
+        }
+
+        double score = profileFor(map.Layout) is { } profile ? MeanScore(text, profile) : _unscored;
+        if (score > bestScore) {
+          (best, bestScore) = (new TargetRendering(map.Layout, text), score);
+        }
+      }
+
+      return best;
+    }
+
     // The Layouts other than the current one, starting with the one after it.
     internal static IEnumerable<T> AfterCurrent<T>(
         IReadOnlyList<T> inOrder, Func<T, LayoutId> layoutOf, LayoutId current) {
@@ -41,6 +65,14 @@ namespace Rekey.Core.Detection {
       return Enumerable.Range(1, inOrder.Count)
           .Select(step => inOrder[(at + step + inOrder.Count) % inOrder.Count])
           .Where(item => layoutOf(item) != current);
+    }
+
+    private static double MeanScore(string text, LanguageProfile profile) {
+      double[] scores = [.. text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+          .Select(word => WrongLayoutDetector.TrimToLetters(word, profile))
+          .Where(letters => letters.Length > 0)
+          .Select(letters => RenderingScorer.Score(profile, letters).Value)];
+      return scores.Length == 0 ? _unscored : scores.Average();
     }
 
     private static IEnumerable<KeyMap> AfterCurrent(

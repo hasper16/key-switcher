@@ -311,6 +311,38 @@ namespace Rekey.Win32.Tests.Replacement {
       Assert.Equal(ReplacementResult.Blocked, result);
     }
 
+    [Fact]
+    public void SelectionIsTypedOverWithoutErasing() {
+      TextReplacer replacer = Replacer(new FakeControl(null), verify: true);
+
+      ReplacementResult result =
+          replacer.TypeOver(new TypeOverSelection("ghbdtn vbh", "привет мир"), () => null);
+
+      Assert.Equal(ReplacementResult.Verified, result);
+      Assert.Equal(20, Assert.Single(_sent).Length);
+    }
+
+    [Fact]
+    public void StaleSelectionIsLeftAlone() {
+      TextReplacer replacer = Replacer(new FakeControl(null), verify: true);
+
+      ReplacementResult result = replacer.TypeOver(
+          new TypeOverSelection("vbh", "мир"), () => ReplacementResult.Interrupted);
+
+      Assert.Equal(ReplacementResult.Interrupted, result);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
+    public void RefusedTypingOverIsReportedAsBlocked() {
+      var replacer = new TextReplacer(new FakeControl(null), true, () => [], _ => false);
+
+      ReplacementResult result =
+          replacer.TypeOver(new TypeOverSelection("vbh", "мир"), () => null);
+
+      Assert.Equal(ReplacementResult.Blocked, result);
+    }
+
     private bool Send(INPUT[] inputs) {
       _sent.Add(inputs);
       return true;

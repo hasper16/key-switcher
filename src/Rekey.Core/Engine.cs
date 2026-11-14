@@ -1,3 +1,4 @@
+using System.Buffers;
 using Rekey.Core.Detection;
 using Rekey.Core.Languages;
 
@@ -29,8 +30,14 @@ namespace Rekey.Core {
     // DeferredRun keeps at most three Words, so the run on screen never needs more.
     private const int _maxRunWords = 3;
 
+    // Design D4 of add-manual-correction: longer selections, or ones with line breaks, are not
+    // typed over; Rekey only switches Layout.
+    private const int _maxSelection = 500;
+
     // Spec keyboard-capture: a pause of more than 2 seconds ends the Word, as in the original.
     private static readonly TimeSpan _typingGap = TimeSpan.FromSeconds(2);
+
+    private static readonly SearchValues<char> _lineBreaks = SearchValues.Create("\r\n");
 
     // Spec text-replacement: the Undo Window, as in the original.
     private static readonly TimeSpan _undoWindow = TimeSpan.FromSeconds(5);
@@ -374,6 +381,10 @@ namespace Rekey.Core {
 
       RecentWord? typed = WordOnScreen();
       ClearForUndo();
+      if (request.Selection is { Length: > 0 } selection) {
+        return ConvertSelection(selection, layout, request.Timestamp);
+      }
+
       if (typed is null
           || !_keyMaps.TryGetValue(typed.Layout, out KeyMap? map)
           || map.Render(typed.Keystrokes) is not { } text
@@ -392,6 +403,22 @@ namespace Rekey.Core {
     // An unknown focus may be a Password Field.
     private bool CanReadFocus() {
       return Focus is { IsPasswordField: false, IsElevated: false };
+    }
+
+    private IReadOnlyList<EngineAction> ConvertSelection(
+        string selection, LayoutId layout, TimeSpan now) {
+      if (selection.Length > _maxSelection
+          || selection.AsSpan().ContainsAny(_lineBreaks)
+          || !_keyMaps.TryGetValue(layout, out KeyMap? source)
+          || ManualTarget.BestConversion(selection, source, _keyMapsInOrder, _languages.ProfileFor)
+              is not { } best) {
+        return NextLayout(layout);
+      }
+
+      var record = new CorrectionRecord(
+          selection, best.Text, string.Empty, layout, best.Layout, now, Undoable: true);
+      _pending = new PendingReplacement(record, IsUndo: false);
+      return [new TypeOverSelection(selection, best.Text)];
     }
 
     // The Word being typed, or else the RecentWord, with the Layout it was typed in.

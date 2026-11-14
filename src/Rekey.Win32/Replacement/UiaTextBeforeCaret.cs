@@ -37,6 +37,41 @@ namespace Rekey.Win32.Replacement {
     private long _started;
 
     /// <summary>
+    /// Returns the text selected in the focused control, within the same 50 ms budget as a
+    /// read.
+    /// </summary>
+    /// <param name="maxLength">
+    /// The most characters to return; a longer selection comes back cut to this length.
+    /// </param>
+    /// <returns>
+    /// The selected text, or <see langword="null" /> when nothing is selected, there are several
+    /// selections, or the control does not expose its selection in time.
+    /// </returns>
+    public string? ReadSelection(int maxLength) {
+      TimedOut = false;
+      if (_automation is null) {
+        return null;
+      }
+
+      _started = Stopwatch.GetTimestamp();
+      try {
+        object? pattern =
+            Target(_automation).GetCurrentPattern(UIA_PATTERN_ID.UIA_TextPatternId);
+        if (pattern is not IUIAutomationTextPattern text
+            || text.GetSelection() is not { Length: 1 } selection) {
+          return null;
+        }
+
+        IUIAutomationTextRange range = selection.GetElement(0);
+        string selected = TextOf(range, maxLength);
+        return OverBudget() || selected.Length == 0 ? null : selected;
+      } catch (COMException e) {
+        TimedOut = e.HResult == _timeoutResult;
+        return null;
+      }
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="UiaTextBeforeCaret" /> class.
     /// </summary>
     /// <param name="typingElement">

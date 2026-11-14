@@ -166,6 +166,31 @@ namespace Rekey.Win32.Replacement {
     }
 
     /// <summary>
+    /// Types a text over the selection the host read, so the selection is replaced without
+    /// erasing anything first (design D4 of add-manual-correction).
+    /// </summary>
+    /// <param name="typeOver">The selected text and the text to type over it.</param>
+    /// <param name="recheck">
+    /// Returns why the replacement can no longer happen, or <see langword="null" /> if it still
+    /// can; asked just before typing.
+    /// </param>
+    /// <returns>One of the enumeration values that specifies what became of it.</returns>
+    public ReplacementResult TypeOver(
+        TypeOverSelection typeOver, Func<ReplacementResult?> recheck) {
+      if (_target() == TextTarget.Unsupported) {
+        return ReplacementResult.Unsupported;
+      }
+
+      if (recheck() is { } stale) {
+        return stale;
+      }
+
+      return _send(InputBuilder.Replacement(0, typeOver.Replacement, _heldModifiers()))
+          ? ReplacementResult.Verified
+          : ReplacementResult.Blocked;
+    }
+
+    /// <summary>
     /// Describes how the text read in the latest replacement differed from the Word, without
     /// either text; call it after the held keys went on, as it asks the app for more.
     /// </summary>

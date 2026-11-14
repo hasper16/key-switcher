@@ -260,6 +260,61 @@ namespace Rekey.Core.Tests {
       Assert.Empty(typist.Actions);
     }
 
+    [Fact]
+    public void SelectedTextIsTypedOverWithItsRendering() {
+      Typist typist = Manual().Hotkey(selection: "ghbdtn vbh").Finish();
+
+      Assert.Equal(
+          [new TypeOverSelection("ghbdtn vbh", "привет мир"), new SwitchLayout(_russian)],
+          typist.Actions);
+    }
+
+    [Fact]
+    public void SelectionComesBeforeTheWord() {
+      Typist typist = Manual().Type("ghbdtn").Hotkey(selection: "vbh");
+
+      Assert.Equal([new TypeOverSelection("vbh", "мир")], typist.Actions);
+    }
+
+    [Fact]
+    public void RevertComesBeforeTheSelection() {
+      Typist typist = Manual().Type("ghbdtn").Hotkey().Finish().Hotkey(selection: "vbh");
+
+      Assert.Equal(new ReplaceText("привет", "ghbdtn"), typist.Actions[^1]);
+    }
+
+    [Fact]
+    public void ConvertedSelectionCanBeReverted() {
+      Typist typist = Manual().Hotkey(selection: "ghbdtn vbh").Finish().Hotkey();
+
+      Assert.Equal(new ReplaceText("привет мир", "ghbdtn vbh"), typist.Actions[^1]);
+    }
+
+    [Fact]
+    public void SelectionAmongThreeLayoutsGoesToTheBestOne() {
+      Typist typist = Manual()
+          .Install(KeyMapFixtures.EnglishUs, KeyMapFixtures.Russian, KeyMapFixtures.Ukrainian)
+          .Hotkey(selection: "ghbdsn");
+
+      Assert.Equal(new TypeOverSelection("ghbdsn", "привіт"), typist.Actions[^1]);
+    }
+
+    [Theory]
+    [InlineData("2024")]
+    [InlineData("ghbdtn\r\nvbh")]
+    public void SelectionThatCannotBeConvertedOnlySwitchesLayout(string selection) {
+      Typist typist = Manual().Type("ghbdtn").Hotkey(selection);
+
+      Assert.Equal([new SwitchLayout(_russian)], typist.Actions);
+    }
+
+    [Fact]
+    public void LongSelectionOnlySwitchesLayout() {
+      Typist typist = Manual().Hotkey(selection: string.Concat(Enumerable.Repeat("ghbdtn ", 80)));
+
+      Assert.Equal([new SwitchLayout(_russian)], typist.Actions);
+    }
+
     private static Typist Cross(string boundary, Typist typist) {
       return boundary switch {
         "click" => typist.Click(),

@@ -16,7 +16,7 @@
 
 ## 3. Selection conversion
 
-- [ ] 3.1 Write failing tests for reverse KeyMap conversion ("ghbdtn vbh" → "привет мир", digits untouched); implement; verify they pass
+- [x] 3.1 Write failing tests for reverse KeyMap conversion ("ghbdtn vbh" → "привет мир", digits untouched); implement; verify they pass
 - [ ] 3.2 Implement UIA selection reading and type-over replacement; verify manually in Notepad and Chrome; verify that an unreadable selection only switches Layout
 
 ## 4. Conflicts

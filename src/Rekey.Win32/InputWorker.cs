@@ -85,6 +85,7 @@ namespace Rekey.Win32 {
     private bool _quitting;
     private FocusTracker? _focus;
     private TextReplacer? _replacer;
+    private UiaTextBeforeCaret? _uia;
     private long _seenHoldTimeouts;
 
     // Written by the constructor and then only by the thread that calls UseSettings; the
@@ -387,8 +388,9 @@ namespace Rekey.Win32 {
       }
 
       _started.Set();
+      _uia = new UiaTextBeforeCaret(() => _focus?.TypingElement);
       _replacer = new TextReplacer(
-          new UiaTextBeforeCaret(() => _focus?.TypingElement),
+          _uia,
           _verifiedReplacement,
           HeldModifiers,
           SendKeys,
@@ -444,6 +446,16 @@ namespace Rekey.Win32 {
         if (inputEvent is KeyDown { Kind: KeyKind.Character } keyDown) {
           // Focus may have moved inside the window before its WinEvent arrived.
           inputEvent = keyDown with { FocusConfirmed = _keyConfirmer.Confirm(raw) };
+        } else if (inputEvent is ManualCorrectionRequested request) {
+          inputEvent = request with { Selection = ReadSelection() };
+        } else {
+          // Other inputs go to the engine as translated.
+        }
+
+        // Design D0 of add-manual-correction: before anything Rekey types releases Win, so the
+        // shell never sees a lone Win press and opens Start.
+        if (raw.Holding == Holding.Hotkey && _translator.WindowsHeld) {
+          _ = SendKeys(InputBuilder.MaskWin());
         }
 
         bool held = raw.Holding is not (Holding.None or Holding.Swallowed);
@@ -499,12 +511,6 @@ namespace Rekey.Win32 {
       if (raw.Holding is Holding.Held or Holding.HotkeyTap
           || (raw.Holding == Holding.UndoRequest && !_heldReplaced)) {
         _ = SendKeys([InputBuilder.Reinject(raw)]);
-      }
-
-      // Design D0 of add-manual-correction: Win's release waits behind the Hotkey, so the mask
-      // lands between Win's press and release and the shell does not open Start.
-      if (raw.Holding == Holding.Hotkey && _translator.WindowsHeld) {
-        _ = SendKeys(InputBuilder.MaskWin());
       }
 
       _gate.Release(raw.Sequence);
@@ -721,6 +727,9 @@ namespace Rekey.Win32 {
         case ReplaceText replace:
           Replace(replace);
           break;
+        case TypeOverSelection typeOver:
+          TypeOver(typeOver);
+          break;
         case UndoPerformed undone:
           Undone?.Invoke(undone);
           break;
@@ -730,7 +739,10 @@ namespace Rekey.Win32 {
     }
 
     private void Replace(ReplaceText replace) {
-      ReplacementResult result = TryReplace(replace);
+      Finish(TryReplace(replace));
+    }
+
+    private void Finish(ReplacementResult result) {
       _heldReplaced = result is ReplacementResult.Verified or ReplacementResult.Retyped;
       if (result == ReplacementResult.Mismatch) {
         _recordIncident(new Incident(_time.GetUtcNow(), IncidentType.CorrectionCancelled, []));
@@ -739,6 +751,23 @@ namespace Rekey.Win32 {
 
       Replaced?.Invoke(result);
       Send(new ReplacementFinished(Now(), _heldReplaced));
+    }
+
+    private void TypeOver(TypeOverSelection typeOver) {
+      ReplacementResult result = _held is { } held && _replacer is not null
+          ? _replacer.TypeOver(typeOver, () => Stale(held, _landMilliseconds))
+          : ReplacementResult.TooLate;
+      Finish(result);
+    }
+
+    // Design D4 of add-manual-correction: a Password Field never has its selection read; text
+    // longer than the engine converts is cut one past that length, so the engine still sees it
+    // is too long.
+    private string? ReadSelection() {
+      const int maxSelection = 501;
+      return _engine.Focus is { IsPasswordField: false, IsElevated: false }
+          ? _uia?.ReadSelection(maxSelection)
+          : null;
     }
 
     private ReplacementResult TryReplace(ReplaceText replace) {

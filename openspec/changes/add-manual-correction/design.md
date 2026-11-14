@@ -39,6 +39,10 @@ Rank all other active Layouts by score of their Rendering; pick the best even if
 
 ### D4. Selection conversion
 UIA `TextPattern.GetSelection()` text; map each character back to `(scanCode, shift)` through the current Layout's KeyMap (reverse map), then render in the target Layout. Characters not in the reverse map (digits, symbols present in both) stay as they are. Replacement types over the selection (selection stays active until typing). No clipboard (text-replacement requirement).
+- Target: the other Layout whose conversion scores best on average over its words; a Layout that changes nothing is skipped, and with none left the Hotkey only switches Layout.
+- A selection with a line break, or longer than 500 characters, is not typed over: the Hotkey only switches Layout. Typed line breaks can submit forms, and a long retype is slow and easy to interrupt.
+- The selection is read only outside Password Fields and within the 50 ms UI Automation budget; the typing then goes through the same staleness checks as a replacement.
+- When Win is held at the Hotkey, the worker injects the masking key before it types anything, because the typing releases and re-presses held modifiers.
 
 ### D5. Conflict detection
 - Windows Layout Switch shortcut: `HKCU\Keyboard Layout\Toggle` values `Hotkey`, `Language Hotkey`, `Layout Hotkey` (1 = Left Alt+Shift, 2 = Ctrl+Shift, 3 = none, 4 = grave accent) and Win+Space (always on).
