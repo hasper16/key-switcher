@@ -323,6 +323,17 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void SelectionInAControlFocusLeftIsLeftAlone() {
+      TextReplacer replacer = Replacer(new FakeControl(null) { FocusMoved = true }, verify: true);
+
+      ReplacementResult result =
+          replacer.TypeOver(new TypeOverSelection("vbh", "мир"), () => null);
+
+      Assert.Equal(ReplacementResult.FocusMoved, result);
+      Assert.Empty(_sent);
+    }
+
+    [Fact]
     public void StaleSelectionIsLeftAlone() {
       TextReplacer replacer = Replacer(new FakeControl(null), verify: true);
 

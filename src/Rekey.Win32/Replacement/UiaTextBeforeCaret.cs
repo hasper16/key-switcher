@@ -43,30 +43,44 @@ namespace Rekey.Win32.Replacement {
     /// <param name="maxLength">
     /// The most characters to return; a longer selection comes back cut to this length.
     /// </param>
+    /// <param name="unreadable">
+    /// When this method returns, <see langword="true" /> if the control exposes text but its
+    /// selection could not be read: several selections, an error or no answer in time;
+    /// otherwise, <see langword="false" />.
+    /// </param>
     /// <returns>
-    /// The selected text, or <see langword="null" /> when nothing is selected, there are several
-    /// selections, or the control does not expose its selection in time.
+    /// The selected text, or <see langword="null" /> when nothing is selected, the control
+    /// exposes no text, or the selection is unreadable.
     /// </returns>
-    public string? ReadSelection(int maxLength) {
+    public string? ReadSelection(int maxLength, out bool unreadable) {
       TimedOut = false;
+      unreadable = false;
+      _element = null;
       if (_automation is null) {
         return null;
       }
 
       _started = Stopwatch.GetTimestamp();
       try {
-        object? pattern =
-            Target(_automation).GetCurrentPattern(UIA_PATTERN_ID.UIA_TextPatternId);
-        if (pattern is not IUIAutomationTextPattern text
-            || text.GetSelection() is not { Length: 1 } selection) {
+        // Kept, so typing over the selection can check focus is still there.
+        _element = Target(_automation);
+        if (_element.GetCurrentPattern(UIA_PATTERN_ID.UIA_TextPatternId)
+            is not IUIAutomationTextPattern text) {
           return null;
         }
 
-        IUIAutomationTextRange range = selection.GetElement(0);
-        string selected = TextOf(range, maxLength);
-        return OverBudget() || selected.Length == 0 ? null : selected;
+        IUIAutomationTextRangeArray selections = text.GetSelection();
+        if (selections.Length != 1) {
+          unreadable = selections.Length > 1;
+          return null;
+        }
+
+        string selected = TextOf(selections.GetElement(0), maxLength);
+        unreadable = OverBudget();
+        return unreadable || selected.Length == 0 ? null : selected;
       } catch (COMException e) {
         TimedOut = e.HResult == _timeoutResult;
+        unreadable = true;
         return null;
       }
     }

@@ -99,6 +99,38 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void OtherSideOfAModifierStillHolds() {
+      HotkeyDetector detector = For(Hotkey.CtrlSpace);
+      Down(detector, VIRTUAL_KEY.VK_LCONTROL);
+      Down(detector, VIRTUAL_KEY.VK_RCONTROL);
+      Up(detector, VIRTUAL_KEY.VK_LCONTROL);
+
+      Assert.Equal(HotkeyVerdict.Fire, Down(detector, VIRTUAL_KEY.VK_SPACE));
+    }
+
+    [Fact]
+    public void RepeatOfAKeyThatWentOnDoesNotFire() {
+      // Space went down to the application before Ctrl, so its release must go there too.
+      HotkeyDetector detector = For(Hotkey.CtrlSpace);
+      Down(detector, VIRTUAL_KEY.VK_SPACE);
+      Down(detector, VIRTUAL_KEY.VK_LCONTROL);
+
+      Assert.Equal(HotkeyVerdict.None, Down(detector, VIRTUAL_KEY.VK_SPACE));
+      Assert.Equal(HotkeyVerdict.None, Up(detector, VIRTUAL_KEY.VK_SPACE));
+      Assert.Equal(HotkeyVerdict.Fire, Down(detector, VIRTUAL_KEY.VK_SPACE));
+    }
+
+    [Fact]
+    public void RepeatOfAKeyThatCouldNotFireDoesNotFireLater() {
+      HotkeyDetector detector = For(Hotkey.CtrlSpace);
+      Down(detector, VIRTUAL_KEY.VK_LCONTROL);
+      _tick += 40;
+      detector.Observe((ushort)VIRTUAL_KEY.VK_SPACE, down: true, _tick, canFire: false);
+
+      Assert.Equal(HotkeyVerdict.None, Down(detector, VIRTUAL_KEY.VK_SPACE));
+    }
+
+    [Fact]
     public void CtrlSpaceFires() {
       HotkeyDetector detector = For(Hotkey.CtrlSpace);
       Down(detector, VIRTUAL_KEY.VK_LCONTROL);

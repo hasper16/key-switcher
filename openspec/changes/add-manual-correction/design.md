@@ -42,6 +42,8 @@ UIA `TextPattern.GetSelection()` text; map each character back to `(scanCode, sh
 - Target: the other Layout whose conversion scores best on average over its words; a Layout that changes nothing is skipped, and with none left the Hotkey only switches Layout.
 - A selection with a line break, or longer than 500 characters, is not typed over: the Hotkey only switches Layout. Typed line breaks can submit forms, and a long retype is slow and easy to interrupt.
 - The selection is read only outside Password Fields and within the 50 ms UI Automation budget; the typing then goes through the same staleness checks as a replacement.
+- "Selection not readable" means a control that exposes text but whose selection could not be read: several selections, a UI Automation error, or no answer within the budget. The Hotkey then only switches Layout. A control that exposes no text at all counts as having no selection, so the Word path still runs there (consoles, for one); selecting with the mouse or keys has already ended the Word, so that path finds nothing to correct.
+- Before typing over the selection, the host checks that focus is still on the control the selection was read from.
 - When Win is held at the Hotkey, the worker injects the masking key before it types anything, because the typing releases and re-presses held modifiers.
 
 ### D5. Conflict detection

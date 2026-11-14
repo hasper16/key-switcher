@@ -381,6 +381,12 @@ namespace Rekey.Core {
 
       RecentWord? typed = WordOnScreen();
       ClearForUndo();
+
+      // Spec: a selection the control does not expose is left as it is.
+      if (request.SelectionUnreadable) {
+        return NextLayout(layout);
+      }
+
       if (request.Selection is { Length: > 0 } selection) {
         return ConvertSelection(selection, layout, request.Timestamp);
       }

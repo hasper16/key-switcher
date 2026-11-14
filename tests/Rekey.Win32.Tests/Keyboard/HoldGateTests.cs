@@ -272,6 +272,20 @@ namespace Rekey.Win32.Tests.Keyboard {
     }
 
     [Fact]
+    public void SwallowedRepeatKeepsTheUndoArmedForTheHotkey() {
+      _gate.UseHotkey(new HotkeyDetector(Hotkey.CtrlSpace, _ => true));
+      Down(VIRTUAL_KEY.VK_LCONTROL, _ctrlScan);
+      Space();
+      long press = _sequence - 1;
+      _gate.Release(press);
+      _gate.ArmUndo(press);
+      Space();
+      Up(VIRTUAL_KEY.VK_SPACE, _spaceScan);
+
+      Assert.Equal(Holding.UndoRequest, Down(VIRTUAL_KEY.VK_Z, _zScan));
+    }
+
+    [Fact]
     public void HotkeyWithAFullQueuePasses() {
       _gate.UseHotkey(new HotkeyDetector(Hotkey.CtrlSpace, _ => true));
       Down(VIRTUAL_KEY.VK_LCONTROL, _ctrlScan);

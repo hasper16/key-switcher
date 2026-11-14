@@ -15,11 +15,29 @@ namespace Rekey.Win32.Keyboard {
     private readonly Hotkey _hotkey;
     private readonly DoubleTap? _doubleTap;
     private readonly Func<VIRTUAL_KEY, bool> _isDown;
-    private KeyModifiers _held;
+    private Side _held;
+
+    // Whether the combination's key went on to the application when it was pressed, so its
+    // repeats and release go on too.
+    private bool _keyPassedDown;
 
     // The combination's key from its press until its release, so its repeats and release never
     // reach the application either.
     private ushort _swallowing = _none;
+
+    // Each side of a modifier, so releasing one side keeps the modifier held by the other.
+    [Flags]
+    private enum Side : byte {
+      None = 0,
+      ShiftLeft = 1,
+      ShiftRight = 2,
+      ControlLeft = 4,
+      ControlRight = 8,
+      AltLeft = 16,
+      AltRight = 32,
+      WindowsLeft = 64,
+      WindowsRight = 128,
+    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="HotkeyDetector" /> class.
@@ -51,10 +69,10 @@ namespace Rekey.Win32.Keyboard {
     /// </param>
     /// <returns>One of the enumeration values that specifies the meaning.</returns>
     public HotkeyVerdict Observe(ushort virtualKey, bool down, long tick, bool canFire = true) {
-      KeyModifiers modifier = ModifierOf((VIRTUAL_KEY)virtualKey);
-      if (modifier != KeyModifiers.None) {
-        _held = down ? _held | modifier : _held & ~modifier;
-      }
+      var key = (VIRTUAL_KEY)virtualKey;
+      KeyModifiers modifier = ModifierOf(key);
+      Side side = SideOf(key);
+      _held = down ? _held | side : _held & ~side;
 
       if (_doubleTap is not null) {
         return _doubleTap.Observe(modifier, down, tick) && canFire
@@ -70,12 +88,17 @@ namespace Rekey.Win32.Keyboard {
         return HotkeyVerdict.Swallow;
       }
 
-      if (down && canFire && virtualKey == _hotkey.VirtualKey && _held == _hotkey.Modifiers
+      if (virtualKey != _hotkey.VirtualKey) {
+        return HotkeyVerdict.None;
+      }
+
+      if (down && !_keyPassedDown && canFire && Held() == _hotkey.Modifiers
           && AreModifiersDown()) {
         _swallowing = virtualKey;
         return HotkeyVerdict.Fire;
       }
 
+      _keyPassedDown = down;
       return HotkeyVerdict.None;
     }
 
@@ -87,6 +110,41 @@ namespace Rekey.Win32.Keyboard {
         VIRTUAL_KEY.VK_LWIN or VIRTUAL_KEY.VK_RWIN => KeyModifiers.Windows,
         _ => KeyModifiers.None,
       };
+    }
+
+    private static Side SideOf(VIRTUAL_KEY key) {
+      return key switch {
+        VIRTUAL_KEY.VK_LSHIFT => Side.ShiftLeft,
+        VIRTUAL_KEY.VK_RSHIFT => Side.ShiftRight,
+        VIRTUAL_KEY.VK_LCONTROL => Side.ControlLeft,
+        VIRTUAL_KEY.VK_RCONTROL => Side.ControlRight,
+        VIRTUAL_KEY.VK_LMENU => Side.AltLeft,
+        VIRTUAL_KEY.VK_RMENU => Side.AltRight,
+        VIRTUAL_KEY.VK_LWIN => Side.WindowsLeft,
+        VIRTUAL_KEY.VK_RWIN => Side.WindowsRight,
+        _ => Side.None,
+      };
+    }
+
+    private KeyModifiers Held() {
+      KeyModifiers held = KeyModifiers.None;
+      if ((_held & (Side.ShiftLeft | Side.ShiftRight)) != 0) {
+        held |= KeyModifiers.Shift;
+      }
+
+      if ((_held & (Side.ControlLeft | Side.ControlRight)) != 0) {
+        held |= KeyModifiers.Control;
+      }
+
+      if ((_held & (Side.AltLeft | Side.AltRight)) != 0) {
+        held |= KeyModifiers.Alt;
+      }
+
+      if ((_held & (Side.WindowsLeft | Side.WindowsRight)) != 0) {
+        held |= KeyModifiers.Windows;
+      }
+
+      return held;
     }
 
     private bool AreModifiersDown() {

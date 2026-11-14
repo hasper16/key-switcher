@@ -447,7 +447,8 @@ namespace Rekey.Win32 {
           // Focus may have moved inside the window before its WinEvent arrived.
           inputEvent = keyDown with { FocusConfirmed = _keyConfirmer.Confirm(raw) };
         } else if (inputEvent is ManualCorrectionRequested request) {
-          inputEvent = request with { Selection = ReadSelection() };
+          string? selection = ReadSelection(out bool unreadable);
+          inputEvent = request with { Selection = selection, SelectionUnreadable = unreadable };
         } else {
           // Other inputs go to the engine as translated.
         }
@@ -763,10 +764,11 @@ namespace Rekey.Win32 {
     // Design D4 of add-manual-correction: a Password Field never has its selection read; text
     // longer than the engine converts is cut one past that length, so the engine still sees it
     // is too long.
-    private string? ReadSelection() {
+    private string? ReadSelection(out bool unreadable) {
       const int maxSelection = 501;
+      unreadable = false;
       return _engine.Focus is { IsPasswordField: false, IsElevated: false }
-          ? _uia?.ReadSelection(maxSelection)
+          ? _uia?.ReadSelection(maxSelection, out unreadable)
           : null;
     }
 

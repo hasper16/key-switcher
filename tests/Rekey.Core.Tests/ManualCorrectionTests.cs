@@ -309,6 +309,15 @@ namespace Rekey.Core.Tests {
     }
 
     [Fact]
+    public void UnreadableSelectionOnlySwitchesLayout() {
+      Typist typist = Manual().Type("ghbdtn")
+          .Send(new ManualCorrectionRequested(
+              TimeSpan.FromSeconds(100), Selection: null, SelectionUnreadable: true));
+
+      Assert.Equal([new SwitchLayout(_russian)], typist.Actions);
+    }
+
+    [Fact]
     public void LongSelectionOnlySwitchesLayout() {
       Typist typist = Manual().Hotkey(selection: string.Concat(Enumerable.Repeat("ghbdtn ", 80)));
 

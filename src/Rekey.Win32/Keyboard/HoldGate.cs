@@ -149,7 +149,9 @@ namespace Rekey.Win32.Keyboard {
         _lastKeyDown = sequence;
       } else if (modifier != Modifier.None) {
         // Modifiers neither type nor break the run of an Undo.
-      } else if (down) {
+      } else if (down && holding != Holding.Swallowed) {
+        // A swallowed repeat never reached the application, so the Undo armed for the
+        // Hotkey's press stays armed.
         _lastKeyDown = sequence;
         _lastWasCharacter = !HoldsShortcut()
             && Volatile.Read(ref _policy).IsCharacter(scanCode, extended);
