@@ -18,7 +18,10 @@ Implementation order of the OpenSpec changes in `openspec/changes/`. Apply them 
 | 12 | `add-onboarding` | onboarding | 9, 11 |
 | 13 | `add-telemetry` | telemetry | 10, 12 |
 | 14 | `add-ui-localization` | localization | 9–13 |
+| 15 | `add-final-acceptance` | — (by-hand acceptance and fixes) | 1–14 |
 
 Changes 2–3 (pure logic) and 4 (Windows interop) can be built in parallel after 1. Changes 10 and 11 can run in parallel after 9. Onboarding comes after the installer because its "install properly" offer and its installed-location check need the Velopack install root.
+
+By-hand checks are not a merge gate for changes 1–14: each change appends them to `docs/manual-tests/deferred-by-hand.md`, and change 15 is the owner's single pass over that file plus the fixes for what fails (owner decision, 2026-11-14).
 
 Sources: the owner's reverse-engineering notes (kept outside the repository), `GLOSSARY.md` (terms), `docs/adr/` (decisions).
