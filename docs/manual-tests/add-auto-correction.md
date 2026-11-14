@@ -31,11 +31,11 @@ Earlier runs that day failed lines of the change-4 set on this branch and on `ma
 
 The app has no settings window before `add-tray-and-settings-ui`, so the options are changed in `%LOCALAPPDATA%\Rekey\settings.json` while Rekey is not running (Rekey writes the file on exit). Use a Debug build of `src/Rekey.App` and English (US) as the starting Layout.
 
-- [x] **Default Corrections (4.2).** Start Rekey with no settings file. In Notepad type "ghbdtn" and Space, then on a new line "ghbdtn" and Enter, then "ghbdtn" and Tab.
-  Expected: the first two read "привет" with the Space or the line break after it and the Layout becomes Russian each time (switch back to English (US) in between); after Tab the text still reads "ghbdtn". The settings file then holds `"triggerKeys": "space, enter"`.
+- [x] **Default Corrections (4.2).** Start Rekey with no settings file. In Notepad type "ghbdtn" and Space; switch back to English (US), then on a new line type "ghbdtn" and Enter; switch back to English (US) again, then type "ghbdtn" and Tab.
+  Expected: the first two read "привет" with the Space or the line break after it and the Layout becomes Russian each time; after Tab the text still reads "ghbdtn". The settings file then holds `"triggerKeys": "space, enter"`.
 - [x] **The Windows Layout Switch shortcut (4.2).** In Notepad, in Russian, type "ghb", press the Windows shortcut that switches to English (Win+Space or Alt+Shift), type "dtn" and Space. Then type "ghbdtn" and Space again.
   Expected: the first Word stays as typed ("приdtn "); the second is corrected to "привет ".
-- [x] **Excluded App (4.2).** Quit Rekey. In the settings file set `"excludedApps": ["Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"]`, start Rekey, and type "ghbdtn" and Space at a prompt in Windows Terminal and then in Notepad.
+- [x] **Excluded App (4.2).** Quit Rekey. In the settings file set `"excludedApps": ["Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"]`, start Rekey, and with English (US) as the Layout in each window type "ghbdtn" and Space at a prompt in Windows Terminal and then in Notepad.
   Expected: Windows Terminal keeps "ghbdtn "; Notepad shows "привет ".
 - [x] **Pause across a restart (4.2).** Quit Rekey. In the settings file set `"pausedUntil"` to a UTC time three minutes ahead, such as `"2026-11-13T10:15:00+00:00"`, and empty `"excludedApps"`. Start Rekey, type "ghbdtn" and Space in Notepad, quit Rekey after about a minute, start it again and type the Word again; then wait until the time has passed and type it once more.
   Expected: the first two times the text stays "ghbdtn " (the Pause survived the restart); after the time has passed it becomes "привет " without anything else being done.
