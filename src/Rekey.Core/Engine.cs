@@ -1,6 +1,7 @@
 using System.Buffers;
 using Rekey.Core.Detection;
 using Rekey.Core.Languages;
+using Rekey.Core.Words;
 
 namespace Rekey.Core {
   /// <summary>
@@ -10,6 +11,14 @@ namespace Rekey.Core {
   /// Not thread-safe: the worker thread owns the engine and feeds it every input in order.
   /// </remarks>
   public sealed class Engine {
+    // What asked for a Correction; it decides what the Correction teaches (design D6 of
+    // add-word-learning).
+    private enum CorrectionKind {
+      Auto,
+      Manual,
+      Selection,
+    }
+
     // A Correction as typed and as replaced, kept for its Undo.
     private sealed record CorrectionRecord(
         string Typed,
@@ -18,7 +27,8 @@ namespace Rekey.Core {
         LayoutId Source,
         LayoutId Target,
         TimeSpan Time,
-        bool Undoable);
+        bool Undoable,
+        CorrectionKind Kind);
 
     private sealed record PendingReplacement(CorrectionRecord Correction, bool IsUndo);
 
@@ -26,6 +36,9 @@ namespace Rekey.Core {
     // (design D2 of add-manual-correction).
     private sealed record RecentWord(
         IReadOnlyList<Keystroke> Keystrokes, LayoutId Layout, string Trailer);
+
+    // Spec word-learning: shorter Words are not protected after an Undo (design decision).
+    private const int _minProtectedLength = 3;
 
     // DeferredRun keeps at most three Words, so the run on screen never needs more.
     private const int _maxRunWords = 3;
@@ -93,12 +106,19 @@ namespace Rekey.Core {
     /// evaluate them against the Language Profiles of the installed Layouts. The default is
     /// <see langword="null" />.
     /// </param>
+    /// <param name="words">
+    /// The user's Protected Words and Learned Words, which the engine owns from now on, or
+    /// <see langword="null" /> to start with empty lists. The default is
+    /// <see langword="null" />.
+    /// </param>
     public Engine(
         LanguageSet languages,
         Settings settings,
         TimeProvider time,
-        WordEvaluator? evaluate = null) {
+        WordEvaluator? evaluate = null,
+        WordLists? words = null) {
       _languages = languages;
+      Words = words ?? new WordLists();
       _settings = settings;
       _time = time;
       _evaluate = evaluate;
@@ -148,6 +168,11 @@ namespace Rekey.Core {
         Gate == GateResult.Applies ? _settings.TriggerKeys : TriggerKeys.None;
 
     /// <summary>
+    /// Gets the user's Protected Words and Learned Words; only the engine's thread may use them.
+    /// </summary>
+    public WordLists Words { get; }
+
+    /// <summary>
     /// Gets the counts of the Words ended by a Trigger Key so far.
     /// </summary>
     public WordCounts WordCounts { get; private set; }
@@ -167,6 +192,8 @@ namespace Rekey.Core {
           return OnManualCorrection(manual);
         case ReplacementFinished finished:
           return OnReplacementFinished(finished);
+        case WordListEdited edit:
+          return OnWordListEdited(edit);
         case MouseClick:
           _word.Clear();
           Interrupt();
@@ -218,6 +245,14 @@ namespace Rekey.Core {
         KeyKind.Tab => "\t",
         _ => string.Empty,
       };
+    }
+
+    private static EngineAction[] Changed(bool changed) {
+      return changed ? [new WordListsChanged()] : [];
+    }
+
+    private static string[] WordsOf(string text) {
+      return text.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
     }
 
     private IReadOnlyList<EngineAction> OnKeyDown(KeyDown keyDown) {
@@ -304,6 +339,13 @@ namespace Rekey.Core {
       }
 
       WordCounts = WordCounts with { Evaluated = WordCounts.Evaluated + 1 };
+
+      // Spec word-learning: a Protected Word is kept, and keeping it ends the run before it.
+      if (Words.UseProtected(typed, _time.GetUtcNow())) {
+        EndRun();
+        return [new WordListsChanged()];
+      }
+
       Decision decision = _evaluate?.Invoke(word, layout)
           ?? _detector.Decide(word, layout, _settings.Sensitivity);
       Correction? correction = DeferredWords.Add(decision);
@@ -325,7 +367,8 @@ namespace Rekey.Core {
           layout,
           correction.Target,
           trigger.Timestamp,
-          Undoable: trigger.Kind != KeyKind.Enter);
+          Undoable: trigger.Kind != KeyKind.Enter,
+          CorrectionKind.Auto);
       _pending = new PendingReplacement(record, IsUndo: false);
       return [new ReplaceText(record.Typed, record.Rendering)];
     }
@@ -401,7 +444,7 @@ namespace Rekey.Core {
 
       var record = new CorrectionRecord(
           text, best.Text, typed.Trailer, typed.Layout, best.Layout, request.Timestamp,
-          Undoable: true);
+          Undoable: true, CorrectionKind.Manual);
       _pending = new PendingReplacement(record, IsUndo: false);
       return [new ReplaceText(text + typed.Trailer, best.Text + typed.Trailer)];
     }
@@ -422,7 +465,14 @@ namespace Rekey.Core {
       }
 
       var record = new CorrectionRecord(
-          selection, best.Text, string.Empty, layout, best.Layout, now, Undoable: true);
+          selection,
+          best.Text,
+          string.Empty,
+          layout,
+          best.Layout,
+          now,
+          Undoable: true,
+          CorrectionKind.Selection);
       _pending = new PendingReplacement(record, IsUndo: false);
       return [new TypeOverSelection(selection, best.Text)];
     }
@@ -465,13 +515,88 @@ namespace Rekey.Core {
       CorrectionRecord record = pending.Correction;
       if (pending.IsUndo) {
         return [
-            new SwitchLayout(record.Source), new UndoPerformed(record.Typed, record.Rendering)];
+            new SwitchLayout(record.Source),
+            new UndoPerformed(record.Typed, record.Rendering),
+            .. Changed(LearnFromUndo(record)),
+        ];
       }
 
       _lastCorrection = record;
       _recent = null;
       _word.Clear();
-      return [new SwitchLayout(record.Target)];
+      return [new SwitchLayout(record.Target), .. Changed(LearnFromCorrection(record))];
+    }
+
+    // Spec word-learning: an Undo protects the Words as typed and forgets the Learned Words the
+    // Correction typed. A converted selection may be a whole sentence, so it teaches nothing.
+    private bool LearnFromUndo(CorrectionRecord record) {
+      if (record.Kind == CorrectionKind.Selection) {
+        return false;
+      }
+
+      DateTimeOffset now = _time.GetUtcNow();
+      bool changed = false;
+      foreach (string typed in WordsOf(record.Typed)
+          .Where(typed => WordLists.Key(typed).Count(char.IsLetter) >= _minProtectedLength)) {
+        changed |= Words.Protect(typed, WordSource.Auto, now);
+      }
+
+      if (_languages.ProfileFor(record.Target) is { } profile) {
+        // The same letters a Manual Correction learned.
+        foreach (string rendering in WordsOf(record.Rendering)) {
+          changed |= Words.Unlearn(
+              WrongLayoutDetector.TrimToLetters(rendering, profile), profile.Language);
+        }
+      }
+
+      return changed;
+    }
+
+    // Spec word-learning: a Manual Correction of a Word to a Rendering its Language lacks
+    // learns that Rendering; any Correction to a Learned Word marks it used.
+    private bool LearnFromCorrection(CorrectionRecord record) {
+      if (record.Kind == CorrectionKind.Selection
+          || _languages.ProfileFor(record.Target) is not { } profile) {
+        return false;
+      }
+
+      DateTimeOffset now = _time.GetUtcNow();
+      bool changed = false;
+      foreach (string rendering in WordsOf(record.Rendering)) {
+        string letters = WrongLayoutDetector.TrimToLetters(rendering, profile);
+        if (letters.Length == 0 || RenderingScorer.Score(profile, letters).IsWord) {
+          continue;
+        }
+
+        changed |= record.Kind == CorrectionKind.Manual
+            ? Words.Learn(letters, profile.Language, WordSource.Auto, now)
+            : Words.UseLearned(letters, profile.Language, now);
+      }
+
+      return changed;
+    }
+
+    private IReadOnlyList<EngineAction> OnWordListEdited(WordListEdited edit) {
+      if (Apply(edit)) {
+        return [new WordListsChanged()];
+      }
+
+      return edit.Remove ? [] : [new WordListFull()];
+    }
+
+    // True when the list changed; false when the word to remove was absent or the list refused
+    // the word to add.
+    private bool Apply(WordListEdited edit) {
+      DateTimeOffset now = _time.GetUtcNow();
+      if (edit.Language is not { } language) {
+        return edit.Remove
+            ? Words.Unprotect(edit.Text)
+            : Words.Protect(edit.Text, WordSource.User, now);
+      }
+
+      return edit.Remove
+          ? Words.Unlearn(edit.Text, language)
+          : Words.Learn(edit.Text, language, WordSource.User, now);
     }
 
     private void OnLayoutChanged(LayoutChanged layout) {
@@ -508,7 +633,7 @@ namespace Rekey.Core {
           .Select(layout => _keyMaps[layout])];
       _detector = new WrongLayoutDetector(keyMaps.SelectMany(map =>
           _languages.ProfileFor(map.Layout) is { } profile
-              ? [new DetectionLayout(map, profile)]
+              ? [new DetectionLayout(map, profile, Words.LearnedIn(profile.Language))]
               : Array.Empty<DetectionLayout>()));
     }
 
