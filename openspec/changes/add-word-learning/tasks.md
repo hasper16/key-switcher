@@ -23,4 +23,4 @@
 
 ## 5. Docs
 
-- [ ] 5.1 Describe how learning works for users in `docs/user-guide.md` (section "Teaching Rekey"); verify it matches the spec scenarios
+- [x] 5.1 Describe how learning works for users in `docs/user-guide.md` (section "Teaching Rekey"); verify it matches the spec scenarios
