@@ -85,6 +85,21 @@ namespace Rekey.DesktopChecks {
       return same;
     }
 
+    // What kinds of characters a text holds, such as "Cyrillic lower, space"; never the text.
+    private static string KindsOf(string? text) {
+      if (string.IsNullOrEmpty(text)) {
+        return "empty";
+      }
+
+      return string.Join('|', text.Select(character => character switch {
+        ' ' => "space",
+        >= 'Ѐ' and <= 'ӿ' => char.IsUpper(character) ? "Cyr-up" : "Cyr-low",
+        >= 'A' and <= 'Z' => "Lat-up",
+        >= 'a' and <= 'z' => "Lat-low",
+        _ => $"U+{(int)character:X4}",
+      }));
+    }
+
     private void CheckDoubleShift() {
       Apply(_manualOnly);
       Point box = First().Ordinary;
@@ -167,6 +182,13 @@ namespace Rekey.DesktopChecks {
       ExpectSelectionConverted("3.2 selection in the test window", First().Ordinary);
       if (OpenNotepad() is { } notepad) {
         ExpectSelectionConverted("3.2 selection in Notepad", notepad);
+
+        // Tell apart what the Notepad case depends on: the Shift taps, or the second Word.
+        Apply(_manualOnly with { Hotkey = _ctrlAltK });
+        ExpectSelectionConverted("3.2 selection in Notepad with Ctrl+Alt+K", notepad, CtrlAltK);
+        Apply(_manualOnly);
+        ExpectSelectionConverted(
+            "3.2 one-Word selection in Notepad", notepad, typed: "ghbdtn", expected: "привет");
       } else {
         Expect("3.2 selection in Notepad", false, "Notepad did not open the test file");
       }
@@ -182,16 +204,19 @@ namespace Rekey.DesktopChecks {
       }
     }
 
-    private void ExpectSelectionConverted(string item, Point at) {
+    private void ExpectSelectionConverted(
+        string item,
+        Point at,
+        Action? hotkey = null,
+        string typed = "ghbdtn vbh",
+        string expected = "привет мир") {
       SwitchIn(at, SpecWords.EnglishUs);
       Input.ClearBox();
-      const string typed = "ghbdtn vbh";
-      const string expected = "привет мир";
       Input.Type(typed);
       Input.Control('a');
       Thread.Sleep(_settle);
       EventLog.Position mark = _log.Mark();
-      DoubleTapShift();
+      (hotkey ?? DoubleTapShift)();
       EventLog.WaitFor(() => _log.ReplacementsSince(mark).Count > 0, _replaceWait);
       Thread.Sleep(_settle);
       Attempt attempt = Read(mark);
@@ -207,7 +232,9 @@ namespace Rekey.DesktopChecks {
           && text[same..] == typed[same..];
       string detail = $"{attempt}, {Compare(attempt.Text, expected)}, selection read "
           + $"{read?.ToString(CultureInfo.InvariantCulture) ?? "none"} of {typed.Length}, "
-          + $"rest still as typed {restAsTyped}";
+          + $"rest still as typed {restAsTyped}, same but for case "
+          + $"{string.Equals(attempt.Text, expected, StringComparison.OrdinalIgnoreCase)}, "
+          + $"rest is {KindsOf(attempt.Text?[same..])}";
       Expect(
           $"{item}: \"{typed}\" becomes \"{expected}\"",
           attempt.Replaced && attempt.Text == expected,
