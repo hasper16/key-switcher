@@ -21,4 +21,4 @@
 ## 4. End-to-end check
 
 - [x] 4.1 Add the `auto-correction` subset to `tools/Rekey.DesktopChecks` covering the spec scenarios (Space, Enter, numeric keypad Enter, Tab on/off, turned off, Excluded App, Pause that ends, switch Layout mid-word, self-pause) and the counters of design D8 at several typing speeds; verify every line passes on the owner's desktop and record the run in `docs/manual-tests/add-auto-correction.md`
-- [ ] 4.2 Run the checklist by hand in `docs/manual-tests/add-auto-correction.md` (the app itself: default Corrections, an Excluded App and a Pause set in the settings file, restart during the Pause); verify every item is ticked
+- [x] 4.2 Run the checklist by hand in `docs/manual-tests/add-auto-correction.md` (the app itself: default Corrections, an Excluded App and a Pause set in the settings file, restart during the Pause); verify every item is ticked

@@ -31,15 +31,15 @@ Earlier runs that day failed lines of the change-4 set on this branch and on `ma
 
 The app has no settings window before `add-tray-and-settings-ui`, so the options are changed in `%LOCALAPPDATA%\Rekey\settings.json` while Rekey is not running (Rekey writes the file on exit). Use a Debug build of `src/Rekey.App` and English (US) as the starting Layout.
 
-- [ ] **Default Corrections (4.2).** Start Rekey with no settings file. In Notepad type "ghbdtn" and Space, then on a new line "ghbdtn" and Enter, then "ghbdtn" and Tab.
+- [x] **Default Corrections (4.2).** Start Rekey with no settings file. In Notepad type "ghbdtn" and Space, then on a new line "ghbdtn" and Enter, then "ghbdtn" and Tab.
   Expected: the first two read "привет" with the Space or the line break after it and the Layout becomes Russian each time (switch back to English (US) in between); after Tab the text still reads "ghbdtn". The settings file then holds `"triggerKeys": "space, enter"`.
-- [ ] **The Windows Layout Switch shortcut (4.2).** In Notepad, in Russian, type "ghb", press the Windows shortcut that switches to English (Win+Space or Alt+Shift), type "dtn" and Space. Then type "ghbdtn" and Space again.
+- [x] **The Windows Layout Switch shortcut (4.2).** In Notepad, in Russian, type "ghb", press the Windows shortcut that switches to English (Win+Space or Alt+Shift), type "dtn" and Space. Then type "ghbdtn" and Space again.
   Expected: the first Word stays as typed ("приdtn "); the second is corrected to "привет ".
-- [ ] **Excluded App (4.2).** Quit Rekey. In the settings file set `"excludedApps": ["Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"]`, start Rekey, and type "ghbdtn" and Space at a prompt in Windows Terminal and then in Notepad.
+- [x] **Excluded App (4.2).** Quit Rekey. In the settings file set `"excludedApps": ["Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"]`, start Rekey, and type "ghbdtn" and Space at a prompt in Windows Terminal and then in Notepad.
   Expected: Windows Terminal keeps "ghbdtn "; Notepad shows "привет ".
-- [ ] **Pause across a restart (4.2).** Quit Rekey. In the settings file set `"pausedUntil"` to a UTC time three minutes ahead, such as `"2026-11-13T10:15:00+00:00"`, and empty `"excludedApps"`. Start Rekey, type "ghbdtn" and Space in Notepad, quit Rekey after about a minute, start it again and type the Word again; then wait until the time has passed and type it once more.
+- [x] **Pause across a restart (4.2).** Quit Rekey. In the settings file set `"pausedUntil"` to a UTC time three minutes ahead, such as `"2026-11-13T10:15:00+00:00"`, and empty `"excludedApps"`. Start Rekey, type "ghbdtn" and Space in Notepad, quit Rekey after about a minute, start it again and type the Word again; then wait until the time has passed and type it once more.
   Expected: the first two times the text stays "ghbdtn " (the Pause survived the restart); after the time has passed it becomes "привет " without anything else being done.
-- [ ] **Words lost to unconfirmed keys in real typing (4.2, design D8).** Use the Debug build for a normal working session, then quit Rekey from the tray and open `%LOCALAPPDATA%\Rekey\word-counts.txt`.
+- [x] **Words lost to unconfirmed keys in real typing (4.2, design D8).** Use the Debug build for a normal working session, then quit Rekey from the tray and open `%LOCALAPPDATA%\Rekey\word-counts.txt`.
   Expected: one line of three counters, `words-ended`, `evaluated` and `unconfirmed`; report them. The share of `unconfirmed` in `words-ended` is how many Words got no evaluation because a key could not be confirmed outside a Password Field.
 
-By hand, last run: not run yet.
+By hand, last run: all five items passed at 1aad82d on 2026-11-14 on the owner's desktop (product code unchanged since 7e86ff8). The counters file read `words-ended=1 evaluated=1 unconfirmed=0`: a very short session, not a working day, so it shows only that the file is written. The measurement of record for design D8 is the typing-speed run above.
