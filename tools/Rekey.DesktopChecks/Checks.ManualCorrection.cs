@@ -90,7 +90,7 @@ namespace Rekey.DesktopChecks {
           && text[same..].Order().SequenceEqual(expected[same..].Order());
     }
 
-    // What kinds of characters a text holds, such as "Cyrillic lower, space"; never the text.
+    // What kinds of characters a text holds, such as "Cyr-low|space"; never the characters.
     private static string KindsOf(string? text) {
       if (string.IsNullOrEmpty(text)) {
         return "empty";
@@ -101,7 +101,9 @@ namespace Rekey.DesktopChecks {
         >= 'Ѐ' and <= 'ӿ' => char.IsUpper(character) ? "Cyr-up" : "Cyr-low",
         >= 'A' and <= 'Z' => "Lat-up",
         >= 'a' and <= 'z' => "Lat-low",
-        _ => $"U+{(int)character:X4}",
+        _ when char.IsDigit(character) => "digit",
+        _ when char.IsPunctuation(character) => "punctuation",
+        _ => "other",
       }));
     }
 
