@@ -27,6 +27,12 @@ A hook-local state machine: modifier down → modifier up with no other key → 
 
 ### D2. What to correct
 Engine keeps `RecentWord` = the last finished Word if only its Trigger Key followed it and no boundary event happened since. Priority: (1) last Correction within Undo rules → revert; (2) readable non-empty selection → convert selection; (3) current Word or RecentWord → correct; (4) Layout Switch to next Layout in Windows' list order.
+- Only Space or Tab may follow a RecentWord. After Enter the line may have been submitted, and retyping it would submit again, so Enter ends the RecentWord (as Enter ends the Undo of a Correction).
+- Modifier keys neither end nor extend the typing gap: the Hotkey's own Shift or Ctrl taps must not end a Word the user noticed late. A modifier still counts for Undo (Ctrl+Z).
+- A Word with a Layout Switch by the user inside it, a click, a focus change, lost input or an applied Correction leave nothing to correct: the text on screen is no longer known to be the Keystrokes in one Layout.
+
+### D2a. Hook plumbing
+The hook's `HoldGate` asks a `HotkeyDetector` about every key. A fired Hotkey is held like a Trigger Key, so keys typed after it wait until the Manual Correction is on screen. A double tap's second release goes on to the application afterwards; a combo's key and its repeats and release are swallowed. When Win is down at that moment, the worker injects the masking key before it lets the held keys (Win's release among them) go on.
 
 ### D3. Target Layout for Manual Correction
 Rank all other active Layouts by score of their Rendering; pick the best even if not a common word (the user asked explicitly). Ties → next Layout in Windows' order.

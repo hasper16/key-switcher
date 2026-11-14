@@ -145,6 +145,7 @@ namespace Rekey.Win32 {
       _verifiedReplacement = settings.VerifiedReplacement;
       _meter = new SlowCallbackMeter(time);
       _hook = new InputHook(_ring, _gate, _signal, _meter, time);
+      UseHotkey(settings.Hotkey);
       bool capsLockOn = (PInvoke.GetKeyState((int)VIRTUAL_KEY.VK_CAPITAL) & 1) != 0;
       _translator = new RawInputTranslator(capsLockOn);
       _modifierSync = new ModifierSync(
@@ -445,13 +446,14 @@ namespace Rekey.Win32 {
           inputEvent = keyDown with { FocusConfirmed = _keyConfirmer.Confirm(raw) };
         }
 
-        _held = raw.Holding == Holding.None ? null : raw;
+        bool held = raw.Holding is not (Holding.None or Holding.Swallowed);
+        _held = held ? raw : null;
         _heldReplaced = false;
         if (inputEvent is not null) {
           Send(inputEvent);
         }
 
-        if (raw.Holding != Holding.None) {
+        if (held) {
           FinishHeld(raw);
         }
 
@@ -485,16 +487,24 @@ namespace Rekey.Win32 {
 
     // Sends a held key on to the application once its replacement, if any, is done, and lets
     // the hook stop holding once every held key has gone on. An applied Undo consumes its
-    // Ctrl+Z; an applied Correction makes a Ctrl+Z right after its Trigger Key an Undo.
+    // Ctrl+Z, and a combination Hotkey never reaches the application; an applied Correction
+    // makes a Ctrl+Z right after the key that asked for it an Undo.
     private void FinishHeld(in RawInput raw) {
-      if (raw.Holding == Holding.Held && _heldReplaced) {
+      if (raw.Holding != Holding.UndoRequest && _heldReplaced) {
         _gate.ArmUndo(raw.Sequence);
       }
 
       // Released even if Windows refuses the key: holding on would only block typing until
       // the valve opens, and the key cannot be sent any other way.
-      if (raw.Holding != Holding.UndoRequest || !_heldReplaced) {
+      if (raw.Holding is Holding.Held or Holding.HotkeyTap
+          || (raw.Holding == Holding.UndoRequest && !_heldReplaced)) {
         _ = SendKeys([InputBuilder.Reinject(raw)]);
+      }
+
+      // Design D0 of add-manual-correction: Win's release waits behind the Hotkey, so the mask
+      // lands between Win's press and release and the shell does not open Start.
+      if (raw.Holding == Holding.Hotkey && _translator.WindowsHeld) {
+        _ = SendKeys(InputBuilder.MaskWin());
       }
 
       _gate.Release(raw.Sequence);
@@ -654,6 +664,11 @@ namespace Rekey.Win32 {
       Observed?.Invoke(inputEvent);
     }
 
+    // The hook thread alone uses each detector, so every setting gets a new one.
+    private void UseHotkey(Hotkey hotkey) {
+      _gate.UseHotkey(new HotkeyDetector(hotkey, IsKeyDown));
+    }
+
     // Dispatches waiting messages; returns false once WM_QUIT arrives.
     private bool PumpMessages() {
       while (PInvoke.PeekMessage(
@@ -683,7 +698,9 @@ namespace Rekey.Win32 {
           ReportSelfPause(null);
           return true;
         case _settingsMessage:
-          Send(new SettingsChanged(Now(), Volatile.Read(ref _latestSettings)));
+          Settings settings = Volatile.Read(ref _latestSettings);
+          UseHotkey(settings.Hotkey);
+          Send(new SettingsChanged(Now(), settings));
           return true;
         case _freezeMessage:
           Thread.Sleep(TimeSpan.FromMilliseconds(message.lParam.Value));

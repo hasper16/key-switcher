@@ -1,3 +1,4 @@
+using Rekey.Core;
 using Rekey.Win32.Keyboard;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Xunit;
@@ -9,6 +10,8 @@ namespace Rekey.Win32.Tests.Keyboard {
     private const ushort _spaceScan = 0x39;
     private const ushort _zScan = 0x2C;
     private const ushort _ctrlScan = 0x1D;
+    private const ushort _shiftScan = 0x2A;
+    private const ushort _winScan = 0x5B;
 
     private readonly HoldGate _gate = new();
     private long _sequence;
@@ -211,6 +214,69 @@ namespace Rekey.Win32.Tests.Keyboard {
       Down(VIRTUAL_KEY.VK_LCONTROL, _ctrlScan);
 
       Assert.Equal(Holding.None, Down(VIRTUAL_KEY.VK_Z, _zScan));
+    }
+
+    [Fact]
+    public void ComboHotkeyIsHeldAsAHotkey() {
+      _gate.UseHotkey(new HotkeyDetector(Hotkey.WinSpace, _ => true));
+      Down(VIRTUAL_KEY.VK_LWIN, _winScan);
+
+      Assert.Equal(Holding.Hotkey, Space());
+    }
+
+    [Fact]
+    public void WinReleaseWaitsBehindTheHotkey() {
+      // The worker injects the masking key first, so Start does not open.
+      _gate.UseHotkey(new HotkeyDetector(Hotkey.WinSpace, _ => true));
+      Down(VIRTUAL_KEY.VK_LWIN, _winScan);
+      Space();
+
+      Assert.Equal(Holding.Swallowed, Up(VIRTUAL_KEY.VK_SPACE, _spaceScan));
+      Assert.Equal(Holding.Held, Up(VIRTUAL_KEY.VK_LWIN, _winScan));
+    }
+
+    [Fact]
+    public void SwallowedKeyStartsNoHold() {
+      _gate.UseHotkey(new HotkeyDetector(Hotkey.CtrlSpace, _ => true));
+      Down(VIRTUAL_KEY.VK_LCONTROL, _ctrlScan);
+      Space();
+      _gate.Release(_sequence - 1);
+      Up(VIRTUAL_KEY.VK_SPACE, _spaceScan);
+
+      Assert.Equal(Holding.None, Up(VIRTUAL_KEY.VK_LCONTROL, _ctrlScan));
+    }
+
+    [Fact]
+    public void SecondTapOfADoubleTapIsHeldToGoOnLater() {
+      _gate.UseHotkey(new HotkeyDetector(Hotkey.DoubleShift, _ => true));
+      Down(VIRTUAL_KEY.VK_LSHIFT, _shiftScan);
+      Up(VIRTUAL_KEY.VK_LSHIFT, _shiftScan);
+      Down(VIRTUAL_KEY.VK_LSHIFT, _shiftScan);
+
+      Assert.Equal(Holding.HotkeyTap, Up(VIRTUAL_KEY.VK_LSHIFT, _shiftScan));
+    }
+
+    [Fact]
+    public void CtrlZAfterAManualCorrectionByDoubleTapIsAnUndoRequest() {
+      _gate.UseHotkey(new HotkeyDetector(Hotkey.DoubleShift, _ => true));
+      Down(VIRTUAL_KEY.VK_LSHIFT, _shiftScan);
+      Up(VIRTUAL_KEY.VK_LSHIFT, _shiftScan);
+      Down(VIRTUAL_KEY.VK_LSHIFT, _shiftScan);
+      Up(VIRTUAL_KEY.VK_LSHIFT, _shiftScan);
+      long tap = _sequence - 1;
+      _gate.Release(tap);
+      _gate.ArmUndo(tap);
+      Down(VIRTUAL_KEY.VK_LCONTROL, _ctrlScan);
+
+      Assert.Equal(Holding.UndoRequest, Down(VIRTUAL_KEY.VK_Z, _zScan));
+    }
+
+    [Fact]
+    public void HotkeyWithAFullQueuePasses() {
+      _gate.UseHotkey(new HotkeyDetector(Hotkey.CtrlSpace, _ => true));
+      Down(VIRTUAL_KEY.VK_LCONTROL, _ctrlScan);
+
+      Assert.Equal(Holding.None, Space(hasRoom: false));
     }
 
     // A Word, a held Space the worker corrected and released, and the Undo armed for it.

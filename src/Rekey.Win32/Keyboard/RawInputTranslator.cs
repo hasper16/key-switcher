@@ -57,6 +57,11 @@ namespace Rekey.Win32.Keyboard {
     }
 
     /// <summary>
+    /// Gets a value indicating whether a Win key is down after the inputs translated so far.
+    /// </summary>
+    public bool WindowsHeld => Holds(ModifierState.WindowsLeft | ModifierState.WindowsRight);
+
+    /// <summary>
     /// Returns the scan codes of the keys that type text in any of the Key Maps.
     /// </summary>
     public static FrozenSet<ushort> CharacterScanCodes(IEnumerable<KeyMap> keyMaps) {
@@ -110,15 +115,20 @@ namespace Rekey.Win32.Keyboard {
             Release(key);
           }
 
-          return null;
+          return input.Holding == Holding.HotkeyTap
+              ? new ManualCorrectionRequested(timestamp)
+              : null;
         default:
           if (input.Sequence >= _sampledBefore) {
             Press(key);
           }
 
-          return input.Holding == Holding.UndoRequest
-              ? new UndoRequested(timestamp)
-              : KeyDownOf(input, key, timestamp);
+          return input.Holding switch {
+            Holding.UndoRequest => new UndoRequested(timestamp),
+            Holding.Hotkey => new ManualCorrectionRequested(timestamp),
+            Holding.Swallowed => null,
+            _ => KeyDownOf(input, key, timestamp),
+          };
       }
     }
 

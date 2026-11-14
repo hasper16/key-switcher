@@ -41,6 +41,10 @@ namespace Rekey.Core {
   /// replacing it, where the focused control exposes its text; otherwise,
   /// <see langword="false" />. The default is <see langword="true" />.
   /// </param>
+  /// <param name="Hotkey">
+  /// The Hotkey that asks for a Manual Correction. The default is
+  /// <see cref="Core.Hotkey.DoubleShift" />.
+  /// </param>
   // Each setting is a constructor parameter with a default: in .NET 10, source-generated JSON
   // gives an init-only property that the file omits its type default, not its initializer.
   public sealed record Settings(
@@ -52,7 +56,8 @@ namespace Rekey.Core {
       Sensitivity Sensitivity = Sensitivity.Balanced,
       bool KeyboardWatchdogEnabled = true,
       bool RestartAfterFreezeEnabled = true,
-      bool VerifiedReplacement = true) {
+      bool VerifiedReplacement = true,
+      Hotkey Hotkey = default) {
     /// <summary>
     /// Gets the schema version of the settings.
     /// </summary>

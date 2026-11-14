@@ -59,6 +59,16 @@ namespace Rekey.Win32.Replacement {
     }
 
     /// <summary>
+    /// Returns a press and release of an unassigned key, which keeps the shell from opening
+    /// Start when Win is released after a swallowed key.
+    /// </summary>
+    /// <returns>The inputs to send.</returns>
+    public static INPUT[] MaskWin() {
+      const VIRTUAL_KEY unassigned = (VIRTUAL_KEY)0xE8;
+      return [Key(unassigned, 0, 0), Key(unassigned, 0, KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP)];
+    }
+
+    /// <summary>
     /// Returns the input that sends a held key event on to the application.
     /// </summary>
     /// <remarks>

@@ -35,6 +35,15 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void MaskIsAPressAndReleaseOfAnUnassignedKey() {
+      // Design D0 of add-manual-correction: a key between Win's press and release keeps the
+      // shell from opening Start.
+      Assert.Equal(
+          [Key((VIRTUAL_KEY)0xE8, up: false), Key((VIRTUAL_KEY)0xE8, up: true)],
+          InputBuilder.MaskWin().Select(Describe));
+    }
+
+    [Fact]
     public void CollapseReleasesHeldModifiersAroundRight() {
       INPUT[] inputs = InputBuilder.CollapseSelection([VIRTUAL_KEY.VK_LSHIFT]);
 
