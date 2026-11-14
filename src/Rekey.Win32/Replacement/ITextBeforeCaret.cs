@@ -25,6 +25,16 @@ namespace Rekey.Win32.Replacement {
     bool FocusUnchanged();
 
     /// <summary>
+    /// Returns whether the focused control's selection is still the given text.
+    /// </summary>
+    /// <param name="selected">The selected text read before.</param>
+    /// <returns>
+    /// <see langword="true" /> if it is, or if UI Automation is unavailable;
+    /// <see langword="false" /> if the selection changed or cannot be read in time.
+    /// </returns>
+    bool SelectionIs(string selected);
+
+    /// <summary>
     /// Collapses the selection asked for by <see cref="SelectRead" /> to its end, in the
     /// control that was read, without sending input; failures are ignored.
     /// </summary>

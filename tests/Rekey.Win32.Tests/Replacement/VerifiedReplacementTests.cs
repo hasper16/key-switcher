@@ -202,6 +202,9 @@ namespace Rekey.Win32.Tests.Replacement {
 
       public int Describes { get; private set; }
 
+      // The text selected now, for typing over a selection; null when nothing is selected.
+      public string? Selection { get; init; }
+
       public string? ReadContext(int length) {
         AskedContextLength = length;
         if (ContextUnavailable || (Context ?? _text) is not { } full) {
@@ -213,6 +216,10 @@ namespace Rekey.Win32.Tests.Replacement {
 
       public bool FocusUnchanged() {
         return !FocusMoved;
+      }
+
+      public bool SelectionIs(string selected) {
+        return Selection == selected;
       }
 
       public void Deselect(Deselection when) {

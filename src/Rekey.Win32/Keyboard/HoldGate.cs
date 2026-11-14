@@ -19,6 +19,7 @@ namespace Rekey.Win32.Keyboard {
     private long _released = _nothing;
     private long _undoArmed = _nothing;
     private HookPolicy _policy = HookPolicy.HoldNothing;
+    private HotkeyDetector? _hotkey;
 
     // Written by the hook thread only.
     private long _timeouts;
@@ -76,6 +77,16 @@ namespace Rekey.Win32.Keyboard {
     }
 
     /// <summary>
+    /// Makes the hook recognise the Hotkey with the detector, or no Hotkey.
+    /// </summary>
+    /// <param name="detector">
+    /// A detector built for the hook thread alone, or <see langword="null" />.
+    /// </param>
+    public void UseHotkey(HotkeyDetector? detector) {
+      Volatile.Write(ref _hotkey, detector);
+    }
+
+    /// <summary>
     /// Records that every held key up to a ring sequence reached the application; called by
     /// the worker only, in ring order.
     /// </summary>
@@ -112,8 +123,15 @@ namespace Rekey.Win32.Keyboard {
         bool hasRoom) {
       bool down = kind == RawInputKind.KeyDown;
       Modifier modifier = ModifierOf(virtualKey);
-      Holding holding = Decide(down, virtualKey, tick, hasRoom);
-      if (holding != Holding.None) {
+      HotkeyVerdict hotkey = Volatile.Read(ref _hotkey)?.Observe(virtualKey, down, tick, hasRoom)
+          ?? HotkeyVerdict.None;
+      Holding holding = hotkey switch {
+        HotkeyVerdict.Fire => Holding.Hotkey,
+        HotkeyVerdict.Tap => Holding.HotkeyTap,
+        HotkeyVerdict.Swallow => Holding.Swallowed,
+        _ => Decide(down, virtualKey, tick, hasRoom),
+      };
+      if (holding is not (Holding.None or Holding.Swallowed)) {
         if (_lastHeld <= Volatile.Read(ref _released)) {
           _holdStart = tick;
         }
@@ -123,7 +141,17 @@ namespace Rekey.Win32.Keyboard {
 
       if (modifier != Modifier.None) {
         _modifiers = down ? _modifiers | modifier : _modifiers & ~modifier;
-      } else if (down) {
+      }
+
+      // A double tap's release asked for the Manual Correction, so Ctrl+Z right after it may
+      // undo that Correction.
+      if (holding == Holding.HotkeyTap) {
+        _lastKeyDown = sequence;
+      } else if (modifier != Modifier.None) {
+        // Modifiers neither type nor break the run of an Undo.
+      } else if (down && holding != Holding.Swallowed) {
+        // A swallowed repeat never reached the application, so the Undo armed for the
+        // Hotkey's press stays armed.
         _lastKeyDown = sequence;
         _lastWasCharacter = !HoldsShortcut()
             && Volatile.Read(ref _policy).IsCharacter(scanCode, extended);

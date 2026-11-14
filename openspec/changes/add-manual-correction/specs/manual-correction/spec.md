@@ -36,7 +36,7 @@ A double tap SHALL count only when the chosen modifier is pressed and released t
 - **THEN** the Hotkey is not performed
 
 ### Requirement: Correct the last Word
-When the Hotkey is performed after a Word (with at most one Space, Enter or Tab typed after it), Rekey SHALL correct that Word to its best Rendering in another active Layout and switch to that Layout.
+When the Hotkey is performed after a Word (with at most one Space or Tab typed after it), Rekey SHALL correct that Word to its best Rendering in another active Layout and switch to that Layout. A Word followed by Enter is not corrected, because the line may already have been submitted (as for Undo).
 
 #### Scenario: Doubtful word
 - **WHEN** the user types "yt" followed by Space in English (US) and performs the Hotkey
@@ -45,6 +45,14 @@ When the Hotkey is performed after a Word (with at most one Space, Enter or Tab 
 #### Scenario: More than two Layouts
 - **WHEN** English, Russian and Ukrainian are active and the user performs the Hotkey after "ghbdsn" typed in English (US)
 - **THEN** the Word becomes its best-scoring Rendering, "привіт" in Ukrainian
+
+#### Scenario: Word followed by Enter
+- **WHEN** the user types "yt" followed by Enter in English (US) and performs the Hotkey
+- **THEN** no text changes and the Layout becomes Russian
+
+#### Scenario: Pause before the Hotkey
+- **WHEN** the user types "ghbdtn", waits 5 seconds and performs the Hotkey
+- **THEN** the text becomes "привет" and the Layout is Russian
 
 ### Requirement: Correct the selected text
 When text is selected and the focused control exposes the selection, the Hotkey SHALL replace the selection with its Rendering in the best other active Layout, character by character, and switch to that Layout.
