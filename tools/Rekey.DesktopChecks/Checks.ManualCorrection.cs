@@ -85,6 +85,11 @@ namespace Rekey.DesktopChecks {
       return same;
     }
 
+    private static bool Shuffled(string? text, string expected, int same) {
+      return text is not null && text.Length == expected.Length
+          && text[same..].Order().SequenceEqual(expected[same..].Order());
+    }
+
     // What kinds of characters a text holds, such as "Cyrillic lower, space"; never the text.
     private static string KindsOf(string? text) {
       if (string.IsNullOrEmpty(text)) {
@@ -189,6 +194,18 @@ namespace Rekey.DesktopChecks {
         Apply(_manualOnly);
         ExpectSelectionConverted(
             "3.2 one-Word selection in Notepad", notepad, typed: "ghbdtn", expected: "привет");
+
+        // Controls without Rekey's Hotkey: the same text typed over the selection the way
+        // Rekey types it, in one burst, one key at a time, and in one burst followed at once
+        // by a Layout Switch to Russian, as after a Manual Correction.
+        ExpectTypedOver("3.2 control: Notepad takes the text in one burst", notepad, () =>
+            Input.TypeUnicode("привет мир", 0, oneCallEach: false));
+        ExpectTypedOver("3.2 control: Notepad takes the text key by key", notepad, () =>
+            Input.TypeUnicode("привет мир", 0, oneCallEach: true));
+        ExpectTypedOver("3.2 control: Notepad takes a burst and a Layout Switch", notepad, () => {
+          Input.TypeUnicode("привет мир", 0, oneCallEach: false);
+          _worker.SwitchLayout(SpecWords.Russian);
+        });
       } else {
         Expect("3.2 selection in Notepad", false, "Notepad did not open the test file");
       }
@@ -234,11 +251,29 @@ namespace Rekey.DesktopChecks {
           + $"{read?.ToString(CultureInfo.InvariantCulture) ?? "none"} of {typed.Length}, "
           + $"rest still as typed {restAsTyped}, same but for case "
           + $"{string.Equals(attempt.Text, expected, StringComparison.OrdinalIgnoreCase)}, "
-          + $"rest is {KindsOf(attempt.Text?[same..])}";
+          + $"rest is {KindsOf(attempt.Text?[same..])}, rest has the expected letters in "
+          + $"another order {Shuffled(attempt.Text, expected, same)}";
       Expect(
           $"{item}: \"{typed}\" becomes \"{expected}\"",
           attempt.Replaced && attempt.Text == expected,
           detail);
+    }
+
+    private void ExpectTypedOver(string item, Point at, Action typeOver) {
+      const string expected = "привет мир";
+      SwitchIn(at, SpecWords.EnglishUs);
+      Input.ClearBox();
+      Input.Type("ghbdtn vbh");
+      Input.Control('a');
+      Thread.Sleep(_settle);
+      typeOver();
+      Thread.Sleep(_settle);
+      Focus(at);
+      string? text = FocusedText();
+      int same = CommonPrefix(text, expected);
+      string detail = $"{Compare(text, expected)}, rest is {KindsOf(text?[same..])}, "
+          + $"rest has the expected letters in another order {Shuffled(text, expected, same)}";
+      Expect(item, text == expected, detail);
     }
 
     private void CheckConflicts() {
