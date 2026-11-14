@@ -18,10 +18,12 @@ Do not touch the mouse or keyboard for about 3 minutes. The tool runs Rekey's wo
 | 1.3 | With Ctrl+Alt+K as the Hotkey, "ghbdtn" in Notepad becomes "привет" and nothing else: the K never reaches Notepad |
 | 1.4 | With Win+Space as the Hotkey, "ghbdtn" becomes "привет", the Layout is Russian and stays Russian (no second switch), and the test window is still in front (Start did not open); in an empty box Win+Space only switches to the Layout after English (US) in Windows' order, again with the test window in front |
 | 2.1 | With Auto Correction on, "ghbdtn" + Space is corrected and a double tap of Shift right after it reverts the text to "ghbdtn ", records one Undo and switches back to English (US) |
-| 3.2 | "ghbdtn vbh" selected with Ctrl+A becomes "привет мир" in the test window, in Notepad and in the browser test page; a failing line also says how many characters the worker read as selected and whether the rest of the text is still as typed |
+| 3.2 | "ghbdtn vbh" selected with Ctrl+A becomes "привет мир" in the test window, in Notepad (with the Shift taps and with Ctrl+Alt+K) and in the browser test page, and "ghbdtn" alone becomes "привет" in Notepad; a failing line also says how many characters the worker read as selected, whether the rest of the text is still as typed, and the kinds of the characters that differ |
 | 4.2 | Win+Space as a custom combination is reported as the Windows Layout Switch shortcut; Ctrl+Alt+K is free, and is reported as taken while another thread holds it as a registered hotkey |
 
-Last run: not yet run.
+Last run: 16 of 16 Rekey lines at 00602b0 on the owner's desktop (run 6 of the day; English (US), Russian and Ukrainian Layouts; default browser as installed); language list unchanged, nothing left running.
+
+Earlier runs that day found two product faults, both fixed before the last run: Start opened after a Win+Space correction, because typing pressed Win again after the masking key (fixed in 50012e3); and Notepad garbled the second Word of a converted selection. Control lines typing "привет мир" over a Notepad selection without Rekey showed the cause: Notepad garbles or drops what follows a space in one burst of injected input, and takes it whole key by key. Rekey now types text with spaces in parts (1ded4ab, design D4), and the control lines were removed once the cause was recorded. The run before the last also had two lines stopped by another window taking the foreground (a click did not bring the test window to the front; the test window was not in front after Win+Space in an empty box); they passed in the next run.
 
 ## By hand
 
