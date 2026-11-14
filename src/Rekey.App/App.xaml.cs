@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using H.NotifyIcon;
@@ -46,6 +47,9 @@ namespace Rekey.App {
 #endif
     private InputWorker? _worker;
     private FreezeGuard? _freezeGuard;
+
+    // The worker's Word counts as of the latest Trigger Key; only the worker thread writes it.
+    private volatile StrongBox<WordCounts>? _wordCounts;
 
     protected override void OnStartup(StartupEventArgs e) {
       base.OnStartup(e);
@@ -94,6 +98,7 @@ namespace Rekey.App {
     protected override void OnExit(ExitEventArgs e) {
       try {
         FlushSettings();
+        TraceWordCounts();
       } finally {
         _freezeGuard?.Dispose();
         _worker?.Dispose();
@@ -131,6 +136,7 @@ namespace Rekey.App {
     private void StartInput(Settings settings) {
       _worker = new InputWorker(settings, RecordIncident, TimeProvider.System);
       _worker.SelfPauseChanged += until => Dispatcher.BeginInvoke(() => ShowSelfPause(until));
+      _worker.Observed += RememberWordCounts;
       try {
         _worker.Start();
       } catch (Win32Exception) {
@@ -147,6 +153,31 @@ namespace Rekey.App {
           RestartAfterFreeze,
           TimeProvider.System);
       _freezeGuard.Start();
+    }
+
+    // Runs on the worker thread after each input event.
+    private void RememberWordCounts(InputEvent inputEvent) {
+      if (inputEvent is KeyDown { Kind: KeyKind.Space or KeyKind.Enter or KeyKind.Tab }
+          && _worker is { } worker) {
+        _wordCounts = new StrongBox<WordCounts>(worker.WordCounts);
+      }
+    }
+
+    // How many Words got no evaluation because a key could not be confirmed outside a Password
+    // Field (design D8 of add-auto-correction): counters only, never text.
+    private void TraceWordCounts() {
+      if (_wordCounts?.Value is not { } counts) {
+        return;
+      }
+
+      string dropped = counts.Unconfirmed.ToString(CultureInfo.InvariantCulture);
+      string line = string.Create(
+          CultureInfo.InvariantCulture,
+          $"words-ended={counts.Ended} evaluated={counts.Evaluated} unconfirmed={dropped}");
+      Trace.WriteLine($"Rekey {line}");
+#if DEBUG
+      File.WriteAllText(Path.Join(_dataFolder, "word-counts.txt"), line);
+#endif
     }
 
     // Runs on the freeze guard's thread while the worker is stuck; the UI thread may still run.

@@ -4,6 +4,8 @@ CloseDesktop
 CreateMutex
 DispatchMessage
 ES_PASSWORD
+FindWindowEx
+GetApplicationUserModelId
 EVENT_OBJECT_FOCUS
 EVENT_SYSTEM_FOREGROUND
 GetAsyncKeyState

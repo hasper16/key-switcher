@@ -74,14 +74,22 @@ The user SHALL be able to pause Auto Correction for a chosen period. While pause
 - **THEN** Auto Correction stays paused for the remaining 20 minutes
 
 ### Requirement: No correction right after the user switches Layout
-When the setting "Don't correct after I switch Layout" is on (default), a Word during which the user switched Layout themselves SHALL NOT be auto-corrected.
+When the setting "Don't correct after I switch Layout" is on (default), a Word during which the user switched Layout themselves SHALL NOT be auto-corrected. A switch made before the Word's first Keystroke counts for that Word, unless the Word ends first, as by a click, a focus change or a pause of more than 2 seconds after the switch (design decision). A Layout Switch made by Rekey is not the user's.
 
 #### Scenario: User switched mid-word
 - **WHEN** the setting is on and the user switches Layout with the Windows shortcut while typing a Word, then presses Space
 - **THEN** that Word is not corrected
 
+#### Scenario: User switched just before the Word
+- **WHEN** the setting is on and the user switches Layout with the Windows shortcut, types "ghbdtn" at once and presses Space, then types "ghbdtn" and Space again
+- **THEN** the first Word is not corrected and the second one is
+
+#### Scenario: Rekey switched
+- **WHEN** a Correction switched the Layout to Russian and the user types "руддщ" followed by Space
+- **THEN** the Word is evaluated as usual and becomes "hello "
+
 #### Scenario: Setting off
-- **WHEN** the setting is off and the same happens
+- **WHEN** the setting is off and the user switches Layout while typing a Word, then presses Space
 - **THEN** the Word is evaluated as usual
 
 ### Requirement: Safety gates

@@ -6,7 +6,8 @@ using Rekey.Win32;
 namespace Rekey.DesktopChecks {
   /// <summary>
   /// Runs the desktop checks of change add-keyboard-capture-and-layouts on this machine, or with
-  /// <c>text-replacement</c> those of change add-text-replacement.
+  /// <c>text-replacement</c> those of change add-text-replacement, or with
+  /// <c>auto-correction</c> those of change add-auto-correction.
   /// </summary>
   /// <remarks>
   /// Output carries counts, kinds and codes only, never typed text. With <c>host</c> it instead
@@ -24,8 +25,14 @@ namespace Rekey.DesktopChecks {
       }
 
       if (args is ["text-replacement"]) {
-        using var replacement = new Checks(new SpecWords().Evaluate);
+        using var replacement = new Checks(new Settings(), new SpecWords().Evaluate);
         return replacement.RunTextReplacement();
+      }
+
+      if (args is ["auto-correction"]) {
+        // No evaluator: the worker evaluates Words itself, as the app does.
+        using var autoCorrection = new Checks(new Settings());
+        return autoCorrection.RunAutoCorrection();
       }
 
       if (args is ["console-probe"]) {

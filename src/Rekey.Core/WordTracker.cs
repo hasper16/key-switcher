@@ -15,6 +15,16 @@ namespace Rekey.Core {
 
     public IReadOnlyList<Keystroke> Keystrokes => _keystrokes;
 
+    // Whether a Word has begun: it has Keystrokes, or lost them and is no longer kept.
+    public bool IsUnderway => _keystrokes.Count > 0 || _spoiled;
+
+    // Whether the user switched Layout themselves since the Word began.
+    public bool LayoutSwitchedByUser { get; private set; }
+
+    // Whether the Word is not kept because one of its keys could not be confirmed outside a
+    // Password Field.
+    public bool Unconfirmed { get; private set; }
+
     public void Add(KeyDown keyDown) {
       if (EndsWord(keyDown)) {
         Clear();
@@ -37,13 +47,23 @@ namespace Rekey.Core {
     public void Clear() {
       _keystrokes.Clear();
       _spoiled = false;
+      LayoutSwitchedByUser = false;
+      Unconfirmed = false;
+    }
+
+    public void MarkLayoutSwitchedByUser() {
+      LayoutSwitchedByUser = true;
     }
 
     // Drops a key whose focus is unknown. A key that ends the Word still ends it; any other key
     // spoils the Word, because keeping the rest would leave a Word missing a Keystroke.
     public void Drop(KeyDown keyDown) {
+      bool wasUnconfirmed = Unconfirmed;
       Clear();
       _spoiled = !EndsWord(keyDown);
+
+      // An earlier unconfirmed key of the same Word still explains why it is not kept.
+      Unconfirmed = _spoiled && (wasUnconfirmed || !keyDown.FocusConfirmed);
     }
 
     // Keystrokes were lost somewhere in the current Word, so none of it is kept until it ends.

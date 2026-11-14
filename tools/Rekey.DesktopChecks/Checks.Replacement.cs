@@ -129,7 +129,7 @@ namespace Rekey.DesktopChecks {
           .Where(s => s.Event is FocusChanged or FocusLost)
           .Select(s => s.Note ?? "?")];
       return $"[now: foreground {ClassOf(PInvoke.GetForegroundWindow())}, control {control}; "
-          + $"since Ctrl+Z: focus reports {moves.Count} ({string.Join("; ", moves)}), "
+          + $"since the mark: focus reports {moves.Count} ({string.Join("; ", moves)}), "
           + $"Incidents [{string.Join('/', _log.IncidentsSince(mark))}]]";
     }
 
@@ -246,6 +246,16 @@ namespace Rekey.DesktopChecks {
     }
 
     private void CheckNotepad() {
+      if (OpenNotepad() is { } editor) {
+        ExpectCorrected("4.1 Notepad", editor);
+      } else {
+        Expect("4.1 Notepad", false, "Notepad did not open the test file");
+      }
+    }
+
+    // Opens Notepad on an empty file of this run's own and returns where to click to type in
+    // it, or null when it did not open; the run closes what it opened.
+    private Point? OpenNotepad() {
       // A new file of this run's own, so nothing that exists is overwritten or deleted.
       string name = $"rekey-desktop-check-{Guid.NewGuid():N}.txt";
       string file = Path.Join(Path.GetTempPath(), name);
@@ -259,8 +269,7 @@ namespace Rekey.DesktopChecks {
       })?.Dispose();
       HWND? window = Desktop.FindWindow(name, TimeSpan.FromSeconds(15));
       if (window is not { } notepad) {
-        Expect("4.1 Notepad", false, "Notepad did not open the test file");
-        return;
+        return null;
       }
 
       // Below the always-on-top test windows, so clicks meant for Notepad reach it.
@@ -271,15 +280,18 @@ namespace Rekey.DesktopChecks {
       _restorer.Defer("Notepad", () => {
         // Saved empty first, so closing asks nothing and the session keeps no draft; a
         // Notepad the user had open keeps running; the one this run started is closed.
-        Focus(editor);
-        Input.ClearBox();
-        Input.Control('s');
-        Thread.Sleep(_settle);
-        Input.CloseTab();
-        Thread.Sleep(_settle);
+        // The keys go to whatever is in front, so only when that is this Notepad window.
+        if (TryFocus(editor) && PInvoke.GetForegroundWindow() == notepad) {
+          Input.ClearBox();
+          Input.Control('s');
+          Thread.Sleep(_settle);
+          Input.CloseTab();
+          Thread.Sleep(_settle);
+        }
+
         CloseNotepadIfStartedHere(ownerId, before);
       });
-      ExpectCorrected("4.1 Notepad", editor);
+      return editor;
     }
 
     private void CheckBrowserReplacement() {

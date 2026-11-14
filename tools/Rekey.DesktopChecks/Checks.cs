@@ -6,6 +6,7 @@ using Rekey.Core.Languages;
 using Rekey.Win32;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Rekey.DesktopChecks {
   // Runs every desktop check against the real hooks, windows and settings of this session.
@@ -27,22 +28,27 @@ namespace Rekey.DesktopChecks {
 
     // Written on the worker thread, read by the checks.
     private int _focusMovesKeptWord;
+    private int _gate;
+    private Counts? _counts;
 
+    // The checks of typing and Layouts only watch: nothing is held and nothing is corrected.
     public Checks()
-        : this(null) {
+        : this(new Settings(AutoCorrectionEnabled: false)) {
     }
 
-    // With an evaluator, the worker holds Trigger Keys and corrects what it is told to.
-    public Checks(WordEvaluator? evaluate) {
+    // With an evaluator the worker corrects what it is told to; without one it evaluates Words
+    // itself, as the app does.
+    public Checks(Settings settings, WordEvaluator? evaluate = null) {
       _restorer = new Restorer(_report);
-      _worker = new InputWorker(
-          new Settings(), _log.AddIncident, TimeProvider.System, evaluate);
+      _worker = new InputWorker(settings, _log.AddIncident, TimeProvider.System, evaluate);
       _worker.Observed += inputEvent => {
         _log.Add(
             inputEvent,
             _worker.WordLength,
             inputEvent is FocusChanged or FocusLost ? _worker.LastFocusMove : null);
         Volatile.Write(ref _focusMovesKeptWord, _worker.FocusMovesKeptWord);
+        Volatile.Write(ref _gate, (int)_worker.Gate);
+        Volatile.Write(ref _counts, new Counts(_worker.WordCounts, _worker.KeyRejects));
       };
       _worker.SelfPauseChanged += _log.AddSelfPause;
       _worker.Replaced += _log.AddReplacement;
@@ -85,9 +91,31 @@ namespace Rekey.DesktopChecks {
           ?? throw new InvalidOperationException("Run the checks from the repository.");
     }
 
+    // Clicks a point to give its window the keyboard. A check that types without that window
+    // in front would type somewhere else, so this stops the check instead.
     private static void Focus(Point at) {
+      bool inFront = TryFocus(at);
+      if (!inFront) {
+        // Once more: the first click may only have dismissed something in the way.
+        inFront = TryFocus(at);
+      }
+
+      if (!inFront) {
+        string front = ClassOf(PInvoke.GetForegroundWindow());
+        throw new RecoveryException(
+            $"a click did not bring its window to the front (in front: {front}); a window "
+            + "running as administrator in front blocks injected clicks: minimise such "
+            + "windows and run again");
+      }
+    }
+
+    // Returns whether the click brought the window under the point to the front.
+    private static bool TryFocus(Point at) {
       Input.Click(at);
       Thread.Sleep(_settle);
+      HWND clicked = PInvoke.GetAncestor(
+          PInvoke.WindowFromPoint(at), GET_ANCESTOR_FLAGS.GA_ROOT);
+      return !clicked.IsNull && clicked == PInvoke.GetForegroundWindow();
     }
 
     private static void Kill(Process process) {

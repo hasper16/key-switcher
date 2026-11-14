@@ -16,7 +16,7 @@ namespace Rekey.DesktopChecks.Tests {
     public void WordEndCountsTheKeysSinceTheLastOne() {
       _tracer.Add(Key(KeyKind.Character), wordKeys: 1);
       _tracer.Add(Key(KeyKind.Character, confirmed: false), wordKeys: 0);
-      _tracer.Add(new FocusChanged(TimeSpan.Zero, "app", false, false), wordKeys: 0);
+      _tracer.Add(new FocusChanged(TimeSpan.Zero, new AppId("app"), false, false), wordKeys: 0);
 
       string? line = _tracer.Add(Key(KeyKind.Space, held: true), wordKeys: 0);
 

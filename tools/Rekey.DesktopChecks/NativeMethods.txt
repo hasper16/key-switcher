@@ -1,8 +1,15 @@
 EnumWindows
+GetAncestor
 GetClassName
+WindowFromPoint
 GetClipboardSequenceNumber
 GetCursorPos
 GetForegroundWindow
+GetGUIThreadInfo
+GetKeyboardLayoutList
+PostMessage
+WM_CLOSE
+WM_INPUTLANGCHANGEREQUEST
 GetKeyState
 GetWindowRect
 GetWindowText

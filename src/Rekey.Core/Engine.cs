@@ -33,11 +33,15 @@ namespace Rekey.Core {
     private readonly WordTracker _word = new();
     private readonly LanguageSet _languages;
     private readonly WordEvaluator? _evaluate;
+    private readonly TimeProvider _time;
 
     // The on-screen text of the Deferred Words, oldest first; the run on screen is these Words
     // joined by single spaces, so a Correction can find it.
     private readonly List<string> _run = [];
     private Dictionary<LayoutId, KeyMap> _keyMaps = [];
+    private WrongLayoutDetector _detector = new([]);
+    private Settings _settings;
+    private bool _selfPaused;
     private PendingReplacement? _pending;
     private CorrectionRecord? _lastCorrection;
     private TimeSpan? _lastKeyDown;
@@ -53,21 +57,35 @@ namespace Rekey.Core {
     /// <summary>
     /// Initializes a new instance of the <see cref="Engine" /> class.
     /// </summary>
+    /// <remarks>
+    /// It uses the default settings and the system clock.
+    /// </remarks>
     /// <param name="languages">The loaded Language Profiles.</param>
     public Engine(LanguageSet languages)
-        : this(languages, null) {
+        : this(languages, new Settings(), TimeProvider.System) {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Engine" /> class that corrects Words.
+    /// Initializes a new instance of the <see cref="Engine" /> class with the user's settings.
     /// </summary>
     /// <param name="languages">The loaded Language Profiles.</param>
-    /// <param name="evaluate">
-    /// The evaluator of Words ended by a held Trigger Key, or <see langword="null" /> to correct
-    /// nothing.
+    /// <param name="settings">
+    /// The user's settings; <see cref="SettingsChanged" /> replaces them.
     /// </param>
-    public Engine(LanguageSet languages, WordEvaluator? evaluate) {
+    /// <param name="time">The wall clock a Pause is compared with.</param>
+    /// <param name="evaluate">
+    /// The evaluator of Words ended by a held Trigger Key, or <see langword="null" /> to
+    /// evaluate them against the Language Profiles of the installed Layouts. The default is
+    /// <see langword="null" />.
+    /// </param>
+    public Engine(
+        LanguageSet languages,
+        Settings settings,
+        TimeProvider time,
+        WordEvaluator? evaluate = null) {
       _languages = languages;
+      _settings = settings;
+      _time = time;
       _evaluate = evaluate;
     }
 
@@ -97,6 +115,27 @@ namespace Rekey.Core {
     /// Gets the profiles of the Languages the installed Layouts make active, in load order.
     /// </summary>
     public IReadOnlyList<LanguageProfile> ActiveProfiles { get; private set; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether Auto Correction applies to the Word being typed now, or
+    /// the reason it does not.
+    /// </summary>
+    /// <value>One of the enumeration values that specifies the answer.</value>
+    public GateResult Gate => AutoCorrectionGate.Decide(
+        _settings, Focus, _selfPaused, _word.LayoutSwitchedByUser, _time.GetUtcNow());
+
+    /// <summary>
+    /// Gets the Trigger Keys worth holding back now: the configured ones while Auto Correction
+    /// applies, none otherwise.
+    /// </summary>
+    /// <value>A bitwise combination of the enumeration values that specifies the keys.</value>
+    public TriggerKeys HeldTriggerKeys =>
+        Gate == GateResult.Applies ? _settings.TriggerKeys : TriggerKeys.None;
+
+    /// <summary>
+    /// Gets the counts of the Words ended by a Trigger Key so far.
+    /// </summary>
+    public WordCounts WordCounts { get; private set; }
 
     /// <summary>
     /// Returns the actions that respond to one input.
@@ -129,18 +168,31 @@ namespace Rekey.Core {
           Interrupt();
           break;
         case LayoutChanged layout:
-          CurrentLayout = layout.Layout;
+          OnLayoutChanged(layout);
           break;
         case LayoutsInstalledChanged installed:
-          ActiveProfiles = _languages.Activate(installed.Layouts);
-          _keyMaps = installed.KeyMaps.DistinctBy(map => map.Layout)
-              .ToDictionary(map => map.Layout);
+          OnLayoutsInstalledChanged(installed);
+          break;
+        case SettingsChanged changed:
+          _settings = changed.Settings;
+          break;
+        case SelfPauseChanged pause:
+          _selfPaused = pause.Paused;
           break;
         default:
           break;
       }
 
       return [];
+    }
+
+    private static TriggerKeys TriggerOf(KeyKind kind) {
+      return kind switch {
+        KeyKind.Space => TriggerKeys.Space,
+        KeyKind.Enter => TriggerKeys.Enter,
+        KeyKind.Tab => TriggerKeys.Tab,
+        _ => TriggerKeys.None,
+      };
     }
 
     private static string TypedBy(KeyKind trigger) {
@@ -180,8 +232,11 @@ namespace Rekey.Core {
         return [];
       }
 
-      if (IsTrigger(keyDown)) {
-        return Evaluate(keyDown);
+      if (EndsWordForEvaluation(keyDown)) {
+        CountEndedWord();
+        if (keyDown.Held) {
+          return Evaluate(keyDown);
+        }
       }
 
       if (WordTracker.EndsWord(keyDown)
@@ -193,16 +248,30 @@ namespace Rekey.Core {
       return [];
     }
 
-    // Only a held key has not reached the application yet, so only then can the Word before it
-    // be replaced; a shortcut such as Ctrl+Space is not a Trigger Key.
-    private bool IsTrigger(KeyDown keyDown) {
+    // A configured Trigger Key while Auto Correction applies; a shortcut such as Ctrl+Space is
+    // not a Trigger Key. The hook's snapshot of what to hold can lag, so the gate is asked here.
+    private bool EndsWordForEvaluation(KeyDown keyDown) {
       const KeyModifiers shortcut = KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Windows;
-      return _evaluate is not null
-          && keyDown.Held
-          && keyDown.Kind is KeyKind.Space or KeyKind.Enter or KeyKind.Tab
-          && (keyDown.Modifiers & shortcut) == 0;
+      return (_settings.TriggerKeys & TriggerOf(keyDown.Kind)) != 0
+          && (keyDown.Modifiers & shortcut) == 0
+          && Gate == GateResult.Applies;
     }
 
+    private void CountEndedWord() {
+      if (_word.Unconfirmed) {
+        WordCounts = WordCounts with {
+          Ended = WordCounts.Ended + 1,
+          Unconfirmed = WordCounts.Unconfirmed + 1,
+        };
+      } else if (_word.Keystrokes.Count > 0) {
+        WordCounts = WordCounts with { Ended = WordCounts.Ended + 1 };
+      } else {
+        // A Trigger Key after nothing Rekey knows ends no Word.
+      }
+    }
+
+    // Only a held key has not reached the application yet, so only then can the Word before it
+    // be replaced.
     private IReadOnlyList<EngineAction> Evaluate(KeyDown trigger) {
       IReadOnlyList<Keystroke> word = [.. _word.Keystrokes];
       _word.Add(trigger);
@@ -214,7 +283,9 @@ namespace Rekey.Core {
         return [];
       }
 
-      Decision decision = _evaluate!(word, layout);
+      WordCounts = WordCounts with { Evaluated = WordCounts.Evaluated + 1 };
+      Decision decision = _evaluate?.Invoke(word, layout)
+          ?? _detector.Decide(word, layout, _settings.Sensitivity);
       Correction? correction = DeferredWords.Add(decision);
       if (correction is null) {
         ContinueOrEndRun(decision, trigger, typed);
@@ -285,9 +356,42 @@ namespace Rekey.Core {
       return [new SwitchLayout(record.Target)];
     }
 
+    private void OnLayoutChanged(LayoutChanged layout) {
+      CurrentLayout = layout.Layout;
+      if (!layout.ByUser) {
+        return;
+      }
+
+      // A pause before the switch has already ended the Word typed before it.
+      if (layout.Timestamp - _lastKeyDown > _typingGap) {
+        _word.Clear();
+      }
+
+      // The user chose the Layout, so the Deferred Words stay as typed in the old one.
+      EndRun();
+      _word.MarkLayoutSwitchedByUser();
+
+      // A switch before the Word's first key covers the Word typed right after it, so the
+      // pause that ends that cover counts from the switch. Mid-Word, the typing gap still
+      // counts from the last key.
+      if (!_word.IsUnderway) {
+        _lastKeyDown = layout.Timestamp;
+      }
+    }
+
+    private void OnLayoutsInstalledChanged(LayoutsInstalledChanged installed) {
+      ActiveProfiles = _languages.Activate(installed.Layouts);
+      KeyMap[] keyMaps = [.. installed.KeyMaps.DistinctBy(map => map.Layout)];
+      _keyMaps = keyMaps.ToDictionary(map => map.Layout);
+      _detector = new WrongLayoutDetector(keyMaps.SelectMany(map =>
+          _languages.ProfileFor(map.Layout) is { } profile
+              ? [new DetectionLayout(map, profile)]
+              : Array.Empty<DetectionLayout>()));
+    }
+
     private void OnFocusChanged(FocusChanged focus) {
       _focusSince = TimeSpan.FromTicks(Math.Max(_focusSince.Ticks, focus.Timestamp.Ticks));
-      Focus = new Context(focus.AppId, focus.IsPassword, focus.IsElevated);
+      Focus = new Context(focus.App, focus.IsPassword, focus.IsElevated);
       _word.Clear();
       Interrupt();
     }

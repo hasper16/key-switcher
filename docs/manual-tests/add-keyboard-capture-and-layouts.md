@@ -27,6 +27,8 @@ Last runs: 30 of 30 at a11ca63 and 35 of 35 at e88f8e3 (owner's desktop, Firefox
 
 If the browser does not expose the page's boxes to UI Automation, the 3.3 lines fail with that reason; make Edge or Chrome the default browser and run again.
 
+Before a run, minimise every window that runs as administrator: such a window in front blocks the tool's injected clicks, and a check whose click did not bring its window to the front now stops with that reason instead of typing elsewhere. Also close any browser tab titled "Rekey desktop check" left by an earlier run: the tool refuses to use the browser while one is open, because it would find that page instead of its own and click into other boxes. It first checks that its clicks reach the page's own boxes ("3.3 clicks reach the page's own boxes") and types the rounds only then. At the end it closes the tab only when the page is in front, and says so when it had to leave it open.
+
 ## By hand
 
 Use invented text.

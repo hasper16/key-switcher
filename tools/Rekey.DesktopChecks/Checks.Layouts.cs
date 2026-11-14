@@ -45,20 +45,26 @@ namespace Rekey.DesktopChecks {
       _restorer.Defer(
           "per-window input setting", () => SystemState.SetPerWindowInput(perWindowBefore));
 
+      EventLog.Position mark = _log.Mark();
       SystemState.SetPerWindowInput(true);
       Thread.Sleep(_settle);
-      SwitchIn(First().Ordinary, first);
-      SwitchIn(Second().Ordinary, second);
+      bool perWindowSet = SystemState.PerWindowInput();
+      bool firstLanded = SwitchIn(First().Ordinary, first);
+      bool secondLanded = SwitchIn(Second().Ordinary, second);
       bool firstKept = FocusShows(First().Ordinary, first);
       bool secondKept = FocusShows(Second().Ordinary, second);
-      Expect(
-          "4.3 per-window mode: each window keeps its Layout",
-          firstKept && secondKept,
-          $"window A {firstKept}, window B {secondKept}");
+      string detail = $"window A {firstKept}, window B {secondKept}; per-window input was "
+          + $"{perWindowBefore}, set {perWindowSet}; switches landed A {firstLanded}, "
+          + $"B {secondLanded} {FocusSince(mark)}";
+      Expect("4.3 per-window mode: each window keeps its Layout", firstKept && secondKept, detail);
       if (_console is { } console) {
-        SwitchIn(console, first);
+        EventLog.Position consoleMark = _log.Mark();
+        bool consoleLanded = SwitchIn(console, first);
         bool consoleKept = FocusShows(Second().Ordinary, second) && FocusShows(console, first);
-        Expect("4.3 per-window mode: a console keeps its Layout", consoleKept, $"{consoleKept}");
+        Expect(
+            "4.3 per-window mode: a console keeps its Layout",
+            consoleKept,
+            $"{consoleKept}; switch landed {consoleLanded} {FocusSince(consoleMark)}");
       }
 
       SystemState.SetPerWindowInput(false);

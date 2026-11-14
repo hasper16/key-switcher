@@ -14,6 +14,9 @@ namespace Rekey.DesktopChecks {
       ['w'] = (VIRTUAL_KEY.VK_W, 0x11),
       ['e'] = (VIRTUAL_KEY.VK_E, 0x12),
       ['r'] = (VIRTUAL_KEY.VK_R, 0x13),
+      ['i'] = (VIRTUAL_KEY.VK_I, 0x17),
+      ['o'] = (VIRTUAL_KEY.VK_O, 0x18),
+      ['l'] = (VIRTUAL_KEY.VK_L, 0x26),
       ['t'] = (VIRTUAL_KEY.VK_T, 0x14),
       ['y'] = (VIRTUAL_KEY.VK_Y, 0x15),
       ['p'] = (VIRTUAL_KEY.VK_P, 0x19),
@@ -62,6 +65,35 @@ namespace Rekey.DesktopChecks {
 
         Thread.Sleep(_keyGap);
       }
+    }
+
+    // Types with a chosen pause after each key, to measure how typing speed affects Rekey.
+    public static void TypeWithGap(string letters, TimeSpan gap) {
+      foreach (char letter in letters) {
+        (VIRTUAL_KEY key, ushort scanCode) = _keys[letter];
+        Key(key, scanCode, up: false);
+        Key(key, scanCode, up: true);
+        Thread.Sleep(gap);
+      }
+    }
+
+    // Enter on the numeric keypad: the same key code as Enter, sent as an extended key.
+    public static void KeypadEnter() {
+      foreach (bool up in new[] { false, true }) {
+        KEYBD_EVENT_FLAGS flags = KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY;
+        if (up) {
+          flags |= KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+        }
+
+        Send(new INPUT {
+          type = INPUT_TYPE.INPUT_KEYBOARD,
+          Anonymous = new INPUT._Anonymous_e__Union {
+            ki = new KEYBDINPUT { wVk = VIRTUAL_KEY.VK_RETURN, wScan = 0x1C, dwFlags = flags },
+          },
+        });
+      }
+
+      Thread.Sleep(_keyGap);
     }
 
     public static void Backspaces(int count) {

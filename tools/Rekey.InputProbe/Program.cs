@@ -15,7 +15,9 @@ namespace Rekey.InputProbe {
   /// </remarks>
   internal static class Program {
     private static int Main(string[] args) {
-      using var worker = new InputWorker(new Settings(), Print, TimeProvider.System);
+      // The probe only watches: nothing is held and nothing is corrected.
+      using var worker = new InputWorker(
+          new Settings(AutoCorrectionEnabled: false), Print, TimeProvider.System);
       worker.Observed += inputEvent =>
           Console.WriteLine($"{Describe(inputEvent)} | Word keys = {worker.WordLength}");
       worker.Start();
