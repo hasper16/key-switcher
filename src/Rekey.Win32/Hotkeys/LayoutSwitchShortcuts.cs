@@ -26,16 +26,14 @@ namespace Rekey.Win32.Hotkeys {
     /// </param>
     /// <returns>The shortcuts; Win+Space is always one.</returns>
     public static IReadOnlySet<KeyChord> Parse(Func<string, string?> toggleValue) {
-      // Windows keeps Win+Space even when the other shortcuts are turned off.
-      HashSet<KeyChord> shortcuts = [new KeyChord(KeyModifiers.Windows, Hotkey.SpaceKey)];
       string? language = toggleValue("Language Hotkey") ?? toggleValue("Hotkey");
-      foreach (string? value in new[] { language, toggleValue("Layout Hotkey") }) {
-        if (ChordOf(value) is { } chord) {
-          shortcuts.Add(chord);
-        }
-      }
+      return new[] { language, toggleValue("Layout Hotkey") }
+          .Select(ChordOf)
+          .OfType<KeyChord>()
 
-      return shortcuts;
+          // Windows keeps Win+Space even when the other shortcuts are turned off.
+          .Append(new KeyChord(KeyModifiers.Windows, Hotkey.SpaceKey))
+          .ToHashSet();
     }
 
     private static KeyChord? ChordOf(string? value) {
