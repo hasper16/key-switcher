@@ -35,6 +35,31 @@ namespace Rekey.Win32.Tests.Replacement {
     }
 
     [Fact]
+    public void ReplacementWithWinHeldMasksWinAfterPressingItAgain() {
+      // Design D0 of add-manual-correction: the user's own Win release comes after the
+      // re-press, so a key must stand between them or the shell opens Start.
+      INPUT[] inputs = InputBuilder.Replacement(erase: 0, "a", [VIRTUAL_KEY.VK_LWIN]);
+
+      Assert.Equal(
+          [
+            Key(VIRTUAL_KEY.VK_LWIN, up: true),
+            Unicode('a', up: false), Unicode('a', up: true),
+            Key(VIRTUAL_KEY.VK_LWIN, up: false),
+            Key((VIRTUAL_KEY)0xE8, up: false), Key((VIRTUAL_KEY)0xE8, up: true),
+          ],
+          inputs.Select(Describe));
+    }
+
+    [Fact]
+    public void CollapseWithWinHeldMasksWinToo() {
+      INPUT[] inputs = InputBuilder.CollapseSelection([VIRTUAL_KEY.VK_RWIN]);
+
+      Assert.Equal(
+          [Key((VIRTUAL_KEY)0xE8, up: false), Key((VIRTUAL_KEY)0xE8, up: true)],
+          inputs.Select(Describe).TakeLast(2));
+    }
+
+    [Fact]
     public void MaskIsAPressAndReleaseOfAnUnassignedKey() {
       // Design D0 of add-manual-correction: a key between Win's press and release keeps the
       // shell from opening Start.

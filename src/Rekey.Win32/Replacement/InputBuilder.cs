@@ -33,7 +33,7 @@ namespace Rekey.Win32.Replacement {
             0, unit, KEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE | KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP));
       }
 
-      inputs.AddRange(heldModifiers.Select(key => Key(key, 0, 0)));
+      inputs.AddRange(Repress(heldModifiers));
       return [.. inputs];
     }
 
@@ -54,7 +54,7 @@ namespace Rekey.Win32.Replacement {
               VIRTUAL_KEY.VK_RIGHT,
               0,
               KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY | KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP),
-          .. heldModifiers.Select(key => Key(key, 0, 0)),
+          .. Repress(heldModifiers),
       ];
     }
 
@@ -91,6 +91,15 @@ namespace Rekey.Win32.Replacement {
       }
 
       return Key(0, held.ScanCode, flags);
+    }
+
+    // Design D0 of add-manual-correction: the user's own Win release follows the re-press, so a
+    // key between them keeps the shell from opening Start.
+    private static IEnumerable<INPUT> Repress(IReadOnlyList<VIRTUAL_KEY> heldModifiers) {
+      IEnumerable<INPUT> again = heldModifiers.Select(key => Key(key, 0, 0));
+      return heldModifiers.Any(key => key is VIRTUAL_KEY.VK_LWIN or VIRTUAL_KEY.VK_RWIN)
+          ? again.Concat(MaskWin())
+          : again;
     }
 
     private static INPUT Key(VIRTUAL_KEY key, ushort scanCode, KEYBD_EVENT_FLAGS flags) {
