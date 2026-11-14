@@ -16,9 +16,9 @@ Do not touch the mouse or keyboard for about 3 minutes. The tool runs Rekey's wo
 |---|---|
 | 1.2 | With Auto Correction off, a double tap of Shift after "ghbdtn" gives "привет" and the Layout Russian; after "yt " it gives "не " |
 | 1.3 | With Ctrl+Alt+K as the Hotkey, "ghbdtn" in Notepad becomes "привет" and nothing else: the K never reaches Notepad |
-| 1.4 | With Win+Space as the Hotkey, "ghbdtn" becomes "привет", the Layout is Russian and stays Russian (no second switch), and the test window is still in front (Start did not open); in an empty box Win+Space only switches to Russian, again with the test window in front |
+| 1.4 | With Win+Space as the Hotkey, "ghbdtn" becomes "привет", the Layout is Russian and stays Russian (no second switch), and the test window is still in front (Start did not open); in an empty box Win+Space only switches to the Layout after English (US) in Windows' order, again with the test window in front |
 | 2.1 | With Auto Correction on, "ghbdtn" + Space is corrected and a double tap of Shift right after it reverts the text to "ghbdtn ", records one Undo and switches back to English (US) |
-| 3.2 | "ghbdtn vbh" selected with Ctrl+A becomes "привет мир" in the test window, in Notepad and in the browser test page |
+| 3.2 | "ghbdtn vbh" selected with Ctrl+A becomes "привет мир" in the test window, in Notepad and in the browser test page; a failing line also says how many characters the worker read as selected and whether the rest of the text is still as typed |
 | 4.2 | Win+Space as a custom combination is reported as the Windows Layout Switch shortcut; Ctrl+Alt+K is free, and is reported as taken while another thread holds it as a registered hotkey |
 
 Last run: not yet run.
@@ -27,7 +27,7 @@ Last run: not yet run.
 
 The app has no settings window before `add-tray-and-settings-ui`, so the Hotkey is changed in `%LOCALAPPDATA%\Rekey\settings.json` while Rekey is not running (Rekey writes the file on exit). Use a Debug build of `src/Rekey.App` and English (US) as the starting Layout. These checks use the physical keyboard, which the tool cannot.
 
-- [ ] **Double tap of Shift (1.2, 2.1).** Start Rekey with `"autoCorrectionEnabled": false`. In Notepad type "ghbdtn" and tap Shift twice quickly; then type "Ghbdtn" holding Shift for the capital and tap Shift once.
+- [ ] **Double tap of Shift (1.2, 2.1).** Start Rekey with `"autoCorrectionEnabled": false`. In Notepad type "ghbdtn" and tap Shift twice quickly. Switch back to English (US), press Enter for a new line, then type "Ghbdtn" holding Shift for the capital and tap Shift once.
   Expected: the first Word becomes "привет" and the Layout Russian; the second is left as typed (the Shift held for "G" does not count as a tap).
 - [ ] **Win+Space with the physical keys (1.4).** Quit Rekey, set `"hotkey": "winSpace"`, start Rekey. In Notepad, in English (US), type "ghbdtn" and press Win+Space; then on a new empty line press Win+Space once more; then press Win alone.
   Expected: "ghbdtn" becomes "привет" and the Layout is Russian, with no Windows layout pop-up switching a second time and no Start menu; on the empty line the Layout becomes English (US) again and Start stays closed; Win alone opens Start as usual.

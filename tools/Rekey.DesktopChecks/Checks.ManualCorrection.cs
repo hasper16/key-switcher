@@ -119,8 +119,10 @@ namespace Rekey.DesktopChecks {
       Apply(_manualOnly with { Hotkey = Hotkey.WinSpace });
       Point box = First().Ordinary;
       Attempt word = PerformHotkey(box, "ghbdtn", WinSpace);
-      HWND front = PInvoke.GetForegroundWindow();
+
+      // Read after the pause, before FocusShows clicks the test window and would close Start.
       Thread.Sleep(_quiet);
+      HWND front = PInvoke.GetForegroundWindow();
       bool once = CurrentLayout() == SpecWords.Russian
           && FocusShows(box, SpecWords.Russian);
       string detail = $"{word}, {Compare(word.Text, "привет")}, one switch {once}, "
@@ -130,12 +132,15 @@ namespace Rekey.DesktopChecks {
           word.Replaced && word.Text == "привет" && once && IsTestWindow(front),
           detail);
 
+      // With nothing to correct the Layout after English (US) in Windows' order comes next.
+      IReadOnlyList<LayoutId> order = InstalledLayouts();
+      LayoutId next = order[(order.ToList().IndexOf(SpecWords.EnglishUs) + 1) % order.Count];
       Attempt empty = PerformHotkey(box, string.Empty, WinSpace);
-      front = PInvoke.GetForegroundWindow();
       Thread.Sleep(_quiet);
-      bool switched = FocusShows(box, SpecWords.Russian);
+      front = PInvoke.GetForegroundWindow();
+      bool switched = FocusShows(box, next);
       Expect(
-          "1.4 Win+Space in an empty box switches to Russian and leaves Start closed",
+          "1.4 Win+Space in an empty box switches to the next Layout and leaves Start closed",
           empty.Result is null && empty.Text == string.Empty && switched && IsTestWindow(front),
           $"{empty}, switched {switched}, test window in front {IsTestWindow(front)}");
     }
