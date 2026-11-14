@@ -65,6 +65,9 @@ Three short WAVs bundled (key click, soft tick, chime), played with `System.Medi
 ### D7. Launch at sign-in
 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Rekey` = quoted path to the Velopack stub (stable across updates). The setting reflects the registry value on start (user may remove it with Task Manager → Startup apps).
 
+### D8. Pause until restart
+The auto-correction spec keeps a Pause across restarts, so "until restart" is stored as `PausedUntil = DateTimeOffset.MaxValue` and a newly started Rekey clears that one value (`Settings.ForNewSession`); timed Pauses survive as before. Tray state priority: paused itself, then off, then paused, then active.
+
 ## Risks / Trade-offs
 
 - [WPF UI version churn] → pin version in `Directory.Packages.props`; UI tests are manual checklists.

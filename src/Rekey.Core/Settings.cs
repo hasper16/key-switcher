@@ -45,6 +45,23 @@ namespace Rekey.Core {
   /// The Hotkey that asks for a Manual Correction. The default is
   /// <see cref="Core.Hotkey.DoubleShift" />.
   /// </param>
+  /// <param name="ShowCursorIndicator">
+  /// <see langword="true" /> to show the new Language next to the caret after Rekey switched
+  /// Layout; otherwise, <see langword="false" />. The default is <see langword="true" />.
+  /// </param>
+  /// <param name="PlaySwitchSound">
+  /// <see langword="true" /> to play <paramref name="SwitchSound" /> after each Correction;
+  /// otherwise, <see langword="false" />. The default is <see langword="false" />.
+  /// </param>
+  /// <param name="SwitchSound">
+  /// One of the enumeration values that specifies the switch sound. The default is
+  /// <see cref="Core.SwitchSound.KeyClick" />.
+  /// </param>
+  /// <param name="LaunchAtSignIn">
+  /// <see langword="true" /> to start Rekey when the user signs in to Windows; otherwise,
+  /// <see langword="false" />. The default is <see langword="false" />; on start the app reads
+  /// the real state from Windows, which the user may change in Task Manager.
+  /// </param>
   // Each setting is a constructor parameter with a default: in .NET 10, source-generated JSON
   // gives an init-only property that the file omits its type default, not its initializer.
   public sealed record Settings(
@@ -57,11 +74,28 @@ namespace Rekey.Core {
       bool KeyboardWatchdogEnabled = true,
       bool RestartAfterFreezeEnabled = true,
       bool VerifiedReplacement = true,
-      Hotkey Hotkey = default) {
+      Hotkey Hotkey = default,
+      bool ShowCursorIndicator = true,
+      bool PlaySwitchSound = false,
+      SwitchSound SwitchSound = SwitchSound.KeyClick,
+      bool LaunchAtSignIn = false) {
+    /// <summary>
+    /// The <see cref="PausedUntil" /> value of a Pause that lasts until Rekey restarts.
+    /// </summary>
+    public static readonly DateTimeOffset UntilRestart = DateTimeOffset.MaxValue;
+
     /// <summary>
     /// Gets the schema version of the settings.
     /// </summary>
     /// <value>The schema version. The default is 1.</value>
     public int Version { get; } = 1;
+
+    /// <summary>
+    /// Returns the settings a newly started Rekey uses: a Pause until restart has ended.
+    /// </summary>
+    /// <returns>The settings for the new session.</returns>
+    public Settings ForNewSession() {
+      return PausedUntil == UntilRestart ? this with { PausedUntil = null } : this;
+    }
   }
 }

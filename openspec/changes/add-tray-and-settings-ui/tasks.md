@@ -2,9 +2,9 @@
 
 ## 1. Settings fields and view-models
 
-- [ ] 1.1 Add `ShowCursorIndicator` (on), `PlaySwitchSound` (off), `SwitchSound`, `LaunchAtSignIn` to `Settings`; verify defaults and round-trip tests pass
-- [ ] 1.2 Write failing view-model tests: changing a property publishes a new `Settings` snapshot; debounced save happens once for rapid changes; implement `SettingsViewModel`; verify they pass
-- [ ] 1.3 Write failing tests for `TrayViewModel` state text (active, paused with minutes left, off, paused itself) and the exclude/include item label for the current app; implement; verify they pass
+- [x] 1.1 Add `ShowCursorIndicator` (on), `PlaySwitchSound` (off), `SwitchSound`, `LaunchAtSignIn` to `Settings`; verify defaults and round-trip tests pass
+- [x] 1.2 Write failing view-model tests: changing a property publishes a new `Settings` snapshot; debounced save happens once for rapid changes; implement `SettingsViewModel`; verify they pass
+- [x] 1.3 Write failing tests for `TrayViewModel` state text (active, paused with minutes left, off, paused itself) and the exclude/include item label for the current app; implement; verify they pass
 
 ## 2. Keycap mark and tray
 

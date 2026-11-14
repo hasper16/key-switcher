@@ -6,6 +6,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Rekey.Accuracy.Tests/Rekey.Accuracy.Tests.csproj" />
+    <Project Path="tests/Rekey.App.Tests/Rekey.App.Tests.csproj" />
     <Project Path="tests/Rekey.Core.Tests/Rekey.Core.Tests.csproj" />
     <Project Path="tests/Rekey.ProfileBuilder.Tests/Rekey.ProfileBuilder.Tests.csproj" />
     <Project Path="tests/Rekey.DesktopChecks.Tests/Rekey.DesktopChecks.Tests.csproj" />

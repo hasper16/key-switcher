@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="TrayOn" xml:space="preserve">
+    <value>Rekey is on</value>
+  </data>
+  <data name="TrayPausedMinutes" xml:space="preserve">
+    <value>Rekey is paused: {0} minutes left</value>
+  </data>
+  <data name="TrayPausedOneMinute" xml:space="preserve">
+    <value>Rekey is paused: 1 minute left</value>
+  </data>
+  <data name="TrayPausedUntilRestart" xml:space="preserve">
+    <value>Rekey is paused until it restarts</value>
+  </data>
+  <data name="TrayOff" xml:space="preserve">
+    <value>Auto Correction is off</value>
+  </data>
+  <data name="TraySelfPaused" xml:space="preserve">
+    <value>Rekey paused itself: it lost the keyboard twice. It retries in 10 minutes.</value>
+  </data>
+  <data name="TurnOffIn" xml:space="preserve">
+    <value>Turn off in {0}</value>
+  </data>
+  <data name="TurnOnIn" xml:space="preserve">
+    <value>Turn on in {0}</value>
+  </data>
+</root>
