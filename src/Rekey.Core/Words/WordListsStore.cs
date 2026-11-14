@@ -13,7 +13,7 @@ namespace Rekey.Core.Words {
     /// The folder that holds the file; it is created on the first save.
     /// </param>
     public WordListsStore(string folder) {
-      FilePath = Path.Combine(folder, "words.json");
+      FilePath = Path.Join(folder, "words.json");
     }
 
     /// <summary>

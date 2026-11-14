@@ -536,10 +536,9 @@ namespace Rekey.Core {
 
       DateTimeOffset now = _time.GetUtcNow();
       bool changed = false;
-      foreach (string typed in WordsOf(record.Typed)) {
-        if (WordLists.Key(typed).Length >= _minProtectedLength) {
-          changed |= Words.Protect(typed, WordSource.Auto, now);
-        }
+      foreach (string typed in WordsOf(record.Typed)
+          .Where(typed => WordLists.Key(typed).Length >= _minProtectedLength)) {
+        changed |= Words.Protect(typed, WordSource.Auto, now);
       }
 
       if (_languages.ProfileFor(record.Target) is { } profile) {

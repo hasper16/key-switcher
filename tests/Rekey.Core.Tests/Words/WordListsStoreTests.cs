@@ -15,7 +15,7 @@ namespace Rekey.Core.Tests.Words {
     private readonly string _folder;
 
     public WordListsStoreTests() {
-      _folder = Path.Combine(_root.FullName, "Rekey");
+      _folder = Path.Join(_root.FullName, "Rekey");
     }
 
     public void Dispose() {
@@ -36,7 +36,7 @@ namespace Rekey.Core.Tests.Words {
     public void FileIsNamedWordsJson() {
       var store = new WordListsStore(_folder);
 
-      Assert.Equal(Path.Combine(_folder, "words.json"), store.FilePath);
+      Assert.Equal(Path.Join(_folder, "words.json"), store.FilePath);
     }
 
     [Fact]
