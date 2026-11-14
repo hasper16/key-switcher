@@ -6,7 +6,7 @@
 - [x] 1.2 Write failing tests for the double-tap state machine (two taps < 400 ms fire; capital letter in between resets; slow taps do not fire) with a fake clock; implement; verify they pass
 - [x] 1.3 Write failing tests for the custom combo state machine (exact modifiers + key fires and swallows the key; extra modifier or other key does not); implement it in the hook; verify the tests pass and manually that the key does not reach Notepad
 
-- [ ] 1.4 Write failing tests for the Win+Space state machine (Space swallowed while Win is down; masking key injected before Win up; Win alone and other Win shortcuts untouched); implement; verify the tests pass and manually that Win+Space corrects "ghbdtn", switches to the next Layout in an empty field, never switches twice and never opens Start
+- [x] 1.4 Write failing tests for the Win+Space state machine (Space swallowed while Win is down; masking key injected before Win up; Win alone and other Win shortcuts untouched); implement; verify the tests pass and manually that Win+Space corrects "ghbdtn", switches to the next Layout in an empty field, never switches twice and never opens Start (desktop run 7 at f4ec2f6; the by-hand part is deferred to `docs/manual-tests/deferred-by-hand.md` by owner decision 2026-11-14)
 
 ## 2. Manual Correction in the engine
 
@@ -17,7 +17,7 @@
 ## 3. Selection conversion
 
 - [x] 3.1 Write failing tests for reverse KeyMap conversion ("ghbdtn vbh" → "привет мир", digits untouched); implement; verify they pass
-- [ ] 3.2 Implement UIA selection reading and type-over replacement; verify manually in Notepad and Chrome; verify that an unreadable selection only switches Layout
+- [x] 3.2 Implement UIA selection reading and type-over replacement; verify manually in Notepad and Chrome; verify that an unreadable selection only switches Layout (desktop run 7 at f4ec2f6; the by-hand part is deferred to `docs/manual-tests/deferred-by-hand.md` by owner decision 2026-11-14)
 
 ## 4. Conflicts
 

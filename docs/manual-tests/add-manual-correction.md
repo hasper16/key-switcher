@@ -27,13 +27,4 @@ Earlier runs that day found two product faults, both fixed before the last run: 
 
 ## By hand
 
-The app has no settings window before `add-tray-and-settings-ui`, so the Hotkey is changed in `%LOCALAPPDATA%\Rekey\settings.json` while Rekey is not running (Rekey writes the file on exit). Use a Debug build of `src/Rekey.App` and English (US) as the starting Layout. These checks use the physical keyboard, which the tool cannot.
-
-- [ ] **Double tap of Shift (1.2, 2.1).** Start Rekey with `"autoCorrectionEnabled": false`. In Notepad type "ghbdtn" and tap Shift twice quickly. Switch back to English (US), press Enter for a new line, then type "Ghbdtn" holding Shift for the capital and tap Shift once.
-  Expected: the first Word becomes "привет" and the Layout Russian; the second is left as typed (the Shift held for "G" does not count as a tap).
-- [ ] **Win+Space with the physical keys (1.4).** Quit Rekey, set `"hotkey": "winSpace"`, start Rekey. In Notepad, in English (US), type "ghbdtn" and press Win+Space; then on a new empty line press Win+Space once more; then press Win alone.
-  Expected: "ghbdtn" becomes "привет" and the Layout is Russian, with no Windows layout pop-up switching a second time and no Start menu; on the empty line the Layout becomes English (US) again and Start stays closed; Win alone opens Start as usual.
-- [ ] **Selection a control does not expose (3.2).** Quit Rekey, set `"hotkey": "doubleShift"`, start Rekey. Open the Run dialog (Win+R), type "ghbdtn", select it with Shift+Home and tap Shift twice.
-  Expected: if the field exposes its selection, it becomes "привет"; if it does not, the text stays "ghbdtn" and only the Layout switches. Report which happened.
-- [ ] **Password Field (2.3).** On any sign-in page, type "ghbdtn" in the password box and tap Shift twice.
-  Expected: nothing happens: the box keeps its characters and the Layout stays English (US).
+Deferred by the owner's decision of 2026-11-14 to the final acceptance pass after all roadmap changes: see the `add-manual-correction` section of [deferred-by-hand.md](deferred-by-hand.md).
