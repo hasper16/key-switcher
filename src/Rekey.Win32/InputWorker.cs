@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using Rekey.Core;
 using Rekey.Core.Detection;
 using Rekey.Core.Languages;
+using Rekey.Core.Words;
 using Rekey.Win32.Focus;
 using Rekey.Win32.Keyboard;
 using Rekey.Win32.Layouts;
@@ -193,12 +194,27 @@ namespace Rekey.Win32 {
     public event Action<ReplacementTrace>? Mismatched;
 
     /// <summary>
+    /// Occurs on the worker thread after the Protected Words or Learned Words changed, with a
+    /// snapshot of both lists to save.
+    /// </summary>
+    /// <remarks>
+    /// It carries words: never log it.
+    /// </remarks>
+    public event Action<WordListsDocument>? WordListsChanged;
+
+    /// <summary>
     /// Occurs on the worker thread after an Undo, for the features that learn from it.
     /// </summary>
     /// <remarks>
     /// It carries typed text: never log it.
     /// </remarks>
     public event Action<UndoPerformed>? Undone;
+
+    /// <summary>
+    /// Gets the Protected Words and Learned Words the engine starts with; set it before
+    /// <see cref="Start" />.
+    /// </summary>
+    public WordListsDocument InitialWords { get; init; } = WordListsDocument.Empty;
 
     /// <summary>
     /// Gets the number of Keystrokes in the engine's current Word; read it only on the worker
@@ -419,7 +435,12 @@ namespace Rekey.Win32 {
         _recordIncident(incident);
       }
 
-      _engine = new Engine(load.Languages, Volatile.Read(ref _latestSettings), _time, _evaluate);
+      _engine = new Engine(
+          load.Languages,
+          Volatile.Read(ref _latestSettings),
+          _time,
+          _evaluate,
+          new WordLists(InitialWords));
     }
 
     private void DrainInput() {
@@ -733,6 +754,9 @@ namespace Rekey.Win32 {
           break;
         case UndoPerformed undone:
           Undone?.Invoke(undone);
+          break;
+        case Rekey.Core.WordListsChanged:
+          WordListsChanged?.Invoke(_engine.Words.Snapshot());
           break;
         default:
           break;

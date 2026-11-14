@@ -19,7 +19,7 @@
 
 ## 4. Host wiring
 
-- [ ] 4.1 Write failing tests for the debounced saver (saves 2 s after the last change, flush saves at once); wire the store into the worker and app (load at start, save on change and exit); verify tests pass and the app builds
+- [x] 4.1 Write failing tests for the debounced saver (saves 2 s after the last change, flush saves at once); wire the store into the worker and app (load at start, save on change and exit); verify tests pass and the app builds
 
 ## 5. Docs
 

@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using H.NotifyIcon;
 using Rekey.Core;
+using Rekey.Core.Words;
 using Rekey.Win32;
 
 namespace Rekey.App {
@@ -33,8 +34,12 @@ namespace Rekey.App {
     private static readonly string _dataFolder = Path.Join(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Rekey");
 
+    private static readonly WordListsStore _wordsStore = new(_dataFolder);
+
     private readonly SettingsStore _settingsStore = new(_dataFolder);
     private readonly RestartStateStore _restartStore = new(_dataFolder);
+    private readonly WordListsSaver _wordsSaver =
+        new(_wordsStore, TimeProvider.System, ReportWordsNotSaved);
 
     private SingleInstanceGuard? _guard;
     private Settings? _settings;
@@ -93,6 +98,7 @@ namespace Rekey.App {
 
       // Windows may end the process soon after sign-out starts, so write settings now.
       FlushSettings();
+      _wordsSaver.Flush();
     }
 
     protected override void OnExit(ExitEventArgs e) {
@@ -102,6 +108,10 @@ namespace Rekey.App {
       } finally {
         _freezeGuard?.Dispose();
         _worker?.Dispose();
+
+        // After the worker, so its last change is saved too.
+        _wordsSaver.Flush();
+        _wordsSaver.Dispose();
         _trayIcon?.Dispose();
         _guard?.Dispose();
         base.OnExit(e);
@@ -114,6 +124,11 @@ namespace Rekey.App {
       Trace.WriteLine(string.Create(
           CultureInfo.InvariantCulture,
           $"Rekey Incident {incident.Time:O} {incident.Type} {details}"));
+    }
+
+    // The type only: the message names a path inside the user profile.
+    private static void ReportWordsNotSaved(Exception error) {
+      Trace.WriteLine($"Rekey could not save its word lists: {error.GetType().Name}");
     }
 
     // A Rekey restarted after a freeze waits for the old process to leave, so the old one
@@ -134,7 +149,10 @@ namespace Rekey.App {
     }
 
     private void StartInput(Settings settings) {
-      _worker = new InputWorker(settings, RecordIncident, TimeProvider.System);
+      _worker = new InputWorker(settings, RecordIncident, TimeProvider.System) {
+        InitialWords = _wordsStore.Load(),
+      };
+      _worker.WordListsChanged += _wordsSaver.Changed;
       _worker.SelfPauseChanged += until => Dispatcher.BeginInvoke(() => ShowSelfPause(until));
       _worker.Observed += RememberWordCounts;
       try {
@@ -200,6 +218,7 @@ namespace Rekey.App {
 
       Dispatcher.Invoke(() => _trayIcon?.Dispose(), TimeSpan.FromSeconds(1));
       FlushSettings();
+      _wordsSaver.Flush();
       Environment.Exit(0);
     }
 
