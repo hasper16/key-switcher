@@ -102,9 +102,17 @@ namespace Rekey.Win32.Replacement {
     /// Called just before the input is sent; returns why the request is no longer valid, or
     /// <see langword="null" /> when it still is.
     /// </param>
+    /// <param name="betweenParts">
+    /// Called before each part of a text with spaces after the first; returns why typing must
+    /// stop, such as a click, or <see langword="null" /> to go on. The default is
+    /// <see langword="null" />: nothing is asked.
+    /// </param>
     /// <returns>Whether and how the text was replaced.</returns>
     public ReplacementResult Replace(
-        ReplaceText replace, string appId, Func<ReplacementResult?> recheck) {
+        ReplaceText replace,
+        string appId,
+        Func<ReplacementResult?> recheck,
+        Func<ReplacementResult?>? betweenParts = null) {
       // Never erase where the typed Rendering is not proven to arrive: that deletes the Word.
       TextTarget target = _target();
       if (target == TextTarget.Unsupported) {
@@ -166,16 +174,14 @@ namespace Rekey.Win32.Replacement {
       // One character per Keystroke in the supported Layouts, so one Backspace each.
       bool retype = method == ReplacementMethod.Retype;
       int erase = retype ? new StringInfo(replace.Expected).LengthInTextElements : 0;
-      if (!SendInParts(erase, replace.Replacement)) {
+      ReplacementResult? stopped = SendInParts(
+          erase, replace.Replacement, betweenParts, checkFocus: reader is not null);
+      if (stopped == ReplacementResult.Blocked && !retype) {
         // Windows refuses input to this window, so only UI Automation can clear the selection.
-        if (!retype) {
-          _reader.Deselect(Deselection.IfStillSelected);
-        }
-
-        return ReplacementResult.Blocked;
+        _reader.Deselect(Deselection.IfStillSelected);
       }
 
-      return retype ? ReplacementResult.Retyped : ReplacementResult.Verified;
+      return stopped ?? (retype ? ReplacementResult.Retyped : ReplacementResult.Verified);
     }
 
     /// <summary>
@@ -187,9 +193,15 @@ namespace Rekey.Win32.Replacement {
     /// Returns why the replacement can no longer happen, or <see langword="null" /> if it still
     /// can; asked just before typing.
     /// </param>
+    /// <param name="betweenParts">
+    /// Called before each part of a text with spaces after the first; returns why typing must
+    /// stop, or <see langword="null" /> to go on. The default is <see langword="null" />.
+    /// </param>
     /// <returns>One of the enumeration values that specifies what became of it.</returns>
     public ReplacementResult TypeOver(
-        TypeOverSelection typeOver, Func<ReplacementResult?> recheck) {
+        TypeOverSelection typeOver,
+        Func<ReplacementResult?> recheck,
+        Func<ReplacementResult?>? betweenParts = null) {
       if (_target() == TextTarget.Unsupported) {
         return ReplacementResult.Unsupported;
       }
@@ -208,9 +220,8 @@ namespace Rekey.Win32.Replacement {
         return stale;
       }
 
-      return SendInParts(0, typeOver.Replacement)
-          ? ReplacementResult.Verified
-          : ReplacementResult.Blocked;
+      return SendInParts(0, typeOver.Replacement, betweenParts, checkFocus: true)
+          ?? ReplacementResult.Verified;
     }
 
     /// <summary>
@@ -227,20 +238,38 @@ namespace Rekey.Win32.Replacement {
     }
 
     // Design D4 of add-manual-correction: each part after a space waits a moment, as Notepad
-    // garbles what follows a space in the same burst. Stops at the first part Windows refuses.
-    private bool SendInParts(int erase, string text) {
-      IReadOnlyList<INPUT[]> parts = InputBuilder.ReplacementParts(erase, text, _heldModifiers());
+    // garbles what follows a space in the same burst. Returns null when every part went out;
+    // otherwise why typing stopped, after pressing the held modifiers again, as only the last
+    // part does that. The clock is not asked between parts: stopping half-way for time alone
+    // would leave a half-typed Word.
+    private ReplacementResult? SendInParts(
+        int erase, string text, Func<ReplacementResult?>? betweenParts, bool checkFocus) {
+      IReadOnlyList<VIRTUAL_KEY> held = _heldModifiers();
+      IReadOnlyList<INPUT[]> parts = InputBuilder.ReplacementParts(erase, text, held);
       for (int i = 0; i < parts.Count; i++) {
         if (i > 0) {
           _pause(PauseAfterSpace);
+          if (betweenParts?.Invoke() is not null || (checkFocus && !_reader.FocusUnchanged())) {
+            return Restored(held, ReplacementResult.Cut);
+          }
         }
 
+        // A refused first part released nothing; after a later one, the re-press that ends the
+        // last part may not have gone out.
         if (!_send(parts[i])) {
-          return false;
+          return i == 0 ? ReplacementResult.Blocked : Restored(held, ReplacementResult.Blocked);
         }
       }
 
-      return true;
+      return null;
+    }
+
+    private ReplacementResult Restored(IReadOnlyList<VIRTUAL_KEY> held, ReplacementResult why) {
+      if (held.Count > 0) {
+        _ = _send(InputBuilder.Restore(held));
+      }
+
+      return why;
     }
 
     // Collapses a selection so neither a re-injected Space nor later typing replaces the Word.

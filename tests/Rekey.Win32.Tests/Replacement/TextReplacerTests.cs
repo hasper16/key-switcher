@@ -395,6 +395,51 @@ namespace Rekey.Win32.Tests.Replacement {
       Assert.Equal(2, _sent.Count);
     }
 
+    [Fact]
+    public void HeldModifiersArePressedAgainWhenALaterPartIsRefused() {
+      int calls = 0;
+      var control = new FakeControl(null) { Selection = "ghbdtn vbh" };
+      var replacer = new TextReplacer(
+          control,
+          true,
+          () => [VIRTUAL_KEY.VK_LSHIFT],
+          inputs => {
+            _sent.Add(inputs);
+            return ++calls != 2;
+          },
+          () => TextTarget.Editable,
+          _ => { });
+
+      ReplacementResult result =
+          replacer.TypeOver(new TypeOverSelection("ghbdtn vbh", "привет мир"), () => null);
+
+      Assert.Equal(ReplacementResult.Blocked, result);
+      Assert.Equal(3, _sent.Count);
+      Assert.Contains(_sent[^1], input => IsPress(input, VIRTUAL_KEY.VK_LSHIFT));
+    }
+
+    [Fact]
+    public void FocusMovedBetweenPartsStopsTypingAndSaysItWasCut() {
+      var control = new FakeControl(null) { Selection = "ghbdtn vbh" };
+      var replacer = new TextReplacer(
+          control, true, () => [VIRTUAL_KEY.VK_LSHIFT], Send, () => TextTarget.Editable, _ => { });
+
+      ReplacementResult result = replacer.TypeOver(
+          new TypeOverSelection("ghbdtn vbh", "привет мир"),
+          () => null,
+          betweenParts: () => ReplacementResult.FocusMoved);
+
+      Assert.Equal(ReplacementResult.Cut, result);
+      Assert.Equal(2, _sent.Count);
+      Assert.Contains(_sent[^1], input => IsPress(input, VIRTUAL_KEY.VK_LSHIFT));
+      Assert.DoesNotContain(_sent[^1], input => input.Anonymous.ki.wScan == 'м');
+    }
+
+    private static bool IsPress(INPUT input, VIRTUAL_KEY key) {
+      return input.Anonymous.ki.wVk == key
+          && (input.Anonymous.ki.dwFlags & KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP) == 0;
+    }
+
     private bool Send(INPUT[] inputs) {
       _sent.Add(inputs);
       return true;

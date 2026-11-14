@@ -98,6 +98,16 @@ namespace Rekey.Win32.Replacement {
     }
 
     /// <summary>
+    /// Returns the inputs that press the held modifiers again after a replacement stopped
+    /// part-way, with the masking key after Win.
+    /// </summary>
+    /// <param name="heldModifiers">The modifier keys the replacement released.</param>
+    /// <returns>The inputs, in order.</returns>
+    public static INPUT[] Restore(IReadOnlyList<VIRTUAL_KEY> heldModifiers) {
+      return [.. Repress(heldModifiers)];
+    }
+
+    /// <summary>
     /// Returns the input that sends a held key event on to the application.
     /// </summary>
     /// <remarks>

@@ -756,7 +756,8 @@ namespace Rekey.Win32 {
 
     private void TypeOver(TypeOverSelection typeOver) {
       ReplacementResult result = _held is { } held && _replacer is not null
-          ? _replacer.TypeOver(typeOver, () => Stale(held, _landMilliseconds))
+          ? _replacer.TypeOver(
+              typeOver, () => Stale(held, _landMilliseconds), () => Moved(held))
           : ReplacementResult.TooLate;
       Finish(result);
     }
@@ -781,13 +782,20 @@ namespace Rekey.Win32 {
         return stale;
       }
 
-      return _replacer.Replace(replace, app, () => Stale(held, _landMilliseconds));
+      return _replacer.Replace(
+          replace, app, () => Stale(held, _landMilliseconds), () => Moved(held));
     }
 
     // Why the held key can no longer be replaced before, or null if it still can: a click,
     // which is never held, may have moved the caret, the app may have moved focus, or the
     // valve may have let later keys through. A move is reported first, since what is cleaned
     // up depends on where the caret went.
+    // A click or a window change while a text with spaces is typed in parts; the time does not
+    // count there, as stopping half-way would leave a half-typed Word.
+    private ReplacementResult? Moved(in RawInput held) {
+      return Stale(held, long.MaxValue);
+    }
+
     private ReplacementResult? Stale(in RawInput held, long maxAge) {
       if (_gate.ClickedAfter(held.Sequence)) {
         return ReplacementResult.Interrupted;
