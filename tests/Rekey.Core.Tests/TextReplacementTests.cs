@@ -116,10 +116,12 @@ namespace Rekey.Core.Tests {
 
       typist.Finish();
 
+      // Spec word-learning: the Undo also protects the Word.
       Assert.Equal(
           [
             new SwitchLayout(KeyMapFixtures.EnglishUs.Layout),
             new UndoPerformed("ghbdtn", "привет"),
+            new WordListsChanged(),
           ],
           typist.Actions);
     }

@@ -144,6 +144,7 @@ namespace Rekey.Core.Tests {
             new ReplaceText("привет ", "ghbdtn "),
             new SwitchLayout(_english),
             new UndoPerformed("ghbdtn", "привет"),
+            new WordListsChanged(),
           ],
           typist.Actions.Skip(2));
     }

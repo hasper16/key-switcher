@@ -70,6 +70,16 @@ namespace Rekey.Core.Words {
     }
 
     /// <summary>
+    /// Marks the Protected Word a Rendering matches as used now.
+    /// </summary>
+    /// <param name="rendering">The Rendering in the current Layout, in any case.</param>
+    /// <param name="now">The current time.</param>
+    /// <returns><see langword="true" /> if it matches a Protected Word.</returns>
+    public bool UseProtected(string rendering, DateTimeOffset now) {
+      return _protected.Touch(Key(rendering), now);
+    }
+
+    /// <summary>
     /// Adds a Protected Word, or refreshes it when present.
     /// </summary>
     /// <param name="text">The word.</param>
@@ -100,6 +110,17 @@ namespace Rekey.Core.Words {
     /// <returns>The words, as <see cref="Key" /> forms them.</returns>
     public IReadOnlySet<string> LearnedIn(Language language) {
       return SetOf(language);
+    }
+
+    /// <summary>
+    /// Marks a Learned Word as used now.
+    /// </summary>
+    /// <param name="text">The word, perhaps with punctuation at its edges.</param>
+    /// <param name="language">The Language it belongs to.</param>
+    /// <param name="now">The current time.</param>
+    /// <returns><see langword="true" /> if it is a Learned Word of the Language.</returns>
+    public bool UseLearned(string text, Language language, DateTimeOffset now) {
+      return _learned.Touch((language, Key(text)), now);
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using Rekey.Core.Detection;
 using Rekey.Core.Languages;
 using Rekey.Core.Tests.Detection;
 using Rekey.Core.Words;
@@ -20,14 +21,15 @@ namespace Rekey.Core.Tests {
     public void ProtectedWordIsKept() {
       Typist typist = With(Protecting("ntcn")).Type("ntcn").Hold(KeyKind.Space);
 
-      Assert.Empty(typist.Actions);
+      // The Protected Word is marked used, so the list changed.
+      Assert.Equal([new WordListsChanged()], typist.Actions);
     }
 
     [Fact]
     public void ProtectedWordIsMatchedIgnoringCase() {
       Typist typist = With(Protecting("NTCN")).Type("Ntcn").Hold(KeyKind.Space);
 
-      Assert.Empty(typist.Actions);
+      Assert.Equal([new WordListsChanged()], typist.Actions);
     }
 
     [Fact]
@@ -43,14 +45,14 @@ namespace Rekey.Core.Tests {
       Typist typist = With(Protecting("ntcn"))
           .Type("yt").Hold(KeyKind.Space).Type("ntcn").Hold(KeyKind.Space);
 
-      Assert.Empty(typist.Actions);
+      Assert.DoesNotContain(typist.Actions, action => action is ReplaceText);
     }
 
     [Fact]
     public void HotkeyCorrectsAProtectedWord() {
       Typist typist = With(Protecting("ntcn")).Type("ntcn").Hold(KeyKind.Space).Hotkey();
 
-      Assert.Equal([new ReplaceText("ntcn ", "тест ")], typist.Actions);
+      Assert.Equal([new WordListsChanged(), new ReplaceText("ntcn ", "тест ")], typist.Actions);
     }
 
     [Fact]
@@ -96,7 +98,7 @@ namespace Rekey.Core.Tests {
           .Send(WordListEdited.Protect(TimeSpan.Zero, "ntcn"))
           .Type("ntcn").Hold(KeyKind.Space);
 
-      Assert.Equal([new WordListsChanged()], typist.Actions);
+      Assert.Equal([new WordListsChanged(), new WordListsChanged()], typist.Actions);
       Assert.Equal(WordSource.User, Assert.Single(typist.Engine.Words.Snapshot().Protected).Source);
     }
 
@@ -130,6 +132,110 @@ namespace Rekey.Core.Tests {
       Typist typist = With(lists).Send(WordListEdited.Protect(TimeSpan.Zero, "ntcn"));
 
       Assert.Equal([new WordListFull()], typist.Actions);
+    }
+
+    [Fact]
+    public void UndoProtectsTheWord() {
+      Typist typist = With(new WordLists())
+          .Type("ntcn").Hold(KeyKind.Space).Finish().RequestUndo().Finish();
+
+      Assert.Equal(
+          [
+            new ReplaceText("ntcn", "тест"),
+            new SwitchLayout(KeyMapFixtures.Russian.Layout),
+            new ReplaceText("тест ", "ntcn "),
+            new SwitchLayout(KeyMapFixtures.EnglishUs.Layout),
+            new UndoPerformed("ntcn", "тест"),
+            new WordListsChanged(),
+          ],
+          typist.Actions);
+      ProtectedWord word = Assert.Single(typist.Engine.Words.Snapshot().Protected);
+      Assert.Equal(("ntcn", WordSource.Auto), (word.Text, word.Source));
+    }
+
+    [Fact]
+    public void WordProtectedByUndoIsKeptNextTime() {
+      Typist typist = With(new WordLists())
+          .Type("ntcn").Hold(KeyKind.Space).Finish().RequestUndo().Finish();
+      typist.Actions.Clear();
+
+      typist.Type("ntcn").Hold(KeyKind.Space);
+
+      Assert.DoesNotContain(typist.Actions, action => action is ReplaceText);
+    }
+
+    [Fact]
+    public void UndoOfAShortWordDoesNotProtectIt() {
+      var aggressive = new Settings(Sensitivity: Sensitivity.Aggressive);
+      Typist typist = new Typist(aggressive, new WordLists())
+          .Type("yt").Hold(KeyKind.Space).Finish().RequestUndo().Finish();
+
+      Assert.Contains(new UndoPerformed("yt", "не"), typist.Actions);
+      Assert.DoesNotContain(new WordListsChanged(), typist.Actions);
+      Assert.Empty(typist.Engine.Words.Snapshot().Protected);
+    }
+
+    [Fact]
+    public void UndoOfARunProtectsItsLongWordsOnly() {
+      Typist typist = With(new WordLists())
+          .Type("yt").Hold(KeyKind.Space).Type("ntcn").Hold(KeyKind.Space)
+          .Finish().RequestUndo().Finish();
+
+      Assert.Equal(["ntcn"], typist.Engine.Words.Snapshot().Protected.Select(word => word.Text));
+    }
+
+    [Fact]
+    public void ManualCorrectionToAnUnknownWordLearnsIt() {
+      Typist typist = With(new WordLists()).Type("rhby;").Hotkey().Finish();
+
+      Assert.Equal(
+          [
+            new ReplaceText("rhby;", "кринж"),
+            new SwitchLayout(KeyMapFixtures.Russian.Layout),
+            new WordListsChanged(),
+          ],
+          typist.Actions);
+      LearnedWord word = Assert.Single(typist.Engine.Words.Snapshot().Learned);
+      Assert.Equal(
+          ("кринж", Language.Russian, WordSource.Auto), (word.Text, word.Language, word.Source));
+    }
+
+    [Fact]
+    public void LearnedWordIsCorrectedAutomaticallyNextTime() {
+      Typist typist = With(new WordLists()).Type("rhby;").Hotkey().Finish();
+      typist.Actions.Clear();
+
+      typist.Type("rhby;").Hold(KeyKind.Space);
+
+      Assert.Equal([new ReplaceText("rhby;", "кринж")], typist.Actions);
+    }
+
+    [Fact]
+    public void ManualCorrectionToAKnownWordLearnsNothing() {
+      Typist typist = With(new WordLists()).Type("ghbdtn").Hotkey().Finish();
+
+      Assert.DoesNotContain(new WordListsChanged(), typist.Actions);
+      Assert.Empty(typist.Engine.Words.Snapshot().Learned);
+    }
+
+    [Fact]
+    public void ConvertedSelectionLearnsNothing() {
+      Typist typist = With(new WordLists()).Hotkey("rhby;").Finish().RequestUndo().Finish();
+
+      Assert.Contains(new UndoPerformed("rhby;", "кринж"), typist.Actions);
+      Assert.DoesNotContain(new WordListsChanged(), typist.Actions);
+    }
+
+    [Fact]
+    public void UndoOfACorrectionToALearnedWordForgetsIt() {
+      var lists = new WordLists();
+      lists.Learn("кринж", Language.Russian, WordSource.User, _monday);
+
+      Typist typist = With(lists)
+          .Type("rhby;").Hold(KeyKind.Space).Finish().RequestUndo().Finish();
+
+      Assert.Empty(typist.Engine.Words.LearnedIn(Language.Russian));
+      Assert.Contains(new WordListsChanged(), typist.Actions);
     }
 
     private static WordLists Protecting(string word) {

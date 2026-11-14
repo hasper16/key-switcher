@@ -37,6 +37,16 @@ namespace Rekey.Core.Words {
       return _entries.Remove(key);
     }
 
+    // False when the key is absent.
+    public bool Touch(TKey key, DateTimeOffset now) {
+      if (!_entries.TryGetValue(key, out Entry entry)) {
+        return false;
+      }
+
+      _entries[key] = entry with { LastUsed = now };
+      return true;
+    }
+
     private bool DropLeastRecentlyUsedAuto() {
       KeyValuePair<TKey, Entry>[] auto =
           [.. _entries.Where(pair => pair.Value.Source == WordSource.Auto)];

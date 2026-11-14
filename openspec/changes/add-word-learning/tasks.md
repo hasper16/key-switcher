@@ -14,8 +14,8 @@
 
 ## 3. Learning rules
 
-- [ ] 3.1 Write failing tests: one Undo of "ntcn" → Protected (auto) and the next "ntcn" is kept; one Undo of "yt" → not protected; implement; verify they pass
-- [ ] 3.2 Write failing tests: Manual Correction to an unknown Rendering → Learned Word; Undo of a Correction to a Learned Word removes it; implement; verify they pass
+- [x] 3.1 Write failing tests: one Undo of "ntcn" → Protected (auto) and the next "ntcn" is kept; one Undo of "yt" → not protected; implement; verify they pass
+- [x] 3.2 Write failing tests: Manual Correction to an unknown Rendering → Learned Word; Undo of a Correction to a Learned Word removes it; implement; verify they pass
 
 ## 4. Host wiring
 
