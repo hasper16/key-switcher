@@ -24,10 +24,10 @@ When the Hotkey is Win+Space, Windows SHALL NOT also switch Layout on that press
 - **THEN** the Layout becomes Russian and the Start menu does not open
 
 ### Requirement: Double tap recognition
-A double tap SHALL count only when the chosen modifier is pressed and released twice within 400 ms (design decision) with no other key in between, and the modifier taps SHALL still reach the application.
+A double tap SHALL count only when the chosen modifier is pressed and released twice with no other key in between, each press lasting at most 400 ms and the second release coming within 400 ms of the first (design decision), and the modifier taps SHALL still reach the application.
 
 #### Scenario: Two quick taps
-- **WHEN** the user taps Shift twice within 300 ms
+- **WHEN** the user taps Shift twice, the second release 300 ms after the first
 - **THEN** the Hotkey is performed
 
 #### Scenario: Shift used for a capital letter
